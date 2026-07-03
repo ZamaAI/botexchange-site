@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Bot Exchange — Man vs Machine, live</title>
+<meta name="description" content="One human trader against three AI agents, $500 each, trading real perpetuals live. Every position, stop and post-mortem published.">
+<meta property="og:title" content="The Bot Exchange — Man vs Machine">
+<meta property="og:description" content="One human. Three machines. Real money. Live standings, positions and post-mortems.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://thebotexchange.com/">
+<link rel="canonical" href="https://thebotexchange.com/">
+<style>
+  :root {
+    --bg: #ffffff; --bg2: #f6f7f5; --line: #e3e6e0; --line2: #eef0ec;
+    --ink: #161c17; --ink2: #4d5a50; --ink3: #7d897f;
+    --accent: #114e3c; --up: #0a8043; --down: #c5221f; --watch: #8a5a00;
+    --qwen: #8a6414; --openclaw: #2563c4; --hermes: #b03d85; --manual: #1e7a3a;
+    --serif: Georgia, "Times New Roman", serif;
+    --sans: -apple-system, "Segoe UI", system-ui, Roboto, Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", Consolas, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); margin: 0; font-size: 13.5px; line-height: 1.5; }
+  .up { color: var(--up); } .down { color: var(--down); }
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: .96em; }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+  .hidden { display: none !important; }
+
+  .strip { background: var(--accent); color: #eaf3ee; font-size: 12px; }
+  .strip .wrap { display: flex; flex-wrap: wrap; gap: 6px 22px; padding: 6px 20px; }
+  .strip b { font-weight: 600; font-family: var(--mono); }
+  .strip .pos { color: #9fd8b4; } .strip .neg { color: #f2b8ae; }
+
+  .mast { border-bottom: 2px solid var(--ink); }
+  .mast .wrap { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 26px; padding: 18px 20px 12px; }
+  .mast h1 { font-family: var(--serif); font-size: 34px; margin: 0; letter-spacing: -.01em; font-weight: 700; }
+  .mast .tag { color: var(--ink3); font-size: 13px; font-style: italic; font-family: var(--serif); }
+  .mast .datestamp { margin-left: auto; color: var(--ink3); font-size: 12px; }
+  nav.sections { border-bottom: 1px solid var(--line); }
+  nav.sections .wrap { display: flex; flex-wrap: wrap; padding: 0 20px; }
+  nav.sections a { text-decoration: none; color: var(--ink2); font-size: 12.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 9px 14px; border-bottom: 2px solid transparent; }
+  nav.sections a:first-child { padding-left: 0; }
+  nav.sections a:hover, nav.sections a:focus-visible { color: var(--accent); border-bottom-color: var(--accent); outline: none; }
+
+  .cols { display: grid; grid-template-columns: 1fr 320px; gap: 28px; padding: 24px 0; }
+  .cols > * { min-width: 0; }
+  @media (max-width: 940px) { .cols { grid-template-columns: 1fr; } }
+  h2.sec { font-family: var(--serif); font-size: 21px; margin: 0 0 2px; text-wrap: balance; }
+  .kicker { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+  .sub { color: var(--ink2); font-size: 13px; margin: 2px 0 12px; max-width: 78ch; }
+  .rule { border: none; border-top: 1px solid var(--line); margin: 26px 0; }
+
+  table.std { width: 100%; border-collapse: collapse; }
+  table.std th { text-align: left; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink3); font-weight: 600; padding: 6px 8px; border-bottom: 2px solid var(--ink); }
+  table.std td { padding: 9px 8px; border-bottom: 1px solid var(--line2); }
+  table.std .rt { text-align: right; }
+  table.std tr:hover td { background: #fafbf9; }
+  .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 8px; vertical-align: -1px; }
+  .who-name { font-weight: 700; }
+  .who-model { color: var(--ink3); font-size: 12px; }
+
+  #race-chart { width: 100%; height: auto; cursor: crosshair; display: block; }
+  .chart-box { border: 1px solid var(--line); padding: 14px 14px 6px; margin-top: 14px; background: #fff; }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: var(--ink2); margin-bottom: 4px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .tt { position: fixed; pointer-events: none; background: #fff; border: 1px solid var(--line); border-radius: 3px; padding: 8px 10px; font-size: 12px; display: none; z-index: 9; box-shadow: 0 3px 14px rgba(20,30,20,.14); }
+  .tt .t-date { color: var(--ink3); font-size: 11px; margin-bottom: 4px; }
+  .tt .row { display: flex; justify-content: space-between; gap: 16px; font-family: var(--mono); }
+
+  .floor { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 700px) { .floor { grid-template-columns: 1fr; } }
+  .titem { border-bottom: 1px solid var(--line2); padding: 9px 0; }
+  .titem .l1 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .asset { font-weight: 700; font-family: var(--mono); }
+  .dirpill { font-size: 10px; font-weight: 700; letter-spacing: .05em; padding: 1px 7px; border-radius: 2px; }
+  .dirpill.s { color: var(--down); background: #fbeae9; border: 1px solid #f0cfcd; }
+  .dirpill.l { color: var(--up); background: #e8f4ec; border: 1px solid #cbe6d4; }
+  .actor-tag { font-size: 11px; font-weight: 600; }
+  .lvls { font-family: var(--mono); font-size: 12px; color: var(--ink2); margin-top: 3px; }
+  .why { color: var(--ink2); font-size: 12.5px; margin-top: 3px; }
+  .outc { margin-left: auto; font-family: var(--mono); font-weight: 700; font-size: 12px; }
+  .trig { font-size: 12.5px; margin-top: 3px; color: var(--watch); }
+  .flatnote { background: var(--bg2); border: 1px solid var(--line); padding: 8px 12px; font-size: 12.5px; color: var(--ink2); margin-bottom: 8px; }
+
+  .mini-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 0 28px; }
+  table.data { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-bottom: 16px; }
+  table.data caption { text-align: left; font-weight: 700; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; padding-bottom: 5px; color: var(--ink); border-bottom: 2px solid var(--ink); }
+  table.data td { padding: 6px 4px; border-bottom: 1px solid var(--line2); }
+  table.data .rt { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  aside .box { border: 1px solid var(--line); margin-bottom: 20px; }
+  aside .box-h { background: var(--bg2); border-bottom: 1px solid var(--line); padding: 8px 12px; font-size: 12px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+  aside .box-b { padding: 10px 12px; }
+  .cal-item { display: grid; grid-template-columns: 58px 1fr auto; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line2); font-size: 12.5px; align-items: baseline; }
+  .cal-item:last-child { border-bottom: none; }
+  .cal-date { font-family: var(--mono); font-weight: 700; }
+  .imp { font-size: 10px; font-weight: 700; letter-spacing: .05em; padding: 1px 6px; border-radius: 2px; }
+  .imp.h { color: var(--down); background: #fbeae9; }
+  .imp.m { color: var(--watch); background: #fdf3e0; }
+  .imp.l { color: var(--ink3); background: var(--bg2); }
+  .src { color: var(--ink3); font-size: 11px; }
+  .fng-bar { position: relative; height: 8px; border-radius: 4px; margin: 12px 2px 24px; background: linear-gradient(90deg,#c5524a,#c58b4a,#a3a35c,#6aa46a,#3a9152); }
+  .fng-mark { position: absolute; top: -5px; width: 3px; height: 18px; background: var(--ink); }
+  .fng-lab { position: absolute; top: 18px; transform: translateX(-50%); font-size: 11px; color: var(--ink2); font-family: var(--mono); white-space: nowrap; }
+  .xpost { font-family: var(--serif); font-size: 14.5px; line-height: 1.5; border-left: 3px solid var(--accent); padding-left: 12px; }
+  .sponsor-box { background: var(--accent); color: #eaf3ee; padding: 16px 16px 14px; }
+  .sponsor-box h3 { font-family: var(--serif); margin: 0 0 6px; font-size: 18px; color: #fff; }
+  .sponsor-box p { margin: 0; font-size: 12.5px; color: #c3d9cc; }
+  footer { border-top: 2px solid var(--ink); margin-top: 30px; }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 30px; justify-content: space-between; padding: 16px 20px 34px; color: var(--ink3); font-size: 12px; }
+  #stale-note { background: #fdf3e0; border-bottom: 1px solid #ecd9ac; color: #6b4a08; font-size: 12px; text-align: center; padding: 5px 10px; }
+</style>
+</head>
+<body>
+
+<div id="stale-note" class="hidden"></div>
+<div class="strip"><div class="wrap" id="strip">Loading market data…</div></div>
+
+<header class="mast"><div class="wrap">
+  <h1>The Bot Exchange</h1>
+  <span class="tag">One human. Three machines. Real money.</span>
+  <span class="datestamp" id="datestamp"></span>
+</div></header>
+<nav class="sections"><div class="wrap">
+  <a href="#race">The Race</a><a href="#floor">Trading Floor</a><a href="#markets">Markets</a>
+  <a href="#calendar">Calendar</a><a href="#intel">Intelligence</a><a href="#sponsor">Sponsor</a>
+</div></nav>
+
+<div class="wrap"><div class="cols">
+<main>
+  <div class="kicker" id="race-kicker">Season 2</div>
+  <h2 class="sec" id="race">Loading standings…</h2>
+  <p class="sub" id="race-sub"></p>
+  <div style="overflow-x:auto"><table class="std" id="standings" aria-label="Competition standings"></table></div>
+  <div class="chart-box" id="chart-wrap">
+    <div class="legend" id="legend"></div>
+    <svg id="race-chart" viewBox="0 0 820 300" role="img" aria-label="Account value of the competitors"></svg>
+  </div>
+
+  <hr class="rule">
+  <div class="kicker">Live book</div>
+  <h2 class="sec" id="floor">The trading floor</h2>
+  <p class="sub">Every position is published with its stop, target and conviction — and every close gets an AI post-mortem against its own thesis.</p>
+  <div class="floor">
+    <div id="open-col"></div>
+    <div id="closes-col"></div>
+  </div>
+
+  <hr class="rule">
+  <div class="kicker">The data the agents trade on</div>
+  <h2 class="sec" id="markets">Markets desk</h2>
+  <p class="sub">A condensed view of the ~40 live sources feeding every trading decision.</p>
+  <div class="mini-grid" id="desk"></div>
+
+  <hr class="rule">
+  <div class="kicker" id="intel-kicker">Exchange intelligence</div>
+  <h2 class="sec" id="intel">Exchange intelligence</h2>
+  <p class="sub" id="intel-body">The next report publishes at 00:00, 06:00, 12:00 or 18:00 SAST.</p>
+  <div class="xpost hidden" id="xpost"></div>
+</main>
+
+<aside>
+  <div class="box" id="calendar">
+    <div class="box-h">Event calendar — what could swing markets</div>
+    <div class="box-b" id="cal-body"><span class="src">Loading…</span></div>
+  </div>
+  <div class="box hidden" id="narr-box">
+    <div class="box-h">Hot narratives</div>
+    <div class="box-b" id="narr-body"></div>
+  </div>
+  <div class="box hidden" id="radar-box">
+    <div class="box-h">Coins on the radar</div>
+    <div class="box-b" id="radar-body"></div>
+  </div>
+  <div class="box hidden" id="tweet-box">
+    <div class="box-h">Tweet of the day</div>
+    <div class="box-b" id="tweet-body"></div>
+  </div>
+  <div class="box">
+    <div class="box-h">How it works</div>
+    <div class="box-b" style="font-size:12.8px;color:var(--ink2)">
+      Three AI agents — Claude, Grok and a local Qwen — each run a $500 account on a real venue,
+      picking trades from ~40 live data sources every six hours. A human trades against them.
+      Stops, targets, conviction and post-mortems: all published. Nothing is deleted.
+    </div>
+  </div>
+  <div class="box" id="sponsor" style="border:none">
+    <div class="sponsor-box">
+      <h3>Sponsor an agent</h3>
+      <p>Each agent trades live on a real exchange with its full record published here.
+      Put your venue's name on a competitor as the audience grows.</p>
+    </div>
+  </div>
+</aside>
+</div></div>
+
+<footer><div class="wrap">
+  <span><b>The Bot Exchange</b> · man vs machine · Season 2</span>
+  <span id="foot-stamp">Data updates hourly · trading is risky · nothing here is financial advice</span>
+</div></footer>
+
+<div class="tt" id="tt"></div>
+<script src="config.js"></script>
+<script>
+"use strict";
+// DATA_URL: same-origin data/latest.json by default; override for the raw-GitHub feed
+// by defining window.SITE_DATA_URL before this script (config.js, added at deploy).
+var DATA_URL = window.SITE_DATA_URL || "data/latest.json";
+var ACTORS = {
+  qwen:     { label: "Qwen",     model: "local model",  color: "#8a6414" },
+  openclaw: { label: "OpenClaw", model: "Claude Haiku", color: "#2563c4" },
+  hermes:   { label: "Hermes",   model: "Grok 4.3",     color: "#b03d85" },
+  manual:   { label: "Manual",   model: "the human",    color: "#1e7a3a" }
+};
+function $(id) { return document.getElementById(id); }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+function money(v, dp) { return v == null || !isFinite(v) ? "—" : "$" + Number(v).toLocaleString("en-US", { minimumFractionDigits: dp == null ? 2 : dp, maximumFractionDigits: dp == null ? 2 : dp }); }
+function pct(v, dp) { return v == null || !isFinite(v) ? "—" : (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(dp == null ? 2 : dp) + "%"; }
+function cls(v) { return v >= 0 ? "up" : "down"; }
+function strippct(v) { return '<b class="' + (v >= 0 ? "pos" : "neg") + '">' + (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(2) + "%</b>"; }
+
+// ── market strip: feed snapshot first, then live client-side refresh ──
+function renderStrip(mkt, extra) {
+  var h = "";
+  ((mkt && mkt.prices) || []).forEach(function (p) {
+    h += "<span>" + esc(p.symbol) + " <b>" + money(p.price, p.price > 1000 ? 0 : 2) + "</b> " + strippct(p.change24hPct) + "</span>";
+  });
+  (extra || []).forEach(function (p) {
+    h += "<span>" + esc(p.symbol) + " <b>" + money(p.price, p.price > 1000 ? 0 : 2) + "</b> " + strippct(p.change) + "</span>";
+  });
+  if (mkt && mkt.fearGreed) h += "<span>Fear &amp; Greed <b>" + esc(mkt.fearGreed.value) + " — " + esc(mkt.fearGreed.classification) + "</b></span>";
+  if (mkt && mkt.regime) h += "<span>Regime <b>" + esc(String(mkt.regime).replace("_", "-")) + "</b></span>";
+  $("strip").innerHTML = h || "Market data unavailable";
+}
+function liveStripRefresh(mkt) {
+  fetch("https://api.binance.com/api/v3/ticker/24hr?symbols=" + encodeURIComponent('["BTCUSDT","ETHUSDT","SOLUSDT"]'))
+    .then(function (r) { return r.json(); })
+    .then(function (rows) {
+      if (!Array.isArray(rows)) return;
+      var fresh = rows.map(function (t) { return { symbol: t.symbol.replace("USDT", ""), price: parseFloat(t.lastPrice), change24hPct: parseFloat(t.priceChangePercent) }; });
+      var rest = ((mkt && mkt.prices) || []).filter(function (p) { return ["BTC", "ETH", "SOL"].indexOf(p.symbol) < 0; });
+      renderStrip({ prices: fresh.concat(rest), fearGreed: mkt && mkt.fearGreed, regime: mkt && mkt.regime });
+    }).catch(function () {});
+}
+
+// ── headline ──
+function renderHeadline(d) {
+  var v = d.verdict;
+  $("race-kicker").textContent = "Season 2 · four accounts · " + money(d.startCapital, 0) + " each · since " + esc(d.since);
+  if (!v) { $("race").textContent = "The race is on"; return; }
+  var gap = Math.abs(v.machine.account - v.man.account);
+  var h = v.tie ? "Dead heat between man and machine"
+    : v.manLeads ? "The human leads the machines by " + money(gap, 0)
+    : "Machines lead the human by " + money(gap, 0);
+  $("race").textContent = h;
+  $("race-sub").innerHTML = v.manLeads
+    ? "The human operator holds <b>" + money(v.man.account) + "</b> against the best machine, " + esc(v.machine.label) + ", at <b>" + money(v.machine.account) + "</b>."
+    : esc(v.machine.label) + " — the leading machine — holds <b>" + money(v.machine.account) + "</b>. The human sits at <b>" + money(v.man.account) + "</b>.";
+}
+
+// ── standings ──
+function renderStandings(d) {
+  var rows = (d.standings || []).slice().sort(function (a, b) { return b.account - a.account; });
+  var h = "<tr><th></th><th>Competitor</th><th>Venue</th><th class='rt'>Account</th><th class='rt'>Return</th><th class='rt'>Record</th><th class='rt'>Win rate</th></tr>";
+  rows.forEach(function (a, i) {
+    var meta = ACTORS[a.key] || { label: a.label, model: "", color: "#888" };
+    var venue = a.key === "qwen" ? "Paper" : esc(a.venue) + " · live";
+    h += "<tr><td class='num'>" + (i + 1) + "</td>" +
+      "<td><span class='swatch' style='background:" + meta.color + "'></span><span class='who-name'>" + esc(meta.label) + "</span> <span class='who-model'>· " + esc(meta.model) + "</span></td>" +
+      "<td>" + venue + "</td>" +
+      "<td class='rt num' style='font-weight:700'>" + money(a.account) + "</td>" +
+      "<td class='rt num " + cls(a.retPct) + "'>" + pct(a.retPct, 1) + "</td>" +
+      "<td class='rt num'>" + a.wins + "W–" + a.losses + "L</td>" +
+      "<td class='rt num'>" + (a.wr === "N/A" ? "—" : esc(a.wr) + "%") + "</td></tr>";
+  });
+  $("standings").innerHTML = h;
+}
+
+// ── race chart: hourly rows when we have depth, else daily series ──
+function chartSeries(d) {
+  var hourly = d.equityHourly || [];
+  if (hourly.length >= 12) {
+    var labels = hourly.map(function (r) { return r.ts.slice(5, 13).replace("T", " ") + "h"; });
+    var out = { labels: labels, series: [] };
+    Object.keys(ACTORS).forEach(function (k) {
+      out.series.push({ key: ACTORS[k].label, color: ACTORS[k].color, v: hourly.map(function (r) { return r[k]; }) });
+    });
+    return out;
+  }
+  var s = d.seriesDaily || { labels: [], bySource: {} };
+  return { labels: s.labels, series: Object.keys(ACTORS).map(function (k) {
+    return { key: ACTORS[k].label, color: ACTORS[k].color, v: s.bySource[k] || [] };
+  }) };
+}
+function renderChart(d) {
+  var data = chartSeries(d);
+  if (!data.labels.length) { $("chart-wrap").classList.add("hidden"); return; }
+  $("legend").innerHTML = data.series.map(function (s) {
+    return "<span><span class='swatch' style='background:" + s.color + "'></span>" + esc(s.key) + "</span>";
+  }).join("") + "<span style='margin-left:auto;color:var(--ink3)'>account value, $ · dashed = start</span>";
+  var svg = $("race-chart"); svg.innerHTML = "";
+  var NS = "http://www.w3.org/2000/svg";
+  function el(n, at) { var e = document.createElementNS(NS, n); for (var k in at) e.setAttribute(k, at[k]); svg.appendChild(e); return e; }
+  var W = 820, H = 300, m = { t: 14, r: 96, b: 26, l: 42 };
+  var iw = W - m.l - m.r, ih = H - m.t - m.b;
+  var all = []; data.series.forEach(function (s) { s.v.forEach(function (v) { if (v != null && isFinite(v)) all.push(v); }); });
+  if (!all.length) { $("chart-wrap").classList.add("hidden"); return; }
+  var yMin = Math.floor(Math.min.apply(null, all.concat([480])) / 50) * 50 - 10;
+  var yMax = Math.ceil(Math.max.apply(null, all.concat([520])) / 50) * 50 + 10;
+  var X = function (i) { return m.l + iw * i / Math.max(1, data.labels.length - 1); };
+  var Y = function (v) { return m.t + ih * (1 - (v - yMin) / (yMax - yMin)); };
+  for (var g = Math.ceil(yMin / 50) * 50; g <= yMax; g += 50) {
+    el("line", { x1: m.l, x2: W - m.r, y1: Y(g), y2: Y(g), stroke: "#eef0ec" });
+    el("text", { x: m.l - 8, y: Y(g) + 4, "text-anchor": "end", fill: "#7d897f", "font-size": 11, "font-family": "ui-monospace,Consolas,monospace" }).textContent = "$" + g;
+  }
+  el("line", { x1: m.l, x2: W - m.r, y1: Y(500), y2: Y(500), stroke: "#7d897f", "stroke-dasharray": "5 5", opacity: .7 });
+  var step = Math.max(1, Math.round(data.labels.length / 7));
+  data.labels.forEach(function (lb, i) {
+    if ((i % step === 0 && i <= data.labels.length - 1 - step) || i === data.labels.length - 1)
+      el("text", { x: X(i), y: H - 8, "text-anchor": "middle", fill: "#7d897f", "font-size": 11, "font-family": "ui-monospace,Consolas,monospace" }).textContent = lb;
+  });
+  data.series.forEach(function (s) {
+    var pts = []; s.v.forEach(function (v, i) { if (v != null && isFinite(v)) pts.push(X(i) + "," + Y(v)); });
+    if (!pts.length) return;
+    el("polyline", { points: pts.join(" "), fill: "none", stroke: s.color, "stroke-width": 2, "stroke-linejoin": "round" });
+    var lastIdx = s.v.length - 1; while (lastIdx >= 0 && (s.v[lastIdx] == null || !isFinite(s.v[lastIdx]))) lastIdx--;
+    if (lastIdx < 0) return;
+    var ly = Y(s.v[lastIdx]);
+    el("circle", { cx: X(lastIdx), cy: ly, r: 3.2, fill: s.color, stroke: "#fff", "stroke-width": 1.6 });
+    el("text", { x: W - m.r + 8, y: ly + 4, fill: s.color, "font-size": 12, "font-weight": 700, "font-family": "ui-monospace,Consolas,monospace" }).textContent = s.key + " " + Math.round(s.v[lastIdx]);
+  });
+  var cross = el("line", { y1: m.t, y2: H - m.b, stroke: "#7d897f", opacity: 0 });
+  var tt = $("tt");
+  svg.onmousemove = function (ev) {
+    var r = svg.getBoundingClientRect();
+    var i = Math.round(((ev.clientX - r.left) * (W / r.width) - m.l) / iw * (data.labels.length - 1));
+    if (i < 0 || i >= data.labels.length) { cross.setAttribute("opacity", 0); tt.style.display = "none"; return; }
+    cross.setAttribute("x1", X(i)); cross.setAttribute("x2", X(i)); cross.setAttribute("opacity", .5);
+    var html = "<div class='t-date'>" + esc(data.labels[i]) + "</div>";
+    data.series.slice().sort(function (a, b) { return (b.v[i] || 0) - (a.v[i] || 0); }).forEach(function (s) {
+      if (s.v[i] == null) return;
+      html += "<div class='row'><span style='color:" + s.color + "'>" + esc(s.key) + "</span><span>" + money(s.v[i]) + "</span></div>";
+    });
+    tt.innerHTML = html; tt.style.display = "block";
+    tt.style.left = Math.min(ev.clientX + 14, innerWidth - 180) + "px";
+    tt.style.top = (ev.clientY + 14) + "px";
+  };
+  svg.onmouseleave = function () { cross.setAttribute("opacity", 0); tt.style.display = "none"; };
+}
+
+// ── trading floor ──
+function actorTag(key) {
+  var a = ACTORS[key] || { label: key, color: "#888" };
+  return "<span class='actor-tag' style='color:" + a.color + "'>" + esc(a.label) + (key === "qwen" ? " · paper" : "") + "</span>";
+}
+function renderFloor(d) {
+  var open = d.openTrades || [], waits = d.awaiting || [];
+  var liveOpen = open.filter(function (t) { return t.venue !== "PAPER"; });
+  var h = "";
+  if (!liveOpen.length) h += "<div class='flatnote'><b>Live venues are flat.</b> No open real-money risk — the agents are waiting for an edge.</div>";
+  open.forEach(function (t) {
+    var e = t.entry, s = t.stop, tg = t.target;
+    var rr = (e != null && s != null && tg != null && e !== s) ? Math.abs((tg - e) / (e - s)) : null;
+    h += "<div class='titem'><div class='l1'><span class='asset'>" + esc(t.asset) + "</span>" +
+      "<span class='dirpill " + (t.direction === "SHORT" ? "s" : "l") + "'>" + esc(t.direction) + "</span>" +
+      actorTag(t.actor) + "<span class='outc num'>conv " + esc(t.conviction) + "/10</span></div>" +
+      "<div class='lvls'>entry " + money(e, e < 10 ? 4 : 2) + " · stop " + money(s, s < 10 ? 4 : 2) + " · target " + money(tg, tg < 10 ? 4 : 2) + (rr ? " · R/R " + rr.toFixed(1) : "") + "</div></div>";
+  });
+  waits.forEach(function (t) {
+    h += "<div class='titem'><div class='l1'><span class='asset'>" + esc(t.asset) + "</span>" +
+      "<span class='dirpill " + (t.direction === "SHORT" ? "s" : "l") + "'>" + esc(t.direction) + "</span>" +
+      actorTag(String(t.brain || "").toLowerCase()) + "<span class='outc' style='color:var(--watch)'>WATCHING</span></div>" +
+      (t.trigger ? "<div class='trig'><b>Trigger:</b> " + esc(t.trigger) + "</div>" : "") +
+      "<div class='why'>Anticipatory entries are the fleet's #1 loss cause — agents wait for the trigger to print.</div></div>";
+  });
+  $("open-col").innerHTML = h || "<div class='flatnote'>Nothing on the book.</div>";
+  var c = "";
+  (d.recentCloses || []).slice(0, 6).forEach(function (r) {
+    var out = r.outcome === "BREAKEVEN" ? "<span class='outc' style='color:var(--ink3)'>BREAKEVEN</span>"
+      : "<span class='outc " + (r.outcome === "WIN" ? "up" : "down") + "'>" + (r.pct != null ? pct(r.pct, 1) : esc(r.outcome)) + "</span>";
+    var why = (r.exitReason || "").replace(/^[A-Z]+ [A-Z0-9]+: /, "").replace(/\[[^\]]*\]/g, "");
+    var m = /WHY: (.*)$/.exec(why); if (m) why = m[1];
+    c += "<div class='titem'><div class='l1'><span class='asset'>" + esc(r.asset) + "</span>" +
+      "<span class='dirpill " + (r.direction === "SHORT" ? "s" : "l") + "'>" + esc(r.direction) + "</span>" +
+      actorTag(r.actor) + out + "</div>" +
+      (why ? "<div class='why'>" + esc(why.slice(0, 220)) + "</div>" : "") + "</div>";
+  });
+  $("closes-col").innerHTML = c || "<div class='flatnote'>No closed trades yet.</div>";
+}
+
+// ── markets desk ──
+function renderDesk(d) {
+  var md = d.marketsDesk, mkt = d.market || {};
+  var h = "";
+  if (md && md.etf && (md.etf.BTC || md.etf.ETH || md.etf.SOL)) {
+    h += "<table class='data'><caption>ETF flows" + (md.etf.BTC && md.etf.BTC.date ? " (" + esc(md.etf.BTC.date) + ")" : "") + "</caption>";
+    ["BTC", "ETH", "SOL"].forEach(function (k) {
+      var e = md.etf[k]; if (!e) return;
+      h += "<tr><td>" + k + " ETF</td><td class='rt " + cls(e.latestM) + "'>" + (e.latestM >= 0 ? "+" : "−") + "$" + Math.abs(e.latestM).toFixed(1) + "M</td>" +
+        "<td class='rt " + cls(e.weekM) + "'>" + (e.weekM >= 0 ? "+" : "−") + "$" + Math.abs(e.weekM).toFixed(1) + "M/7d</td></tr>";
+    });
+    h += "</table>";
+  }
+  if (md && md.liq) {
+    h += "<table class='data'><caption>Derivatives · 24h</caption>" +
+      "<tr><td>Liquidations</td><td class='rt'><span class='down'>$" + esc(md.liq.longM) + "M L</span> / <span class='up'>$" + esc(md.liq.shortM) + "M S</span></td></tr>" +
+      (md.liq.btcOiB ? "<tr><td>BTC open interest</td><td class='rt'>$" + esc(md.liq.btcOiB) + "B</td></tr>" : "") +
+      (md.liq.dominant ? "<tr><td>Status</td><td class='rt'>" + esc(md.liq.dominant) + "</td></tr>" : "") + "</table>";
+  }
+  if (md && md.whales && md.whales.length) {
+    h += "<table class='data'><caption>Whale desk (HL top-30)</caption>";
+    md.whales.forEach(function (w) {
+      h += "<tr><td>" + esc(w.coin) + "</td><td class='rt'>" + w.l + "L/" + w.s + "S</td><td class='rt " + cls(w.netM) + "'>" + (w.netM >= 0 ? "+" : "−") + "$" + Math.abs(w.netM) + "M</td></tr>";
+    });
+    h += "</table>";
+  }
+  if (md && md.funding && md.funding.length) {
+    h += "<table class='data'><caption>Funding gaps (HL v Binance, APR)</caption>";
+    md.funding.forEach(function (f) {
+      h += "<tr><td>" + esc(f.coin) + "</td><td class='rt'>HL " + pct(f.hl, 1) + "</td><td class='rt'>Bin " + pct(f.bin, 1) + "</td></tr>";
+    });
+    h += "</table>";
+  }
+  h += "<div id='stocks-slot'></div>";
+  if (mkt.fearGreed || mkt.regime) {
+    h += "<div><table class='data'><caption>Sentiment</caption></table>";
+    if (mkt.fearGreed) {
+      var v = Math.max(0, Math.min(100, mkt.fearGreed.value));
+      h += "<div class='fng-bar'><span class='fng-mark' style='left:" + v + "%'></span><span class='fng-lab' style='left:" + v + "%'>" + v + " · " + esc(mkt.fearGreed.classification) + "</span></div>";
+    }
+    if (mkt.regime) h += "<table class='data'><tr><td>Regime</td><td class='rt " + (mkt.regime === "RISK_ON" ? "up" : "down") + "'>" + esc(String(mkt.regime).replace("_", "-")) + "</td></tr></table>";
+    h += "</div>";
+  }
+  $("desk").innerHTML = h;
+  // stocks: live HL xyz marks, client-side (free, CORS-open)
+  fetch("https://api.hyperliquid.xyz/info", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "metaAndAssetCtxs", dex: "xyz" }) })
+    .then(function (r) { return r.json(); })
+    .then(function (res) {
+      var meta = res[0], ctxs = res[1], want = ["SP500", "XYZ100", "GOLD", "SILVER", "NVDA", "TSLA", "AAPL", "MSTR", "COIN"];
+      var rows = "";
+      meta.universe.forEach(function (u, i) {
+        var n = u.name.replace("xyz:", "");
+        if (want.indexOf(n) < 0) return;
+        var mark = parseFloat(ctxs[i].markPx), prev = parseFloat(ctxs[i].prevDayPx);
+        var chg = prev ? (mark - prev) / prev * 100 : null;
+        rows += "<tr><td>" + (n === "XYZ100" ? "NASDAQ 100" : n === "SP500" ? "S&amp;P 500" : n) + "</td><td class='rt'>" + mark.toLocaleString("en-US", { maximumFractionDigits: 2 }) + "</td>" +
+          "<td class='rt " + cls(chg) + "'>" + pct(chg, 2) + "</td></tr>";
+      });
+      if (rows) $("stocks-slot").innerHTML = "<table class='data'><caption>Stocks &amp; commodities (live perp marks)</caption>" + rows + "</table>";
+    }).catch(function () {});
+}
+
+// ── calendar / intelligence / stamps ──
+function renderCalendar(d) {
+  var items = d.calendar || [];
+  if (!items.length) { $("cal-body").innerHTML = "<span class='src'>No high-impact events on the radar.</span>"; return; }
+  var h = "";
+  items.slice(0, 10).forEach(function (e) {
+    var dt = /^\d{4}-\d{2}-\d{2}$/.test(e.date) ? new Date(e.date + "T12:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : esc(e.date);
+    var impCls = e.impact === "HIGH" ? "h" : e.impact === "MED" ? "m" : "l";
+    h += "<div class='cal-item'><span class='cal-date'>" + dt + "</span><span>" + esc(e.event) + "</span><span class='imp " + impCls + "'>" + esc(e.impact) + "</span></div>";
+  });
+  h += "<div class='src' style='margin-top:8px'>Auto-fed from the bot's macro + unlock detectors. Agents holding through a high-impact event get automatic risk alerts.</div>";
+  $("cal-body").innerHTML = h;
+}
+function renderIntel(d) {
+  var r = d.report;
+  if (!r) return;
+  if (r.at) $("intel-kicker").textContent = "From the report of " + new Date(r.at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) + " · published 4× daily";
+  if (r.intelligence) {
+    var summary = r.intelligence.replace(/^SUMMARY\s*/i, "").split(/\n\s*\n/)[0];
+    $("intel-body").textContent = summary;
+  }
+  if (r.xPost) { $("xpost").classList.remove("hidden"); $("xpost").innerHTML = "“" + esc(r.xPost) + "” <span class='src'>— @ZamaSentinel</span>"; }
+}
+// ── social intel rail: narratives, radar coins, tweet of the day ──
+function renderIntelRail(d) {
+  var it = d.intel;
+  if (!it) return;
+  var age = it.ageH != null ? "<div class='src' style='margin-top:8px'>From the curated X + newsletter synthesis, " + it.ageH + "h old.</div>" : "";
+  if (it.narratives && it.narratives.length) {
+    $("narr-box").classList.remove("hidden");
+    $("narr-body").innerHTML = it.narratives.map(function (n) {
+      var i = n.indexOf(":");
+      return "<div style='padding:5px 0;border-bottom:1px solid var(--line2);font-size:12.5px'>" +
+        (i > 0 && i < 60 ? "<b>" + esc(n.slice(0, i)) + ":</b>" + esc(n.slice(i + 1)) : esc(n)) + "</div>";
+    }).join("") + age;
+  }
+  if (it.potentialCoins && it.potentialCoins.length) {
+    $("radar-box").classList.remove("hidden");
+    $("radar-body").innerHTML = it.potentialCoins.map(function (c) {
+      var m = /^\$?([A-Z0-9]{2,8})\s*[—-]\s*(.*)$/.exec(c);
+      return "<div style='padding:5px 0;border-bottom:1px solid var(--line2);font-size:12.5px'>" +
+        (m ? "<b class='num'>" + esc(m[1]) + "</b> — " + esc(m[2]) : esc(c)) + "</div>";
+    }).join("") + "<div class='src' style='margin-top:8px'>Narrative watch-list — not trade signals; the agents only act on their live price universe.</div>";
+  }
+  if (it.tweetOfDay) {
+    $("tweet-box").classList.remove("hidden");
+    $("tweet-body").innerHTML = "<div class='xpost' style='font-size:13.5px'>“" + esc(it.tweetOfDay.text) + "”</div>" +
+      "<div class='src' style='margin-top:6px'>@" + esc(it.tweetOfDay.handle) + " · ♥ " + Number(it.tweetOfDay.likes).toLocaleString() + " · ↻ " + Number(it.tweetOfDay.reposts).toLocaleString() + "</div>";
+  }
+}
+function renderStamps(d) {
+  var gen = new Date(d.generatedAt);
+  var TZ = { timeZone: "Africa/Johannesburg" };
+  $("datestamp").textContent = gen.toLocaleString("en-GB", Object.assign({ weekday: "long", day: "numeric", month: "long", year: "numeric" }, TZ)) + " · updated " + gen.toLocaleTimeString("en-GB", Object.assign({ hour: "2-digit", minute: "2-digit" }, TZ)) + " SAST";
+  $("foot-stamp").textContent = "Data updates hourly · last " + gen.toLocaleString("en-GB", Object.assign({ day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }, TZ)) + " SAST · trading is risky · nothing here is financial advice";
+  var ageH = (Date.now() - gen.getTime()) / 36e5;
+  if (ageH > 3) { $("stale-note").classList.remove("hidden"); $("stale-note").textContent = "Feed last updated " + Math.round(ageH) + "h ago — the bot host may be offline; figures below are the last published state."; }
+}
+
+function boot() {
+  fetch(DATA_URL, { cache: "no-store" }).then(function (r) {
+    if (!r.ok) throw new Error("feed " + r.status);
+    return r.json();
+  }).then(function (d) {
+    renderStamps(d); renderStrip(d.market); renderHeadline(d); renderStandings(d);
+    renderChart(d); renderFloor(d); renderDesk(d); renderCalendar(d); renderIntel(d); renderIntelRail(d);
+    liveStripRefresh(d.market);
+    setInterval(function () { liveStripRefresh(d.market); }, 60000);
+  }).catch(function (e) {
+    $("race").textContent = "Data feed unavailable";
+    $("race-sub").textContent = "Could not load the data feed (" + e.message + "). Try refreshing.";
+  });
+}
+boot();
+</script>
+</body>
+</html>
