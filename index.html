@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The Bot Exchange — Man vs Machine, live</title>
-<meta name="description" content="One human trader against three AI agents, $500 each, trading real perpetuals live. Every position, stop and post-mortem published.">
+<meta name="description" content="Live crypto market intelligence: real-time prices, ETF flows, funding, whale positioning, prediction-market odds and AI desk analysis — plus one human trading against three AI agents with real money, every position and post-mortem published.">
 <meta property="og:title" content="The Bot Exchange — Man vs Machine">
-<meta property="og:description" content="One human. Three machines. Real money. Live standings, positions and post-mortems.">
+<meta property="og:description" content="One human. Three machines. Real money. Live prices, market intelligence, AI desk notes and the full man-vs-machine trading record.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://thebotexchange.com/">
 <link rel="canonical" href="https://thebotexchange.com/">
@@ -110,6 +110,18 @@
   .arch-wrap { max-height: 540px; overflow-y: auto; overflow-x: auto; border: 1px solid var(--line2); }
   .arch-wrap table { margin: 0; width: 100%; }
   .arch-why td { padding-top: 0; }
+  .lm-wrap { overflow-x: auto; margin-bottom: 18px; }
+  .lm-wrap table { width: 100%; }
+  .wire-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+  @media (max-width: 720px) { .wire-grid { grid-template-columns: 1fr; } }
+  .wire-h { font: 700 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink2); border-bottom: 2px solid var(--ink); padding-bottom: 4px; margin-bottom: 6px; }
+  .wire-item { padding: 6px 0; border-bottom: 1px solid var(--line2); font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
+  .colmn { margin-top: 18px; border-top: 3px double var(--ink); border-bottom: 3px double var(--ink); padding: 14px 2px 12px; }
+  .colmn-h { font-family: var(--serif); font-weight: 700; font-size: 17px; margin-bottom: 8px; }
+  .colmn-t { font-family: var(--serif); font-size: 15px; line-height: 1.62; white-space: pre-line; }
+  .colmn-t::first-letter { font-family: var(--serif); font-size: 3.1em; float: left; line-height: .85; padding: 2px 8px 0 0; font-weight: 700; }
+  .pbar { display: inline-block; height: 6px; background: var(--line2); width: 64px; vertical-align: middle; margin: 0 6px; }
+  .pbar i { display: block; height: 6px; background: var(--accent); }
   .ctog { margin-left: 10px; white-space: nowrap; }
   .ctog button { font: 600 11px var(--mono); padding: 2px 9px; border: 1px solid var(--line2); background: none; cursor: pointer; color: var(--ink2); }
   .ctog button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
@@ -133,8 +145,8 @@
 </div></header>
 <nav class="sections"><div class="wrap">
   <a href="#race">The Race</a><a href="#floor">Trading Floor</a><a href="#markets">Markets</a>
-  <a href="#intel">Intelligence</a><a href="#desknotes">Desk Notes</a><a href="#archive">Archive</a>
-  <a href="#calendar">Calendar</a><a href="#sponsor">Sponsor</a>
+  <a href="#wire">Wire</a><a href="#intel">Intelligence</a><a href="#desknotes">Desk Notes</a>
+  <a href="#archive">Archive</a><a href="#calendar">Calendar</a><a href="#sponsor">Sponsor</a>
 </div></nav>
 
 <div class="wrap"><div class="cols">
@@ -160,14 +172,29 @@
   <hr class="rule">
   <div class="kicker">The data the agents trade on</div>
   <h2 class="sec" id="markets">Markets desk</h2>
-  <p class="sub">A condensed view of the ~40 live sources feeding every trading decision.</p>
+  <p class="sub">Live board straight from the exchanges — always on, even between bot updates — plus a condensed view of the ~40 sources feeding every trading decision.</p>
+  <div class="lm-wrap"><table class="data" id="live-markets"><tr><td><span class="src">Loading live prices…</span></td></tr></table></div>
   <div class="mini-grid" id="desk"></div>
+
+  <hr class="rule">
+  <div class="kicker">News &amp; social — what the desk is reading</div>
+  <h2 class="sec" id="wire">The wire</h2>
+  <p class="sub" id="wire-sub">Headlines scraped live from public crypto sources and the highest-signal posts from a curated X watch-list — the same intel the agents trade on.</p>
+  <div class="wire-grid">
+    <div id="wire-news"><span class="src">Headlines refresh with each report cycle.</span></div>
+    <div id="wire-x"></div>
+  </div>
 
   <hr class="rule">
   <div class="kicker" id="intel-kicker">Exchange intelligence</div>
   <h2 class="sec" id="intel">Exchange intelligence</h2>
   <p class="sub" id="intel-body">The next report publishes at 00:00, 06:00, 12:00 or 18:00 SAST.</p>
   <div class="xpost hidden" id="xpost"></div>
+  <div class="colmn hidden" id="column-box">
+    <div class="colmn-h">The Exchange Column</div>
+    <div class="colmn-t" id="column-body"></div>
+    <div class="src" id="column-stamp" style="margin-top:8px"></div>
+  </div>
 
   <hr class="rule">
   <div class="kicker">The machines in their own words</div>
@@ -186,6 +213,10 @@
   <div class="box" id="calendar">
     <div class="box-h">Event calendar — what could swing markets</div>
     <div class="box-b" id="cal-body"><span class="src">Loading…</span></div>
+  </div>
+  <div class="box hidden" id="pred-box">
+    <div class="box-h">Prediction markets — crowd odds</div>
+    <div class="box-b" id="pred-body"></div>
   </div>
   <div class="box hidden" id="risk-box">
     <div class="box-h">Risk desk — circuit breakers</div>
@@ -617,6 +648,78 @@ function renderRisk(d) {
     (L.intradayDrawdownPct || 10) + "% mark-to-market) in a day stops trading until the next session.</div>";
   $("risk-body").innerHTML = h;
 }
+// ── live markets board (client-side, straight from Binance — works even when the bot host is off) ──
+var LM_SYMBOLS = ["BTC","ETH","SOL","BNB","XRP","DOGE","ADA","AVAX","LINK","TRX","DOT","LTC","BCH","NEAR","APT","ARB","OP","SUI","UNI","AAVE","PEPE","WLD","FIL","ATOM"];
+function renderLiveMarkets() {
+  var syms = JSON.stringify(LM_SYMBOLS.map(function (s) { return s + "USDT"; }));
+  fetch("https://api.binance.com/api/v3/ticker/24hr?symbols=" + encodeURIComponent(syms))
+    .then(function (r) { return r.json(); })
+    .then(function (rows) {
+      if (!rows || !rows.length) return;
+      rows.sort(function (a, b) { return parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume); });
+      var h = "<tr><th>Coin</th><th class='rt'>Price</th><th class='rt'>24h</th><th class='rt'>24h range</th><th class='rt'>Volume</th></tr>";
+      rows.forEach(function (t) {
+        var sym = t.symbol.replace("USDT", ""), p = parseFloat(t.lastPrice), c = parseFloat(t.priceChangePercent);
+        var lo = parseFloat(t.lowPrice), hi = parseFloat(t.highPrice), vol = parseFloat(t.quoteVolume);
+        var dp = p >= 1000 ? 0 : p >= 10 ? 2 : p >= 0.1 ? 4 : 6;
+        h += "<tr><td><b>" + esc(sym) + "</b></td><td class='rt num'>" + money(p, dp) + "</td>" +
+          "<td class='rt " + cls(c) + "'>" + pct(c, 2) + "</td>" +
+          "<td class='rt num' style='color:var(--ink3)'>" + money(lo, dp) + " – " + money(hi, dp) + "</td>" +
+          "<td class='rt num'>$" + (vol >= 1e9 ? (vol / 1e9).toFixed(2) + "B" : (vol / 1e6).toFixed(0) + "M") + "</td></tr>";
+      });
+      $("live-markets").innerHTML = h;
+    }).catch(function () {});
+}
+// ── the wire: scraped headlines + curated X posts ──
+function renderWire(d) {
+  var w = d.newsWire, posts = (d.intel && d.intel.wirePosts) || [];
+  var TZ = { timeZone: "Africa/Johannesburg" };
+  if (w && w.sources && w.sources.length) {
+    var h = "";
+    w.sources.forEach(function (s) {
+      h += "<div class='wire-h'>via " + esc(s.name) + "</div>";
+      (s.headlines || []).slice(0, 8).forEach(function (t) { h += "<div class='wire-item'>" + esc(t) + "</div>"; });
+    });
+    if (w.at) h += "<div class='src' style='margin-top:8px'>Scraped " + new Date(w.at).toLocaleString("en-GB", Object.assign({ day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }, TZ)) + " SAST · refreshed each report cycle</div>";
+    $("wire-news").innerHTML = h;
+  }
+  if (posts.length) {
+    var x = "<div class='wire-h'>from the X watch-list</div>";
+    posts.forEach(function (p) {
+      x += "<div class='wire-item'>“" + esc(p.text) + "”<div class='src' style='margin-top:3px'>@" + esc(p.handle) + " · ♥ " + Number(p.likes).toLocaleString() + " · ↻ " + Number(p.reposts).toLocaleString() + "</div></div>";
+    });
+    $("wire-x").innerHTML = x;
+  }
+}
+// ── the research column (Qwen, 2×/day) ──
+function renderColumn(d) {
+  if (!d.column || !d.column.text) return;
+  $("column-box").classList.remove("hidden");
+  $("column-body").textContent = d.column.text;
+  var TZ = { timeZone: "Africa/Johannesburg" };
+  $("column-stamp").textContent = "Qwen · the research desk · " + new Date(d.column.ts).toLocaleString("en-GB", Object.assign({ day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }, TZ)) + " SAST · published 06:00 & 18:00";
+}
+// ── prediction markets rail ──
+function renderPredictions(d) {
+  var p = d.predictions;
+  if (!p || (!(p.polymarket || []).length && !p.kalshi)) return;
+  $("pred-box").classList.remove("hidden");
+  var h = "";
+  ((p.kalshi && p.kalshi.ladders) || []).forEach(function (L) {
+    h += "<div style='padding:5px 0;border-bottom:1px solid var(--line2);font-size:12.5px'><b>" + esc(L.label) + "</b>" +
+      (L.rungs || []).map(function (r) {
+        return "<div style='display:flex;align-items:center;justify-content:space-between;padding:2px 0'><span>" + esc(r.strike) + "</span>" +
+          "<span><span class='pbar'><i style='width:" + Math.max(2, Math.min(100, r.yesPct)) + "%'></i></span><b class='num'>" + r.yesPct + "%</b></span></div>";
+      }).join("") + "</div>";
+  });
+  ((p.polymarket) || []).forEach(function (m) {
+    h += "<div style='padding:5px 0;border-bottom:1px solid var(--line2);font-size:12.5px'>" + esc(m.question) +
+      "<div style='display:flex;align-items:center;justify-content:space-between;padding:2px 0'><span class='src'>Polymarket · YES</span>" +
+      "<span><span class='pbar'><i style='width:" + Math.max(2, Math.min(100, m.yesProb)) + "%'></i></span><b class='num'>" + m.yesProb + "%</b></span></div></div>";
+  });
+  h += "<div class='src' style='margin-top:8px'>Real-money crowd odds — Kalshi (CFTC-regulated) + Polymarket. Refreshed each report cycle.</div>";
+  $("pred-body").innerHTML = h;
+}
 function renderStamps(d) {
   var gen = new Date(d.generatedAt);
   var TZ = { timeZone: "Africa/Johannesburg" };
@@ -634,8 +737,10 @@ function boot() {
     renderStamps(d); renderStrip(d.market); renderHeadline(d); renderStandings(d);
     renderChart(d); renderFloor(d); renderDesk(d); renderCalendar(d); renderIntel(d); renderIntelRail(d);
     renderNotes(d); renderArchive(d); renderRisk(d);
-    liveStripRefresh(d.market);
+    renderWire(d); renderColumn(d); renderPredictions(d);
+    liveStripRefresh(d.market); renderLiveMarkets();
     setInterval(function () { liveStripRefresh(d.market); }, 60000);
+    setInterval(renderLiveMarkets, 30000);
   }).catch(function (e) {
     $("race").textContent = "Data feed unavailable";
     $("race-sub").textContent = "Could not load the data feed (" + e.message + "). Try refreshing.";
