@@ -554,7 +554,7 @@ function renderFloor(d) {
       "<div class='lvls'>entry " + money(e, e < 10 ? 4 : 2) + " · stop " + money(s, s < 10 ? 4 : 2) + " · target " + money(tg, tg < 10 ? 4 : 2) +
       (rr ? " · R/R " + rr.toFixed(1) : "") + (age != null ? " · open " + (age < 48 ? age + "h" : Math.round(age / 24) + "d") : "") + "</div>" +
       posBar(t, i) +
-      (t.thesis ? "<div class='why'><b>The thesis:</b> " + esc(t.thesis) + "</div>" : "") + "</div>";
+      (t.thesis && !/scanner pick \(paper\)|see COIN SCANNER/i.test(t.thesis) ? "<div class='why'><b>The thesis:</b> " + esc(t.thesis) + "</div>" : "") + "</div>";
   });
   waits.forEach(function (t) {
     h += "<div class='titem'><div class='l1'><span class='asset'>" + esc(t.asset) + "</span>" +
