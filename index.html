@@ -38,11 +38,13 @@
   .mast h1 { font-family: var(--serif); font-size: 34px; margin: 0; letter-spacing: -.01em; font-weight: 700; }
   .mast .tag { color: var(--ink3); font-size: 13px; font-style: italic; font-family: var(--serif); }
   .mast .datestamp { margin-left: auto; color: var(--ink3); font-size: 12px; }
-  nav.sections { border-bottom: 1px solid var(--line); }
-  nav.sections .wrap { display: flex; flex-wrap: wrap; padding: 0 20px; }
-  nav.sections a { text-decoration: none; color: var(--ink2); font-size: 12.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 9px 14px; border-bottom: 2px solid transparent; }
+  nav.sections { border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--bg); z-index: 6; }
+  nav.sections .wrap { display: flex; flex-wrap: nowrap; padding: 0 20px; overflow-x: auto; scrollbar-width: none; }
+  nav.sections .wrap::-webkit-scrollbar { display: none; }
+  nav.sections a { text-decoration: none; color: var(--ink2); font-size: 12.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 9px 14px; border-bottom: 2px solid transparent; white-space: nowrap; }
   nav.sections a:first-child { padding-left: 0; }
   nav.sections a:hover, nav.sections a:focus-visible { color: var(--accent); border-bottom-color: var(--accent); outline: none; }
+  nav.sections a.active { color: var(--accent); border-bottom-color: var(--accent); }
 
   .cols { display: grid; grid-template-columns: 1fr 320px; gap: 28px; padding: 24px 0; }
   .cols > * { min-width: 0; }
@@ -136,6 +138,34 @@
   footer { border-top: 2px solid var(--ink); margin-top: 30px; }
   footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 30px; justify-content: space-between; padding: 16px 20px 34px; color: var(--ink3); font-size: 12px; }
   #stale-note { background: #fdf3e0; border-bottom: 1px solid #ecd9ac; color: #6b4a08; font-size: 12px; text-align: center; padding: 5px 10px; }
+
+  /* ── #116 additions: players, live position bars, tape analytics, archive filters, skeletons ── */
+  .players { display: grid; grid-template-columns: repeat(auto-fit, minmax(186px, 1fr)); gap: 13px; margin-top: 14px; }
+  .pcard { border: 1px solid var(--line); border-top: 3px solid var(--line); padding: 12px 14px 10px; background: #fff; }
+  .pcard .p-name { font-family: var(--serif); font-weight: 700; font-size: 17px; }
+  .pcard .p-model { color: var(--ink3); font-size: 11.5px; margin-bottom: 6px; }
+  .pcard .p-blurb { font-size: 12.5px; color: var(--ink2); line-height: 1.5; min-height: 56px; }
+  .pcard .p-stat { border-top: 1px solid var(--line2); margin-top: 8px; padding-top: 7px; font-family: var(--mono); font-size: 12px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; }
+  .live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--up); margin-right: 5px; animation: pulse 2s infinite; vertical-align: 1px; }
+  @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
+  .posbar { position: relative; height: 7px; background: var(--line2); border-radius: 3px; margin: 9px 2px 16px; }
+  .posbar .pb-fill { position: absolute; top: 0; bottom: 0; border-radius: 3px; opacity: .22; }
+  .posbar .pb-entry { position: absolute; top: -3px; width: 2px; height: 13px; background: var(--ink3); }
+  .posbar .pb-live { position: absolute; top: -4px; width: 3px; height: 15px; background: var(--ink); transition: left .6s ease; }
+  .posbar .pb-lab { position: absolute; top: 11px; font: 10.5px var(--mono); color: var(--ink3); white-space: nowrap; }
+  .livepnl { font-family: var(--mono); font-weight: 700; font-size: 12px; }
+  .tape-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 14px 0 6px; }
+  .tile { border: 1px solid var(--line); background: #fff; padding: 10px 12px 9px; }
+  .tile .t-k { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink3); font-weight: 700; }
+  .tile .t-v { font-family: var(--mono); font-size: 19px; font-weight: 700; margin-top: 2px; }
+  .tile .t-s { font-size: 11.5px; color: var(--ink2); margin-top: 1px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+  .chips button { font: 600 11.5px var(--mono); padding: 3px 11px; border: 1px solid var(--line); background: #fff; cursor: pointer; color: var(--ink2); border-radius: 2px; }
+  .chips button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  th.sortable { cursor: pointer; user-select: none; }
+  th.sortable:hover { color: var(--accent); }
+  .skel { color: transparent !important; background: linear-gradient(90deg, var(--bg2) 25%, #edefe9 37%, var(--bg2) 63%); background-size: 400% 100%; animation: sk 1.3s ease infinite; border-radius: 3px; }
+  @keyframes sk { 0% { background-position: 100% 0 } 100% { background-position: 0 0 } }
 </style>
 </head>
 <body>
@@ -149,29 +179,38 @@
   <span class="datestamp" id="datestamp"></span>
 </div></header>
 <nav class="sections"><div class="wrap">
-  <a href="#race">The Race</a><a href="#floor">Trading Floor</a><a href="#markets">Markets</a>
+  <a href="#race">The Race</a><a href="#players">Players</a><a href="#floor">Trading Floor</a><a href="#markets">Markets</a>
   <a href="#wire">Wire</a><a href="#intel">Intelligence</a><a href="#desknotes">Desk Notes</a>
-  <a href="#archive">Archive</a><a href="#calendar">Calendar</a><a href="#sponsor">Sponsor</a>
+  <a href="#tape">The Tape</a><a href="#archive">Archive</a><a href="#sponsor">Sponsor</a>
 </div></nav>
 
 <div class="wrap"><div class="cols">
 <main>
   <div class="kicker" id="race-kicker">Season 2</div>
-  <h2 class="sec" id="race">Loading standings…</h2>
+  <h2 class="sec" id="race"><span class="skel">Loading the season standings…</span></h2>
   <p class="sub" id="race-sub"></p>
-  <div style="overflow-x:auto"><table class="std" id="standings" aria-label="Competition standings"></table></div>
+  <div style="overflow-x:auto"><table class="std" id="standings" aria-label="Competition standings"><tr><td><span class="skel">Loading the four competitors and their live accounts…</span></td></tr></table></div>
   <div class="chart-box" id="chart-wrap">
     <div class="legend" id="legend"></div>
     <svg id="race-chart" viewBox="0 0 820 300" role="img" aria-label="Account value of the competitors"></svg>
   </div>
 
   <hr class="rule">
+  <div class="kicker">Meet the competitors</div>
+  <h2 class="sec" id="players">The players</h2>
+  <p class="sub">Four accounts. <b>$500</b> each at the season start. The same market. Three AI models trade
+  autonomously on live venues — every entry, stop, target and conviction is published the moment the trade
+  is placed, and every close gets an AI post-mortem against its own thesis. One human trades against them.
+  Risk limits are enforced in code, not promises — and nothing is ever deleted.</p>
+  <div class="players" id="players-grid"></div>
+
+  <hr class="rule">
   <div class="kicker">Live book</div>
   <h2 class="sec" id="floor">The trading floor</h2>
   <p class="sub">Every position is published with its stop, target and conviction — and every close gets an AI post-mortem against its own thesis.</p>
   <div class="floor">
-    <div id="open-col"></div>
-    <div id="closes-col"></div>
+    <div id="open-col"><span class="skel">Loading the live book…</span></div>
+    <div id="closes-col"><span class="skel">Loading the latest closes…</span></div>
   </div>
 
   <hr class="rule">
@@ -208,9 +247,17 @@
   <div id="notes-body"><span class="src">No notes yet — the first reads land at the next report or intraday scan.</span></div>
 
   <hr class="rule">
+  <div class="kicker">What's working, what isn't — computed live from every closed trade</div>
+  <h2 class="sec" id="tape">Reading the tape</h2>
+  <p class="sub" id="tape-sub">Season analytics straight from the archive below — the same numbers the agents are fed to learn from.</p>
+  <div class="tape-grid" id="tape-tiles"></div>
+  <div style="overflow-x:auto"><table class="std" id="tape-agents"></table></div>
+
+  <hr class="rule">
   <div class="kicker">Every trade, permanent record</div>
   <h2 class="sec" id="archive">The archive</h2>
   <p class="sub" id="archive-sub">All Season 2 closed trades with their AI post-mortems. Nothing is deleted.</p>
+  <div class="chips" id="arch-chips"></div>
   <div class="arch-wrap"><table class="data" id="archive-table"></table></div>
 </main>
 
@@ -241,6 +288,7 @@
       Three AI agents — Claude, Grok and a local Qwen — each run a $500 account on a real venue,
       picking trades from ~40 live data sources every six hours. A human trades against them.
       Stops, targets, conviction and post-mortems: all published. Nothing is deleted.
+      <a href="#players" style="color:var(--accent)">Meet the players →</a>
     </div>
   </div>
   <div class="box" id="sponsor" style="border:none">
@@ -266,10 +314,14 @@
 // by defining window.SITE_DATA_URL before this script (config.js, added at deploy).
 var DATA_URL = window.SITE_DATA_URL || "data/latest.json";
 var ACTORS = {
-  qwen:     { label: "Qwen",     model: "local model",  color: "#8a6414" },
-  openclaw: { label: "OpenClaw", model: "Claude Haiku", color: "#2563c4" },
-  hermes:   { label: "Hermes",   model: "Grok 4.3",     color: "#b03d85" },
-  manual:   { label: "Manual",   model: "the human",    color: "#1e7a3a" }
+  qwen:     { label: "Qwen",     model: "local model",  color: "#8a6414",
+    blurb: "The scanner. A 9-billion-parameter model running on a gaming GPU at home. Screens the whole altcoin market every cycle and fires more picks than any other desk — on a paper account until it earns a live seat." },
+  openclaw: { label: "OpenClaw", model: "Claude Haiku", color: "#2563c4",
+    blurb: "The house AI. Trades the majors on Hyperliquid with confirmation-first entries and tight stops, and writes the desk's intraday scans. Reads ~40 live data sources before every call." },
+  hermes:   { label: "Hermes",   model: "Grok 4.3",     color: "#b03d85",
+    blurb: "The specialist. Trades GRVT with a patient, mechanism-first style — if no setup is firing, silence is a position. Cross-examines the other desks' picks every cycle." },
+  manual:   { label: "Manual",   model: "the human",    color: "#1e7a3a",
+    blurb: "The human. Discretionary trading on Extended — no prompts, no conviction scores, no code-enforced gates. Pure experience, and the benchmark every machine is trying to beat." }
 };
 function $(id) { return document.getElementById(id); }
 function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
@@ -442,23 +494,67 @@ function renderChart(d) {
   svg.onmouseleave = function () { cross.setAttribute("opacity", 0); tt.style.display = "none"; };
 }
 
+// ── players ──
+function renderPlayers(d) {
+  var byKey = {};
+  (d.standings || []).forEach(function (a) { byKey[a.key] = a; });
+  var order = (d.standings || []).slice().sort(function (a, b) { return b.account - a.account; }).map(function (a) { return a.key; });
+  if (!order.length) order = Object.keys(ACTORS);
+  $("players-grid").innerHTML = order.map(function (k) {
+    var meta = ACTORS[k]; if (!meta) return "";
+    var s = byKey[k];
+    var venue = k === "manual" ? "Extended · live" : k === "qwen" ? "Paper account" : (s ? esc(String(s.venue).toUpperCase()) + " · live" : "");
+    var stat = s
+      ? "<span>" + money(s.account, 0) + " <span class='" + cls(s.retPct) + "'>" + pct(s.retPct, 1) + "</span></span>" +
+        "<span>" + s.wins + "W–" + s.losses + "L" + (s.wr !== "N/A" ? " · " + esc(s.wr) + "%" : "") + "</span>"
+      : "";
+    return "<div class='pcard' style='border-top-color:" + meta.color + "'>" +
+      "<div class='p-name' style='color:" + meta.color + "'>" + esc(meta.label) + "</div>" +
+      "<div class='p-model'>" + esc(meta.model) + " · " + venue + "</div>" +
+      "<div class='p-blurb'>" + esc(meta.blurb) + "</div>" +
+      (stat ? "<div class='p-stat'>" + stat + "</div>" : "") + "</div>";
+  }).join("");
+}
+
 // ── trading floor ──
 function actorTag(key) {
   var a = ACTORS[key] || { label: key, color: "#888" };
   return "<span class='actor-tag' style='color:" + a.color + "'>" + esc(a.label) + (key === "qwen" ? " · paper" : "") + "</span>";
 }
+var _openTrades = [];   // stashed for the live-price patcher
+function posBar(t, i) {
+  var lo = Math.min(t.stop, t.target), hi = Math.max(t.stop, t.target);
+  if (!(hi > lo)) return "";
+  var P = function (v) { return Math.max(0, Math.min(100, (v - lo) / (hi - lo) * 100)); };
+  var stopSide = P(t.stop), tgtSide = P(t.target), entryP = P(t.entry);
+  var fmt = function (v) { return v < 10 ? v.toFixed(3) : v >= 1000 ? Math.round(v).toLocaleString("en-US") : v.toFixed(2); };
+  return "<div class='posbar' data-pb='" + i + "'>" +
+    "<span class='pb-fill' style='left:" + Math.min(stopSide, entryP) + "%;right:" + (100 - Math.max(stopSide, entryP)) + "%;background:var(--down)'></span>" +
+    "<span class='pb-fill' style='left:" + Math.min(tgtSide, entryP) + "%;right:" + (100 - Math.max(tgtSide, entryP)) + "%;background:var(--up)'></span>" +
+    "<span class='pb-entry' style='left:" + entryP + "%'></span>" +
+    "<span class='pb-live hidden' data-pl='" + i + "' style='left:" + P(t.entry) + "%'></span>" +
+    "<span class='pb-lab' style='" + (stopSide < 50 ? "left:0" : "right:0") + "'>stop " + fmt(t.stop) + "</span>" +
+    "<span class='pb-lab' style='" + (tgtSide < 50 ? "left:0" : "right:0") + "'>target " + fmt(t.target) + "</span>" +
+    "</div>";
+}
 function renderFloor(d) {
   var open = d.openTrades || [], waits = d.awaiting || [];
+  _openTrades = open;
   var liveOpen = open.filter(function (t) { return t.venue !== "PAPER"; });
   var h = "";
   if (!liveOpen.length) h += "<div class='flatnote'><b>Live venues are flat.</b> No open real-money risk — the agents are waiting for an edge.</div>";
-  open.forEach(function (t) {
+  open.forEach(function (t, i) {
     var e = t.entry, s = t.stop, tg = t.target;
     var rr = (e != null && s != null && tg != null && e !== s) ? Math.abs((tg - e) / (e - s)) : null;
+    var age = t.openedAt ? Math.round((Date.now() - new Date(t.openedAt).getTime()) / 36e5) : null;
     h += "<div class='titem'><div class='l1'><span class='asset'>" + esc(t.asset) + "</span>" +
       "<span class='dirpill " + (t.direction === "SHORT" ? "s" : "l") + "'>" + esc(t.direction) + "</span>" +
-      actorTag(t.actor) + "<span class='outc num'>conv " + esc(t.conviction) + "/10</span></div>" +
-      "<div class='lvls'>entry " + money(e, e < 10 ? 4 : 2) + " · stop " + money(s, s < 10 ? 4 : 2) + " · target " + money(tg, tg < 10 ? 4 : 2) + (rr ? " · R/R " + rr.toFixed(1) : "") + "</div></div>";
+      actorTag(t.actor) +
+      "<span class='outc'><span class='livepnl' data-pnl='" + i + "'></span> <span class='num'>conv " + esc(t.conviction) + "/10</span></span></div>" +
+      "<div class='lvls'>entry " + money(e, e < 10 ? 4 : 2) + " · stop " + money(s, s < 10 ? 4 : 2) + " · target " + money(tg, tg < 10 ? 4 : 2) +
+      (rr ? " · R/R " + rr.toFixed(1) : "") + (age != null ? " · open " + (age < 48 ? age + "h" : Math.round(age / 24) + "d") : "") + "</div>" +
+      posBar(t, i) +
+      (t.thesis ? "<div class='why'><b>The thesis:</b> " + esc(t.thesis) + "</div>" : "") + "</div>";
   });
   waits.forEach(function (t) {
     h += "<div class='titem'><div class='l1'><span class='asset'>" + esc(t.asset) + "</span>" +
@@ -480,6 +576,76 @@ function renderFloor(d) {
       (why ? "<div class='why'>" + esc(why.slice(0, 220)) + "</div>" : "") + "</div>";
   });
   $("closes-col").innerHTML = c || "<div class='flatnote'>No closed trades yet.</div>";
+  refreshOpenLive();
+}
+
+// ── live P&L on open positions: per-symbol Binance spot poll (a bad symbol only kills itself) ──
+function refreshOpenLive() {
+  _openTrades.forEach(function (t, i) {
+    fetch("https://api.binance.com/api/v3/ticker/price?symbol=" + encodeURIComponent(t.asset.toUpperCase() + "USDT"))
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        if (!j || !j.price) return;
+        var px = parseFloat(j.price);
+        var pnl = (px - t.entry) / t.entry * 100 * (t.direction === "SHORT" ? -1 : 1);
+        var el = document.querySelector("[data-pnl='" + i + "']");
+        if (el) { el.innerHTML = "<span class='live-dot'></span><span class='" + cls(pnl) + "'>" + pct(pnl, 2) + "</span>"; }
+        var lo = Math.min(t.stop, t.target), hi = Math.max(t.stop, t.target);
+        var lv = document.querySelector("[data-pl='" + i + "']");
+        if (lv && hi > lo) {
+          lv.classList.remove("hidden");
+          lv.style.left = Math.max(0, Math.min(100, (px - lo) / (hi - lo) * 100)) + "%";
+          lv.style.background = pnl >= 0 ? "var(--up)" : "var(--down)";
+        }
+      }).catch(function () {});
+  });
+}
+
+// ── reading the tape: season analytics computed client-side from the archive ──
+function renderTape(d) {
+  var rows = d.archive || [];
+  var scored = rows.filter(function (r) { return r.outcome === "WIN" || r.outcome === "LOSS"; });
+  if (scored.length < 5) { $("tape").parentNode && ($("tape-sub").textContent = "Analytics unlock once enough trades close."); return; }
+  function wr(list) {
+    var w = list.filter(function (r) { return r.outcome === "WIN"; }).length;
+    var l = list.filter(function (r) { return r.outcome === "LOSS"; }).length;
+    return (w + l) ? { w: w, l: l, pct: Math.round(w / (w + l) * 100) } : null;
+  }
+  function holdH(r) { return (r.openedAt && r.closedAt) ? (new Date(r.closedAt) - new Date(r.openedAt)) / 36e5 : null; }
+  var withPct = scored.filter(function (r) { return r.pct != null; });
+  var best = withPct.slice().sort(function (a, b) { return b.pct - a.pct; })[0];
+  var worst = withPct.slice().sort(function (a, b) { return a.pct - b.pct; })[0];
+  var longs = wr(scored.filter(function (r) { return r.direction === "LONG"; }));
+  var shorts = wr(scored.filter(function (r) { return r.direction === "SHORT"; }));
+  var live = wr(scored.filter(function (r) { return r.venue !== "PAPER" && r.actor !== "manual"; }));
+  var holds = scored.map(holdH).filter(function (v) { return v != null && isFinite(v); });
+  var winHolds = scored.filter(function (r) { return r.outcome === "WIN"; }).map(holdH).filter(function (v) { return v != null; });
+  var fmtH = function (h) { return h == null ? "—" : h < 48 ? Math.round(h) + "h" : (h / 24).toFixed(1) + "d"; };
+  function tile(k, v, s) { return "<div class='tile'><div class='t-k'>" + k + "</div><div class='t-v'>" + v + "</div><div class='t-s'>" + s + "</div></div>"; }
+  var tiles = "";
+  if (best) tiles += tile("Best trade", "<span class='up'>" + pct(best.pct, 1) + "</span>", esc(best.asset) + " " + esc(best.direction) + " · " + esc((ACTORS[best.actor] || {}).label || best.actor));
+  if (worst) tiles += tile("Worst trade", "<span class='down'>" + pct(worst.pct, 1) + "</span>", esc(worst.asset) + " " + esc(worst.direction) + " · " + esc((ACTORS[worst.actor] || {}).label || worst.actor));
+  if (longs) tiles += tile("Longs", longs.pct + "%", longs.w + "W–" + longs.l + "L win rate");
+  if (shorts) tiles += tile("Shorts", shorts.pct + "%", shorts.w + "W–" + shorts.l + "L win rate");
+  if (live) tiles += tile("Machines, live money", live.pct + "%", live.w + "W–" + live.l + "L on real venues");
+  if (winHolds.length >= 3) tiles += tile("Avg winner held", fmtH(winHolds.reduce(function (a, b) { return a + b; }, 0) / winHolds.length), "vs " + fmtH(holds.reduce(function (a, b) { return a + b; }, 0) / Math.max(1, holds.length)) + " all trades");
+  $("tape-tiles").innerHTML = tiles;
+  var h = "<tr><th>Agent</th><th class='rt'>Trades</th><th class='rt'>Record</th><th class='rt'>Win rate</th><th class='rt'>Longs</th><th class='rt'>Shorts</th><th class='rt'>Best</th><th class='rt'>Worst</th></tr>";
+  Object.keys(ACTORS).forEach(function (k) {
+    var mine = scored.filter(function (r) { return r.actor === k; });
+    if (!mine.length) return;
+    var all = wr(mine), lg = wr(mine.filter(function (r) { return r.direction === "LONG"; })), sh = wr(mine.filter(function (r) { return r.direction === "SHORT"; }));
+    var minePct = mine.filter(function (r) { return r.pct != null; });
+    var b = minePct.slice().sort(function (x, y) { return y.pct - x.pct; })[0];
+    var w2 = minePct.slice().sort(function (x, y) { return x.pct - y.pct; })[0];
+    h += "<tr><td>" + actorTag(k) + "</td><td class='rt num'>" + mine.length + "</td>" +
+      "<td class='rt num'>" + all.w + "W–" + all.l + "L</td><td class='rt num'>" + all.pct + "%</td>" +
+      "<td class='rt num'>" + (lg ? lg.pct + "% <span class='src'>(" + (lg.w + lg.l) + ")</span>" : "—") + "</td>" +
+      "<td class='rt num'>" + (sh ? sh.pct + "% <span class='src'>(" + (sh.w + sh.l) + ")</span>" : "—") + "</td>" +
+      "<td class='rt num up'>" + (b ? pct(b.pct, 1) : "—") + "</td>" +
+      "<td class='rt num down'>" + (w2 ? pct(w2.pct, 1) : "—") + "</td></tr>";
+  });
+  $("tape-agents").innerHTML = h;
 }
 
 // ── markets desk ──
@@ -619,15 +785,44 @@ function renderNotes(d) {
   });
   $("notes-more").onclick = function () { notesExpanded = !notesExpanded; renderNotes(d); };
 }
-var archExpanded = false;
+var archExpanded = false, archActor = "all", archOutcome = "all", archSortKey = "date", archSortDir = -1;
 function renderArchive(d) {
-  var rows = d.archive || [];
-  if (!rows.length) return;
-  $("archive-sub").textContent = rows.length + " closed trades since " + (d.since || "season start") +
+  var all = d.archive || [];
+  if (!all.length) return;
+  var rows = all.filter(function (r) {
+    if (archActor !== "all" && r.actor !== archActor) return false;
+    if (archOutcome === "wins" && r.outcome !== "WIN") return false;
+    if (archOutcome === "losses" && r.outcome !== "LOSS") return false;
+    return true;
+  });
+  rows.sort(function (a, b) {
+    var va = archSortKey === "pnl" ? (a.pnlUsd != null ? a.pnlUsd : (a.pct || 0)) : new Date(a.closedAt).getTime();
+    var vb = archSortKey === "pnl" ? (b.pnlUsd != null ? b.pnlUsd : (b.pct || 0)) : new Date(b.closedAt).getTime();
+    return (va - vb) * archSortDir;
+  });
+  $("archive-sub").textContent = all.length + " closed trades since " + (d.since || "season start") +
     " — click a trade for its AI post-mortem against its own thesis. Nothing is deleted.";
+  var chips = "<button data-a='all'" + (archActor === "all" ? " class='on'" : "") + ">All agents</button>";
+  Object.keys(ACTORS).forEach(function (k) {
+    if (!all.some(function (r) { return r.actor === k; })) return;
+    chips += "<button data-a='" + k + "'" + (archActor === k ? " class='on'" : "") + ">" + esc(ACTORS[k].label) + "</button>";
+  });
+  chips += "<span style='width:10px'></span>" +
+    "<button data-o='all'" + (archOutcome === "all" ? " class='on'" : "") + ">All results</button>" +
+    "<button data-o='wins'" + (archOutcome === "wins" ? " class='on'" : "") + ">Wins</button>" +
+    "<button data-o='losses'" + (archOutcome === "losses" ? " class='on'" : "") + ">Losses</button>";
+  $("arch-chips").innerHTML = chips;
+  Array.prototype.forEach.call($("arch-chips").querySelectorAll("button"), function (b) {
+    b.onclick = function () {
+      if (b.getAttribute("data-a")) archActor = b.getAttribute("data-a");
+      if (b.getAttribute("data-o")) archOutcome = b.getAttribute("data-o");
+      renderArchive(d);
+    };
+  });
   var TZ = { timeZone: "Africa/Johannesburg" };
   var shown = archExpanded ? rows : rows.slice(0, 12);
-  var h = "<tr><th>Date</th><th>Agent</th><th>Trade</th><th>Venue</th><th class='rt'>Result</th><th class='rt'>P&amp;L</th></tr>";
+  var arrow = function (k) { return archSortKey === k ? (archSortDir < 0 ? " ↓" : " ↑") : ""; };
+  var h = "<tr><th class='sortable' data-s='date'>Date" + arrow("date") + "</th><th>Agent</th><th>Trade</th><th>Venue</th><th class='rt'>Result</th><th class='rt sortable' data-s='pnl'>P&amp;L" + arrow("pnl") + "</th></tr>";
   shown.forEach(function (r, i) {
     var when = new Date(r.closedAt).toLocaleDateString("en-GB", Object.assign({ day: "2-digit", month: "short" }, TZ));
     var res = r.outcome === "BREAKEVEN" ? "<span style='color:var(--ink3)'>BE</span>"
@@ -636,11 +831,30 @@ function renderArchive(d) {
       : "<span class='" + cls(r.pnlUsd) + " num'>" + (r.pnlUsd >= 0 ? "+" : "−") + "$" + Math.abs(r.pnlUsd).toFixed(2) + "</span>";
     h += "<tr class='arch-row' data-i='" + i + "'><td>" + when + "</td><td>" + actorTag(r.actor) + "</td><td><b>" + esc(r.asset) + "</b> " + esc(r.direction) + "</td>" +
       "<td>" + esc(r.venue) + "</td><td class='rt'>" + res + "</td><td class='rt'>" + pnl + "</td></tr>";
-    if (r.exitReason) h += "<tr class='arch-why hidden' data-why='" + i + "'><td colspan='6'><div class='why'>" + esc(r.exitReason) + "</div></td></tr>";
+    if (r.exitReason) {
+      var meta = [];
+      if (r.entry != null) meta.push("entry $" + r.entry);
+      if (r.exit != null) meta.push("exit $" + r.exit);
+      if (r.conviction) meta.push("conviction " + r.conviction + "/10");
+      if (r.openedAt && r.closedAt) {
+        var hh = (new Date(r.closedAt) - new Date(r.openedAt)) / 36e5;
+        if (isFinite(hh) && hh >= 0) meta.push("held " + (hh < 48 ? Math.round(hh) + "h" : (hh / 24).toFixed(1) + "d"));
+      }
+      h += "<tr class='arch-why hidden' data-why='" + i + "'><td colspan='6'>" +
+        (meta.length ? "<div class='src' style='margin-bottom:3px'>" + esc(meta.join(" · ")) + "</div>" : "") +
+        "<div class='why'>" + esc(r.exitReason) + "</div></td></tr>";
+    }
   });
   h += "<tr><td colspan='6'><button class='morelink' id='arch-more'>" +
     (archExpanded ? "Show recent 12" : "Show all " + rows.length + " trades") + "</button></td></tr>";
   $("archive-table").innerHTML = h;
+  Array.prototype.forEach.call($("archive-table").querySelectorAll("th.sortable"), function (th) {
+    th.onclick = function () {
+      var k = th.getAttribute("data-s");
+      if (archSortKey === k) archSortDir *= -1; else { archSortKey = k; archSortDir = -1; }
+      renderArchive(d);
+    };
+  });
   Array.prototype.forEach.call($("archive-table").querySelectorAll(".arch-row"), function (tr) {
     tr.onclick = function () {
       var why = $("archive-table").querySelector("[data-why='" + tr.getAttribute("data-i") + "']");
@@ -758,18 +972,34 @@ function renderStamps(d) {
   if (ageH > 3) { $("stale-note").classList.remove("hidden"); $("stale-note").textContent = "Feed last updated " + Math.round(ageH) + "h ago — the bot host may be offline; figures below are the last published state."; }
 }
 
+// ── scroll-spy: highlight the nav link of the section in view ──
+function initSpy() {
+  var links = document.querySelectorAll("nav.sections a");
+  var ids = Array.prototype.map.call(links, function (a) { return a.getAttribute("href").slice(1); });
+  function onScroll() {
+    var y = window.scrollY + 90, current = ids[0];
+    ids.forEach(function (id) { var el = $(id); if (el && el.offsetTop <= y) current = id; });
+    Array.prototype.forEach.call(links, function (a) {
+      a.classList.toggle("active", a.getAttribute("href") === "#" + current);
+    });
+  }
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+}
+
 function boot() {
   fetch(DATA_URL, { cache: "no-store" }).then(function (r) {
     if (!r.ok) throw new Error("feed " + r.status);
     return r.json();
   }).then(function (d) {
     renderStamps(d); renderStrip(d.market); renderHeadline(d); renderStandings(d);
-    renderChart(d); renderFloor(d); renderDesk(d); renderCalendar(d); renderIntel(d); renderIntelRail(d);
-    renderNotes(d); renderArchive(d); renderRisk(d);
+    renderChart(d); renderPlayers(d); renderFloor(d); renderDesk(d); renderCalendar(d); renderIntel(d); renderIntelRail(d);
+    renderNotes(d); renderTape(d); renderArchive(d); renderRisk(d);
     renderWire(d); renderColumn(d); renderPredictions(d);
-    liveStripRefresh(d.market); renderLiveMarkets();
+    liveStripRefresh(d.market); renderLiveMarkets(); initSpy();
     setInterval(function () { liveStripRefresh(d.market); }, 60000);
     setInterval(renderLiveMarkets, 30000);
+    setInterval(refreshOpenLive, 30000);
   }).catch(function (e) {
     $("race").textContent = "Data feed unavailable";
     $("race-sub").textContent = "Could not load the data feed (" + e.message + "). Try refreshing.";
