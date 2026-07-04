@@ -104,7 +104,7 @@
   .fng-bar { position: relative; height: 8px; border-radius: 4px; margin: 12px 2px 24px; background: linear-gradient(90deg,#c5524a,#c58b4a,#a3a35c,#6aa46a,#3a9152); }
   .fng-mark { position: absolute; top: -5px; width: 3px; height: 18px; background: var(--ink); }
   .fng-lab { position: absolute; top: 18px; transform: translateX(-50%); font-size: 11px; color: var(--ink2); font-family: var(--mono); white-space: nowrap; }
-  .xpost { font-family: var(--serif); font-size: 14.5px; line-height: 1.5; border-left: 3px solid var(--accent); padding-left: 12px; }
+  .xpost { font-family: var(--serif); font-size: 14.5px; line-height: 1.5; border-left: 3px solid var(--accent); padding-left: 12px; overflow-wrap: anywhere; }
   .sponsor-box { background: var(--accent); color: #eaf3ee; padding: 16px 16px 14px; }
   .sponsor-box h3 { font-family: var(--serif); margin: 0 0 6px; font-size: 18px; color: #fff; }
   .sponsor-box p { margin: 0; font-size: 12.5px; color: #c3d9cc; }
@@ -299,7 +299,7 @@ function renderChart(d) {
   if (!data.labels.length) { $("chart-wrap").classList.add("hidden"); return; }
   $("legend").innerHTML = data.series.map(function (s) {
     return "<span><span class='swatch' style='background:" + s.color + "'></span>" + esc(s.key) + "</span>";
-  }).join("") + "<span style='margin-left:auto;color:var(--ink3)'>account value, $ · dashed = start</span>";
+  }).join("") + "<span style='margin-left:auto;color:var(--ink3)'>account value incl. open trades, $ · dashed = start</span>";
   var svg = $("race-chart"); svg.innerHTML = "";
   var NS = "http://www.w3.org/2000/svg";
   function el(n, at) { var e = document.createElementNS(NS, n); for (var k in at) e.setAttribute(k, at[k]); svg.appendChild(e); return e; }
