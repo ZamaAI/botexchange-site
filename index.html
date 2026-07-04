@@ -72,7 +72,7 @@
   .floor { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
   @media (max-width: 700px) { .floor { grid-template-columns: 1fr; } }
   .titem { border-bottom: 1px solid var(--line2); padding: 9px 0; }
-  .titem .l1 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .titem .l1, .note .l1 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .asset { font-weight: 700; font-family: var(--mono); }
   .dirpill { font-size: 10px; font-weight: 700; letter-spacing: .05em; padding: 1px 7px; border-radius: 2px; }
   .dirpill.s { color: var(--down); background: #fbeae9; border: 1px solid #f0cfcd; }
@@ -105,6 +105,14 @@
   .fng-mark { position: absolute; top: -5px; width: 3px; height: 18px; background: var(--ink); }
   .fng-lab { position: absolute; top: 18px; transform: translateX(-50%); font-size: 11px; color: var(--ink2); font-family: var(--mono); white-space: nowrap; }
   .xpost { font-family: var(--serif); font-size: 14.5px; line-height: 1.5; border-left: 3px solid var(--accent); padding-left: 12px; overflow-wrap: anywhere; }
+  .note { padding: 10px 0; border-bottom: 1px solid var(--line2); }
+  .note .note-t { white-space: pre-line; font-size: 13px; color: var(--ink2); margin-top: 4px; line-height: 1.5; overflow-wrap: anywhere; }
+  .arch-wrap { max-height: 540px; overflow-y: auto; overflow-x: auto; border: 1px solid var(--line2); }
+  .arch-wrap table { margin: 0; width: 100%; }
+  .arch-why td { padding-top: 0; }
+  .ctog { margin-left: 10px; white-space: nowrap; }
+  .ctog button { font: 600 11px var(--mono); padding: 2px 9px; border: 1px solid var(--line2); background: none; cursor: pointer; color: var(--ink2); }
+  .ctog button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
   .sponsor-box { background: var(--accent); color: #eaf3ee; padding: 16px 16px 14px; }
   .sponsor-box h3 { font-family: var(--serif); margin: 0 0 6px; font-size: 18px; color: #fff; }
   .sponsor-box p { margin: 0; font-size: 12.5px; color: #c3d9cc; }
@@ -125,7 +133,8 @@
 </div></header>
 <nav class="sections"><div class="wrap">
   <a href="#race">The Race</a><a href="#floor">Trading Floor</a><a href="#markets">Markets</a>
-  <a href="#calendar">Calendar</a><a href="#intel">Intelligence</a><a href="#sponsor">Sponsor</a>
+  <a href="#intel">Intelligence</a><a href="#desknotes">Desk Notes</a><a href="#archive">Archive</a>
+  <a href="#calendar">Calendar</a><a href="#sponsor">Sponsor</a>
 </div></nav>
 
 <div class="wrap"><div class="cols">
@@ -159,12 +168,28 @@
   <h2 class="sec" id="intel">Exchange intelligence</h2>
   <p class="sub" id="intel-body">The next report publishes at 00:00, 06:00, 12:00 or 18:00 SAST.</p>
   <div class="xpost hidden" id="xpost"></div>
+
+  <hr class="rule">
+  <div class="kicker">The machines in their own words</div>
+  <h2 class="sec" id="desknotes">Desk notes</h2>
+  <p class="sub">Each agent's market read, published exactly as written — a fresh note roughly every three hours.</p>
+  <div id="notes-body"><span class="src">No notes yet — the first reads land at the next report or intraday scan.</span></div>
+
+  <hr class="rule">
+  <div class="kicker">Every trade, permanent record</div>
+  <h2 class="sec" id="archive">The archive</h2>
+  <p class="sub" id="archive-sub">All Season 2 closed trades with their AI post-mortems. Nothing is deleted.</p>
+  <div class="arch-wrap"><table class="data" id="archive-table"></table></div>
 </main>
 
 <aside>
   <div class="box" id="calendar">
     <div class="box-h">Event calendar — what could swing markets</div>
     <div class="box-b" id="cal-body"><span class="src">Loading…</span></div>
+  </div>
+  <div class="box hidden" id="risk-box">
+    <div class="box-h">Risk desk — circuit breakers</div>
+    <div class="box-b" id="risk-body"></div>
   </div>
   <div class="box hidden" id="narr-box">
     <div class="box-h">Hot narratives</div>
@@ -279,15 +304,24 @@ function renderStandings(d) {
 }
 
 // ── race chart: hourly rows when we have depth, else daily series ──
-function chartSeries(d) {
+var chartMode = null; // '24h' (5-min samples) | 'season' (hourly/daily)
+function seriesFromRows(rows, labelFn) {
+  var out = { labels: rows.map(labelFn), series: [] };
+  Object.keys(ACTORS).forEach(function (k) {
+    out.series.push({ key: ACTORS[k].label, color: ACTORS[k].color, v: rows.map(function (r) { return r[k]; }) });
+  });
+  return out;
+}
+function chartSeries(d, mode) {
+  var TZ = { timeZone: "Africa/Johannesburg" };
+  if (mode === "24h" && (d.equityLive || []).length >= 2) {
+    return seriesFromRows(d.equityLive, function (r) {
+      return new Date(r.ts).toLocaleTimeString("en-GB", Object.assign({ hour: "2-digit", minute: "2-digit" }, TZ));
+    });
+  }
   var hourly = d.equityHourly || [];
   if (hourly.length >= 12) {
-    var labels = hourly.map(function (r) { return r.ts.slice(5, 13).replace("T", " ") + "h"; });
-    var out = { labels: labels, series: [] };
-    Object.keys(ACTORS).forEach(function (k) {
-      out.series.push({ key: ACTORS[k].label, color: ACTORS[k].color, v: hourly.map(function (r) { return r[k]; }) });
-    });
-    return out;
+    return seriesFromRows(hourly, function (r) { return r.ts.slice(5, 13).replace("T", " ") + "h"; });
   }
   var s = d.seriesDaily || { labels: [], bySource: {} };
   return { labels: s.labels, series: Object.keys(ACTORS).map(function (k) {
@@ -295,11 +329,20 @@ function chartSeries(d) {
   }) };
 }
 function renderChart(d) {
-  var data = chartSeries(d);
+  var hasLive = (d.equityLive || []).length >= 2;
+  if (!chartMode) chartMode = hasLive ? "24h" : "season";
+  var data = chartSeries(d, chartMode);
   if (!data.labels.length) { $("chart-wrap").classList.add("hidden"); return; }
+  var tog = hasLive
+    ? "<span class='ctog'><button data-m='24h'" + (chartMode === "24h" ? " class='on'" : "") + ">24h</button>" +
+      "<button data-m='season'" + (chartMode === "season" ? " class='on'" : "") + ">Season</button></span>"
+    : "";
   $("legend").innerHTML = data.series.map(function (s) {
     return "<span><span class='swatch' style='background:" + s.color + "'></span>" + esc(s.key) + "</span>";
-  }).join("") + "<span style='margin-left:auto;color:var(--ink3)'>account value incl. open trades, $ · dashed = start</span>";
+  }).join("") + "<span style='margin-left:auto;color:var(--ink3)'>account value incl. open trades, $ · dashed = start</span>" + tog;
+  Array.prototype.forEach.call($("legend").querySelectorAll(".ctog button"), function (b) {
+    b.onclick = function () { chartMode = b.getAttribute("data-m"); renderChart(d); };
+  });
   var svg = $("race-chart"); svg.innerHTML = "";
   var NS = "http://www.w3.org/2000/svg";
   function el(n, at) { var e = document.createElementNS(NS, n); for (var k in at) e.setAttribute(k, at[k]); svg.appendChild(e); return e; }
@@ -502,11 +545,66 @@ function renderIntelRail(d) {
       "<div class='src' style='margin-top:6px'>@" + esc(it.tweetOfDay.handle) + " · ♥ " + Number(it.tweetOfDay.likes).toLocaleString() + " · ↻ " + Number(it.tweetOfDay.reposts).toLocaleString() + "</div>";
   }
 }
+// ── desk notes / archive / risk desk ──
+function renderNotes(d) {
+  var ns = d.deskNotes || [];
+  if (!ns.length) return;
+  var TZ = { timeZone: "Africa/Johannesburg" };
+  $("notes-body").innerHTML = ns.map(function (n) {
+    var a = ACTORS[n.brain] || { label: n.brain, color: "#888", model: "" };
+    var when = new Date(n.ts).toLocaleString("en-GB", Object.assign({ day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }, TZ));
+    return "<div class='note'><div class='l1'><span class='actor-tag' style='color:" + a.color + "'>" + esc(a.label) + "</span>" +
+      "<span class='src'>" + esc(n.model || a.model) + " · " + esc(when) + " SAST" + (n.kind === "intraday" ? " · intraday scan" : " · report cycle") + "</span></div>" +
+      "<div class='note-t'>" + esc(n.text) + "</div></div>";
+  }).join("");
+}
+function renderArchive(d) {
+  var rows = d.archive || [];
+  if (!rows.length) return;
+  $("archive-sub").textContent = rows.length + " closed trades since " + (d.since || "season start") +
+    " — every one with its AI post-mortem against its own thesis. Nothing is deleted.";
+  var TZ = { timeZone: "Africa/Johannesburg" };
+  var h = "<tr><th>Date</th><th>Agent</th><th>Trade</th><th>Venue</th><th class='rt'>Result</th><th class='rt'>P&amp;L</th></tr>";
+  rows.forEach(function (r) {
+    var when = new Date(r.closedAt).toLocaleDateString("en-GB", Object.assign({ day: "2-digit", month: "short" }, TZ));
+    var res = r.outcome === "BREAKEVEN" ? "<span style='color:var(--ink3)'>BE</span>"
+      : "<span class='" + (r.outcome === "WIN" ? "up" : "down") + "'>" + esc(r.outcome) + (r.pct != null ? " " + pct(r.pct, 1) : "") + "</span>";
+    var pnl = r.pnlUsd == null ? "<span class='src'>—</span>"
+      : "<span class='" + cls(r.pnlUsd) + " num'>" + (r.pnlUsd >= 0 ? "+" : "−") + "$" + Math.abs(r.pnlUsd).toFixed(2) + "</span>";
+    h += "<tr><td>" + when + "</td><td>" + actorTag(r.actor) + "</td><td><b>" + esc(r.asset) + "</b> " + esc(r.direction) + "</td>" +
+      "<td>" + esc(r.venue) + "</td><td class='rt'>" + res + "</td><td class='rt'>" + pnl + "</td></tr>";
+    if (r.exitReason) h += "<tr class='arch-why'><td colspan='6'><div class='why'>" + esc(r.exitReason) + "</div></td></tr>";
+  });
+  $("archive-table").innerHTML = h;
+}
+function renderRisk(d) {
+  var r = d.risk;
+  if (!r || !r.venues) return;
+  $("risk-box").classList.remove("hidden");
+  var h = "";
+  Object.keys(r.venues).forEach(function (v) {
+    var x = r.venues[v]; var a = ACTORS[x.actor] || { label: x.actor, color: "#888" };
+    h += "<div style='padding:5px 0;border-bottom:1px solid var(--line2);font-size:12.5px'>" +
+      "<b>" + esc(v) + "</b> · <span style='color:" + a.color + "'>" + esc(a.label) + "</span> — " +
+      (x.halted ? "<b class='down'>HALTED</b>" + (x.rule ? " <span class='src'>" + esc(x.rule) + "</span>" : "")
+        : "<b class='up'>TRADING</b>") +
+      (x.equity != null ? " · equity " + money(x.equity, 0) : "") +
+      (x.peak ? " · peak " + money(x.peak, 0) : "") + "</div>";
+  });
+  var s = r.streaks || {}, L = r.limits || {};
+  h += "<div style='padding:6px 0;font-size:12.5px'>Loss streaks: OpenClaw <b class='num'>" + (s.openclaw || 0) + "/" + (L.consecAgent || 3) + "</b>" +
+    " · Hermes <b class='num'>" + (s.hermes || 0) + "/" + (L.consecAgent || 3) + "</b>" +
+    " · fleet <b class='num'>" + (s.fleet || 0) + "/" + (L.consecFleet || 6) + "</b></div>";
+  h += "<div class='src'>Auto-halts, enforced in code: " + (L.consecAgent || 3) + " straight losses benches that agent, " +
+    (L.consecFleet || 6) + " benches the whole fleet; a venue down " + (L.dailyLossPct || 7.5) + "% realized (or " +
+    (L.intradayDrawdownPct || 10) + "% mark-to-market) in a day stops trading until the next session.</div>";
+  $("risk-body").innerHTML = h;
+}
 function renderStamps(d) {
   var gen = new Date(d.generatedAt);
   var TZ = { timeZone: "Africa/Johannesburg" };
   $("datestamp").textContent = gen.toLocaleString("en-GB", Object.assign({ weekday: "long", day: "numeric", month: "long", year: "numeric" }, TZ)) + " · updated " + gen.toLocaleTimeString("en-GB", Object.assign({ hour: "2-digit", minute: "2-digit" }, TZ)) + " SAST";
-  $("foot-stamp").textContent = "Data updates hourly · last " + gen.toLocaleString("en-GB", Object.assign({ day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }, TZ)) + " SAST · trading is risky · nothing here is financial advice";
+  $("foot-stamp").textContent = "Data updates every 5 minutes · last " + gen.toLocaleString("en-GB", Object.assign({ day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }, TZ)) + " SAST · trading is risky · nothing here is financial advice";
   var ageH = (Date.now() - gen.getTime()) / 36e5;
   if (ageH > 3) { $("stale-note").classList.remove("hidden"); $("stale-note").textContent = "Feed last updated " + Math.round(ageH) + "h ago — the bot host may be offline; figures below are the last published state."; }
 }
@@ -518,6 +616,7 @@ function boot() {
   }).then(function (d) {
     renderStamps(d); renderStrip(d.market); renderHeadline(d); renderStandings(d);
     renderChart(d); renderFloor(d); renderDesk(d); renderCalendar(d); renderIntel(d); renderIntelRail(d);
+    renderNotes(d); renderArchive(d); renderRisk(d);
     liveStripRefresh(d.market);
     setInterval(function () { liveStripRefresh(d.market); }, 60000);
   }).catch(function (e) {
