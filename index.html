@@ -89,6 +89,7 @@
   .dirpill.s { color: var(--down); background: #fbeae9; border: 1px solid #f0cfcd; }
   .dirpill.l { color: var(--up); background: #e8f4ec; border: 1px solid #cbe6d4; }
   .actor-tag { font-size: 11px; font-weight: 600; }
+  .smpill { font: 700 9.5px var(--mono); letter-spacing: .06em; color: var(--accent); background: #e7f0eb; border: 1px solid #c8ddd1; border-radius: 2px; padding: 1px 7px; white-space: nowrap; }
   .lvls { font-family: var(--mono); font-size: 12px; color: var(--ink2); margin-top: 3px; }
   .why { color: var(--ink2); font-size: 12.5px; margin-top: 3px; }
   .outc { margin-left: auto; font-family: var(--mono); font-weight: 700; font-size: 12px; }
@@ -653,6 +654,7 @@ function renderFloor(d) {
     h += "<div class='titem'><div class='l1'><span class='asset'>" + esc(t.asset) + "</span>" +
       "<span class='dirpill " + (t.direction === "SHORT" ? "s" : "l") + "'>" + esc(t.direction) + "</span>" +
       actorTag(t.actor) +
+      (t.smartMoney ? "<span class='smpill' title='Top Hyperliquid accounts hold this same trade'>TOP BOOKS AGREE ×" + esc(t.smartMoney) + "</span>" : "") +
       "<span class='outc'><span class='livepnl' data-pnl='" + i + "'></span> <span class='num'>conv " + esc(t.conviction) + "/10</span></span></div>" +
       "<div class='lvls'>entry " + money(e, e < 10 ? 4 : 2) + " · stop " + (t.levelsApprox ? "≈" : "") + money(s, s < 10 ? 4 : 2) + " · target " + (t.levelsApprox ? "≈" : "") + money(tg, tg < 10 ? 4 : 2) +
       (rr ? " · R/R " + rr.toFixed(1) : "") + (age != null ? " · open " + (age < 48 ? age + "h" : Math.round(age / 24) + "d") : "") + "</div>" +
