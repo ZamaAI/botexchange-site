@@ -36,7 +36,9 @@
   .hidden { display: none !important; }
 
   .strip { background: var(--accent); color: #eaf3ee; font-size: 12px; }
-  .strip .wrap { display: flex; flex-wrap: wrap; gap: 6px 22px; padding: 6px 20px; }
+  .strip .wrap { display: flex; flex-wrap: wrap; gap: 6px 17px; padding: 6px 20px; }
+  .strip .strip-macro { border-top: 1px solid rgba(255,255,255,.14); }
+  .strip .rowlab { font: 700 10px var(--mono); letter-spacing: .12em; color: #86b598; align-self: center; }
   .strip b { font-weight: 600; font-family: var(--mono); }
   .strip .pos { color: #9fd8b4; } .strip .neg { color: #f2b8ae; }
 
@@ -185,7 +187,10 @@
 <body>
 
 <div id="stale-note" class="hidden"></div>
-<div class="strip"><div class="wrap" id="strip">Loading market data…</div></div>
+<div class="strip">
+  <div class="wrap strip-row" id="strip-crypto">Loading market data…</div>
+  <div class="wrap strip-row strip-macro hidden" id="strip-macro"></div>
+</div>
 
 <header class="mast"><div class="wrap">
   <h1>The Bot Exchange</h1>
@@ -349,30 +354,43 @@ function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function
 function money(v, dp) { return v == null || !isFinite(v) ? "—" : "$" + Number(v).toLocaleString("en-US", { minimumFractionDigits: dp == null ? 2 : dp, maximumFractionDigits: dp == null ? 2 : dp }); }
 function pct(v, dp) { return v == null || !isFinite(v) ? "—" : (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(dp == null ? 2 : dp) + "%"; }
 function cls(v) { return v >= 0 ? "up" : "down"; }
+function smartTrim(s, cap) {
+  // trim on a sentence boundary when one lands past half the cap; never cut mid-word
+  s = String(s || "");
+  if (s.length <= cap) return s;
+  var cut = s.slice(0, cap);
+  if (/[.!?]$/.test(cut)) return cut;
+  var last = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("! "), cut.lastIndexOf("? "));
+  return last > cap * 0.5 ? cut.slice(0, last + 1) : cut.replace(/\s+\S*$/, "") + "…";
+}
 function strippct(v) { return '<b class="' + (v >= 0 ? "pos" : "neg") + '">' + (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(2) + "%</b>"; }
 
 // ── market strip: feed snapshot first, then live client-side refresh ──
 // Macro board rides the same strip: S&P 500, Nasdaq, gold, DXY, VIX — live
 // Hyperliquid stock-perp marks (client-side, keeps streaming when the host is off).
 var _macroStrip = [];
-var MACRO_SYMS = { SP500: "S&amp;P 500", XYZ100: "NASDAQ", GOLD: "GOLD", DXY: "DXY", VIX: "VIX" };
+var MACRO_SYMS = { SP500: "S&amp;P 500", XYZ100: "NASDAQ", GOLD: "GOLD", DXY: "DXY", VIX: "VIX", NVDA: "NVDA", TSLA: "TSLA", AAPL: "AAPL" };
+var MACRO_DOLLAR = { GOLD: 1, NVDA: 1, TSLA: 1, AAPL: 1 };
 function fmtMacro(sym, v) {
   if (v == null || !isFinite(v)) return "—";
-  var s = v >= 1000 ? Math.round(v).toLocaleString("en-US") : v.toFixed(v < 100 ? 2 : 1);
-  return sym === "GOLD" ? "$" + s : s;
+  var s = v >= 1000 ? Math.round(v).toLocaleString("en-US") : MACRO_DOLLAR[sym] ? v.toFixed(2) : v.toFixed(v < 100 ? 2 : 1);
+  return MACRO_DOLLAR[sym] ? "$" + s : s;
 }
 function renderStrip(mkt) {
   var h = "";
   ((mkt && mkt.prices) || []).forEach(function (p) {
     h += "<span>" + esc(p.symbol) + " <b>" + money(p.price, p.price > 1000 ? 0 : 2) + "</b> " + strippct(p.change24hPct) + "</span>";
   });
-  _macroStrip.forEach(function (p) {
-    h += "<span>" + MACRO_SYMS[p.sym] + " <b>" + fmtMacro(p.sym, p.price) + "</b>" +
-      (p.change != null ? " " + strippct(p.change) : "") + "</span>";
-  });
   if (mkt && mkt.fearGreed) h += "<span>Fear &amp; Greed <b>" + esc(mkt.fearGreed.value) + " — " + esc(mkt.fearGreed.classification) + "</b></span>";
   if (mkt && mkt.regime) h += "<span>Regime <b>" + esc(String(mkt.regime).replace("_", "-")) + "</b></span>";
-  $("strip").innerHTML = h || "Market data loading…";
+  $("strip-crypto").innerHTML = h ? "<span class='rowlab'>CRYPTO</span>" + h : "Market data loading…";
+  var m = "";
+  _macroStrip.forEach(function (p) {
+    // DXY/VIX marks can sit on a flat prevDay — hide a meaningless +0.00%
+    var showChg = p.change != null && Math.abs(p.change) >= 0.005;
+    m += "<span>" + MACRO_SYMS[p.sym] + " <b>" + fmtMacro(p.sym, p.price) + "</b>" + (showChg ? " " + strippct(p.change) : "") + "</span>";
+  });
+  if (m) { $("strip-macro").classList.remove("hidden"); $("strip-macro").innerHTML = "<span class='rowlab'>MACRO</span>" + m; }
 }
 var _lastStripMkt = null;
 function liveStripRefresh(mkt) {
@@ -611,13 +629,14 @@ function posBar(t, i) {
   var P = function (v) { return Math.max(0, Math.min(100, (v - lo) / (hi - lo) * 100)); };
   var stopSide = P(t.stop), tgtSide = P(t.target), entryP = P(t.entry);
   var fmt = function (v) { return v < 10 ? v.toFixed(3) : v >= 1000 ? Math.round(v).toLocaleString("en-US") : v.toFixed(2); };
+  var ap = t.levelsApprox ? "≈" : "";
   return "<div class='posbar' data-pb='" + i + "'>" +
     "<span class='pb-fill' style='left:" + Math.min(stopSide, entryP) + "%;right:" + (100 - Math.max(stopSide, entryP)) + "%;background:var(--down)'></span>" +
     "<span class='pb-fill' style='left:" + Math.min(tgtSide, entryP) + "%;right:" + (100 - Math.max(tgtSide, entryP)) + "%;background:var(--up)'></span>" +
     "<span class='pb-entry' style='left:" + entryP + "%'></span>" +
     "<span class='pb-live hidden' data-pl='" + i + "' style='left:" + P(t.entry) + "%'></span>" +
-    "<span class='pb-lab' style='" + (stopSide < 50 ? "left:0" : "right:0") + "'>stop " + fmt(t.stop) + "</span>" +
-    "<span class='pb-lab' style='" + (tgtSide < 50 ? "left:0" : "right:0") + "'>target " + fmt(t.target) + "</span>" +
+    "<span class='pb-lab' style='" + (stopSide < 50 ? "left:0" : "right:0") + "'>stop " + ap + fmt(t.stop) + "</span>" +
+    "<span class='pb-lab' style='" + (tgtSide < 50 ? "left:0" : "right:0") + "'>target " + ap + fmt(t.target) + "</span>" +
     "</div>";
 }
 function renderFloor(d) {
@@ -634,10 +653,12 @@ function renderFloor(d) {
       "<span class='dirpill " + (t.direction === "SHORT" ? "s" : "l") + "'>" + esc(t.direction) + "</span>" +
       actorTag(t.actor) +
       "<span class='outc'><span class='livepnl' data-pnl='" + i + "'></span> <span class='num'>conv " + esc(t.conviction) + "/10</span></span></div>" +
-      "<div class='lvls'>entry " + money(e, e < 10 ? 4 : 2) + " · stop " + money(s, s < 10 ? 4 : 2) + " · target " + money(tg, tg < 10 ? 4 : 2) +
+      "<div class='lvls'>entry " + money(e, e < 10 ? 4 : 2) + " · stop " + (t.levelsApprox ? "≈" : "") + money(s, s < 10 ? 4 : 2) + " · target " + (t.levelsApprox ? "≈" : "") + money(tg, tg < 10 ? 4 : 2) +
       (rr ? " · R/R " + rr.toFixed(1) : "") + (age != null ? " · open " + (age < 48 ? age + "h" : Math.round(age / 24) + "d") : "") + "</div>" +
       posBar(t, i) +
-      (t.thesis && !/scanner pick \(paper\)|see COIN SCANNER/i.test(t.thesis) ? "<div class='why'><b>The thesis:</b> " + esc(t.thesis) + "</div>" : "") + "</div>";
+      (t.thesis && !/scanner pick \(paper\)|see COIN SCANNER/i.test(t.thesis)
+        ? "<div class='why clamp' data-th='" + i + "'><b>The thesis:</b> " + esc(t.thesis) + "</div><button class='morelink th-more' data-th='" + i + "'>read more</button>"
+        : "") + "</div>";
   });
   waits.forEach(function (t) {
     h += "<div class='titem'><div class='l1'><span class='asset'>" + esc(t.asset) + "</span>" +
@@ -647,6 +668,14 @@ function renderFloor(d) {
       "<div class='why'>Anticipatory entries are the fleet's #1 loss cause — agents wait for the trigger to print.</div></div>";
   });
   $("open-col").innerHTML = h || "<div class='flatnote'>Nothing on the book.</div>";
+  Array.prototype.forEach.call($("open-col").querySelectorAll(".th-more"), function (b) {
+    var t = $("open-col").querySelector(".why[data-th='" + b.getAttribute("data-th") + "']");
+    if (t && t.scrollHeight <= t.clientHeight + 4) { b.style.display = "none"; return; }
+    b.onclick = function () {
+      var open = !t.classList.contains("clamp");
+      t.classList.toggle("clamp"); b.textContent = open ? "read more" : "show less";
+    };
+  });
   var c = "";
   (d.recentCloses || []).slice(0, 6).forEach(function (r) {
     var out = r.outcome === "BREAKEVEN" ? "<span class='outc' style='color:var(--ink3)'>BREAKEVEN</span>"
@@ -656,31 +685,49 @@ function renderFloor(d) {
     c += "<div class='titem'><div class='l1'><span class='asset'>" + esc(r.asset) + "</span>" +
       "<span class='dirpill " + (r.direction === "SHORT" ? "s" : "l") + "'>" + esc(r.direction) + "</span>" +
       actorTag(r.actor) + out + "</div>" +
-      (why ? "<div class='why'>" + esc(why.slice(0, 220)) + "</div>" : "") + "</div>";
+      (why ? "<div class='why'>" + esc(smartTrim(why, 220)) + "</div>" : "") + "</div>";
   });
   $("closes-col").innerHTML = c || "<div class='flatnote'>No closed trades yet.</div>";
   refreshOpenLive();
 }
 
-// ── live P&L on open positions: per-symbol Binance spot poll (a bad symbol only kills itself) ──
+// ── live P&L on open positions ──
+// VENUE-FIRST pricing: live positions price from Hyperliquid mids, never a Binance
+// bare-ticker lookup — cross-venue ticker collisions are real (HL LIT $2.66 vs Binance
+// LIT $0.74 rendered a healthy long as −72%). Paper rows still use Binance spot.
+function paintOpenLive(t, i, px) {
+  var pnl = (px - t.entry) / t.entry * 100 * (t.direction === "SHORT" ? -1 : 1);
+  var el = document.querySelector("[data-pnl='" + i + "']");
+  if (el) { el.innerHTML = "<span class='live-dot'></span><span class='" + cls(pnl) + "'>" + pct(pnl, 2) + "</span>"; }
+  var lo = Math.min(t.stop, t.target), hi = Math.max(t.stop, t.target);
+  var lv = document.querySelector("[data-pl='" + i + "']");
+  if (lv && hi > lo) {
+    lv.classList.remove("hidden");
+    lv.style.left = Math.max(0, Math.min(100, (px - lo) / (hi - lo) * 100)) + "%";
+    lv.style.background = pnl >= 0 ? "var(--up)" : "var(--down)";
+  }
+}
 function refreshOpenLive() {
-  _openTrades.forEach(function (t, i) {
-    fetch("https://api.binance.com/api/v3/ticker/price?symbol=" + encodeURIComponent(t.asset.toUpperCase() + "USDT"))
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (j) {
-        if (!j || !j.price) return;
-        var px = parseFloat(j.price);
-        var pnl = (px - t.entry) / t.entry * 100 * (t.direction === "SHORT" ? -1 : 1);
-        var el = document.querySelector("[data-pnl='" + i + "']");
-        if (el) { el.innerHTML = "<span class='live-dot'></span><span class='" + cls(pnl) + "'>" + pct(pnl, 2) + "</span>"; }
-        var lo = Math.min(t.stop, t.target), hi = Math.max(t.stop, t.target);
-        var lv = document.querySelector("[data-pl='" + i + "']");
-        if (lv && hi > lo) {
-          lv.classList.remove("hidden");
-          lv.style.left = Math.max(0, Math.min(100, (px - lo) / (hi - lo) * 100)) + "%";
-          lv.style.background = pnl >= 0 ? "var(--up)" : "var(--down)";
-        }
-      }).catch(function () {});
+  if (!_openTrades.length) return;
+  var anyLive = _openTrades.some(function (t) { return t.venue && t.venue !== "PAPER"; });
+  var midsP = anyLive
+    ? fetch("https://api.hyperliquid.xyz/info", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "allMids" }) })
+        .then(function (r) { return r.json(); }).catch(function () { return null; })
+    : Promise.resolve(null);
+  midsP.then(function (mids) {
+    _openTrades.forEach(function (t, i) {
+      var live = t.venue && t.venue !== "PAPER";
+      if (live) {
+        var vpx = mids ? parseFloat(mids[t.asset.toUpperCase()]) : NaN;
+        if (isFinite(vpx)) paintOpenLive(t, i, vpx);
+        // venue price unavailable → show nothing rather than risk a wrong-asset price
+        return;
+      }
+      fetch("https://api.binance.com/api/v3/ticker/price?symbol=" + encodeURIComponent(t.asset.toUpperCase() + "USDT"))
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) { if (j && j.price) paintOpenLive(t, i, parseFloat(j.price)); })
+        .catch(function () {});
+    });
   });
 }
 
@@ -1014,6 +1061,12 @@ function renderWire(d) {
     });
     if (w.at) h += "<div class='src' style='margin-top:8px'>Scraped " + new Date(w.at).toLocaleString("en-GB", Object.assign({ day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }, TZ)) + " SAST · refreshed each report cycle</div>";
     $("wire-news").innerHTML = h;
+  } else if (posts.length) {
+    // headline scraper publishes with each report cycle — between cycles, let the X column carry the section
+    $("wire-news").classList.add("hidden");
+    document.querySelector(".wire-grid").style.gridTemplateColumns = "1fr";
+  } else {
+    $("wire-news").innerHTML = "<span class='src'>The headline desk publishes with each report cycle — back at the next report (00:00 / 06:00 / 12:00 / 18:00 SAST).</span>";
   }
   if (posts.length) {
     var x = "<div class='wire-h'>from the X watch-list</div>";
