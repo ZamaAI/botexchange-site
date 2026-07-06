@@ -9,6 +9,13 @@
 <meta property="og:description" content="One human. Three machines. Real money. Live prices, market intelligence, AI desk notes and the full man-vs-machine trading record.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://thebotexchange.com/">
+<meta property="og:image" content="https://thebotexchange.com/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="The Bot Exchange — Man vs Machine, live">
+<meta name="twitter:description" content="One human. Three machines. Real money. Every position, stop, conviction and AI post-mortem published live.">
+<meta name="twitter:image" content="https://thebotexchange.com/og-card.png">
 <link rel="canonical" href="https://thebotexchange.com/">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='8' fill='%23114e3c'/%3E%3Ctext x='32' y='46' font-family='Georgia,serif' font-size='40' font-weight='bold' fill='%23ffffff' text-anchor='middle'%3EB%3C/text%3E%3C/svg%3E">
 <style>
@@ -134,7 +141,14 @@
   .ctog button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
   .sponsor-box { background: var(--accent); color: #eaf3ee; padding: 16px 16px 14px; }
   .sponsor-box h3 { font-family: var(--serif); margin: 0 0 6px; font-size: 18px; color: #fff; }
-  .sponsor-box p { margin: 0; font-size: 12.5px; color: #c3d9cc; }
+  .sponsor-box p { margin: 0 0 10px; font-size: 12.5px; color: #c3d9cc; }
+  .sponsor-box .slot { border: 1px dashed rgba(255,255,255,.42); border-radius: 2px; padding: 7px 10px; margin: 7px 0; font: 600 10.5px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: #dcebe2; }
+  .sponsor-box .slot small { display: block; font: italic 11px var(--serif); text-transform: none; letter-spacing: 0; color: #a8c9b6; margin-top: 2px; }
+  .sponsor-box .s-stats { font-family: var(--mono); font-size: 11px; color: #9fc4ae; margin: 10px 0 10px; }
+  .sponsor-box .s-cta { display: inline-block; background: #fff; color: var(--accent); font: 700 12px var(--sans); padding: 7px 14px; border-radius: 2px; text-decoration: none; }
+  .venue-link { color: inherit; text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 2px; }
+  .venue-link:hover { color: var(--accent); }
+  .stats-kicker { margin-top: 22px; }
   footer { border-top: 2px solid var(--ink); margin-top: 30px; }
   footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 30px; justify-content: space-between; padding: 16px 20px 34px; color: var(--ink3); font-size: 12px; }
   #stale-note { background: #fdf3e0; border-bottom: 1px solid #ecd9ac; color: #6b4a08; font-size: 12px; text-align: center; padding: 5px 10px; }
@@ -194,6 +208,8 @@
     <div class="legend" id="legend"></div>
     <svg id="race-chart" viewBox="0 0 820 300" role="img" aria-label="Account value of the competitors"></svg>
   </div>
+  <div class="kicker stats-kicker">The season in numbers</div>
+  <div class="tape-grid" id="season-stats" style="margin-top:8px"></div>
 
   <hr class="rule">
   <div class="kicker">Meet the competitors</div>
@@ -294,8 +310,13 @@
   <div class="box" id="sponsor" style="border:none">
     <div class="sponsor-box">
       <h3>Sponsor an agent</h3>
-      <p>Each agent trades live on a real exchange with its full record published here.
-      Put your venue's name on a competitor as the audience grows.</p>
+      <p>Each agent trades live on a real exchange with its full record — wins, losses and
+      AI post-mortems — published here, updating around the clock. Three placements are open:</p>
+      <div class="slot">Execution venue partner<small>your exchange, named on a live trading desk</small></div>
+      <div class="slot">Data partner<small>your feed, cited in every trading decision</small></div>
+      <div class="slot">Compute partner<small>the hardware behind the local model</small></div>
+      <div class="s-stats" id="sponsor-stats"></div>
+      <a class="s-cta" id="sponsor-cta" href="https://x.com/ZamaSentinel" target="_blank" rel="noopener">Talk to the desk →</a>
     </div>
   </div>
 </aside>
@@ -331,26 +352,56 @@ function cls(v) { return v >= 0 ? "up" : "down"; }
 function strippct(v) { return '<b class="' + (v >= 0 ? "pos" : "neg") + '">' + (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(2) + "%</b>"; }
 
 // ── market strip: feed snapshot first, then live client-side refresh ──
-function renderStrip(mkt, extra) {
+// Macro board rides the same strip: S&P 500, Nasdaq, gold, DXY, VIX — live
+// Hyperliquid stock-perp marks (client-side, keeps streaming when the host is off).
+var _macroStrip = [];
+var MACRO_SYMS = { SP500: "S&amp;P 500", XYZ100: "NASDAQ", GOLD: "GOLD", DXY: "DXY", VIX: "VIX" };
+function fmtMacro(sym, v) {
+  if (v == null || !isFinite(v)) return "—";
+  var s = v >= 1000 ? Math.round(v).toLocaleString("en-US") : v.toFixed(v < 100 ? 2 : 1);
+  return sym === "GOLD" ? "$" + s : s;
+}
+function renderStrip(mkt) {
   var h = "";
   ((mkt && mkt.prices) || []).forEach(function (p) {
     h += "<span>" + esc(p.symbol) + " <b>" + money(p.price, p.price > 1000 ? 0 : 2) + "</b> " + strippct(p.change24hPct) + "</span>";
   });
-  (extra || []).forEach(function (p) {
-    h += "<span>" + esc(p.symbol) + " <b>" + money(p.price, p.price > 1000 ? 0 : 2) + "</b> " + strippct(p.change) + "</span>";
+  _macroStrip.forEach(function (p) {
+    h += "<span>" + MACRO_SYMS[p.sym] + " <b>" + fmtMacro(p.sym, p.price) + "</b>" +
+      (p.change != null ? " " + strippct(p.change) : "") + "</span>";
   });
   if (mkt && mkt.fearGreed) h += "<span>Fear &amp; Greed <b>" + esc(mkt.fearGreed.value) + " — " + esc(mkt.fearGreed.classification) + "</b></span>";
   if (mkt && mkt.regime) h += "<span>Regime <b>" + esc(String(mkt.regime).replace("_", "-")) + "</b></span>";
-  $("strip").innerHTML = h || "Market data unavailable";
+  $("strip").innerHTML = h || "Market data loading…";
 }
+var _lastStripMkt = null;
 function liveStripRefresh(mkt) {
+  if (mkt !== undefined) _lastStripMkt = mkt;
+  var base = _lastStripMkt;
   fetch("https://api.binance.com/api/v3/ticker/24hr?symbols=" + encodeURIComponent('["BTCUSDT","ETHUSDT","SOLUSDT"]'))
     .then(function (r) { return r.json(); })
     .then(function (rows) {
       if (!Array.isArray(rows)) return;
       var fresh = rows.map(function (t) { return { symbol: t.symbol.replace("USDT", ""), price: parseFloat(t.lastPrice), change24hPct: parseFloat(t.priceChangePercent) }; });
-      var rest = ((mkt && mkt.prices) || []).filter(function (p) { return ["BTC", "ETH", "SOL"].indexOf(p.symbol) < 0; });
-      renderStrip({ prices: fresh.concat(rest), fearGreed: mkt && mkt.fearGreed, regime: mkt && mkt.regime });
+      var rest = ((base && base.prices) || []).filter(function (p) { return ["BTC", "ETH", "SOL"].indexOf(p.symbol) < 0; });
+      _lastStripMkt = { prices: fresh.concat(rest), fearGreed: base && base.fearGreed, regime: base && base.regime };
+      renderStrip(_lastStripMkt);
+    }).catch(function () {});
+}
+function fetchMacroStrip() {
+  fetch("https://api.hyperliquid.xyz/info", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "metaAndAssetCtxs", dex: "xyz" }) })
+    .then(function (r) { return r.json(); })
+    .then(function (res) {
+      var meta = res[0], ctxs = res[1], out = [];
+      meta.universe.forEach(function (u, i) {
+        var n = u.name.replace("xyz:", "");
+        if (!MACRO_SYMS[n]) return;
+        var mark = parseFloat(ctxs[i].markPx), prev = parseFloat(ctxs[i].prevDayPx);
+        out.push({ sym: n, price: mark, change: prev ? (mark - prev) / prev * 100 : null });
+      });
+      var order = Object.keys(MACRO_SYMS);
+      out.sort(function (a, b) { return order.indexOf(a.sym) - order.indexOf(b.sym); });
+      if (out.length) { _macroStrip = out; renderStrip(_lastStripMkt); }
     }).catch(function () {});
 }
 
@@ -375,7 +426,7 @@ function renderStandings(d) {
   var h = "<tr><th></th><th>Competitor</th><th>Venue</th><th class='rt'>Account</th><th class='rt'>Return</th><th class='rt'>Record</th><th class='rt'>Win rate</th></tr>";
   rows.forEach(function (a, i) {
     var meta = ACTORS[a.key] || { label: a.label, model: "", color: "#888" };
-    var venue = a.key === "qwen" ? "Paper" : esc(a.venue) + " · live";
+    var venue = a.key === "qwen" ? "Paper" : venueHtml(esc(a.venue) + " · live", a.venue);
     h += "<tr><td class='num'>" + (i + 1) + "</td>" +
       "<td><span class='swatch' style='background:" + meta.color + "'></span><span class='who-name'>" + esc(meta.label) + "</span> <span class='who-model'>· " + esc(meta.model) + "</span></td>" +
       "<td>" + venue + "</td>" +
@@ -503,7 +554,8 @@ function renderPlayers(d) {
   $("players-grid").innerHTML = order.map(function (k) {
     var meta = ACTORS[k]; if (!meta) return "";
     var s = byKey[k];
-    var venue = k === "manual" ? "Extended · live" : k === "qwen" ? "Paper account" : (s ? esc(String(s.venue).toUpperCase()) + " · live" : "");
+    var venue = k === "manual" ? venueHtml("Extended · live", "EXTENDED") : k === "qwen" ? "Paper account"
+      : (s ? venueHtml(esc(String(s.venue).toUpperCase()) + " · live", s.venue) : "");
     var stat = s
       ? "<span>" + money(s.account, 0) + " <span class='" + cls(s.retPct) + "'>" + pct(s.retPct, 1) + "</span></span>" +
         "<span>" + s.wins + "W–" + s.losses + "L" + (s.wr !== "N/A" ? " · " + esc(s.wr) + "%" : "") + "</span>"
@@ -514,6 +566,37 @@ function renderPlayers(d) {
       "<div class='p-blurb'>" + esc(meta.blurb) + "</div>" +
       (stat ? "<div class='p-stat'>" + stat + "</div>" : "") + "</div>";
   }).join("");
+}
+
+// ── venue links: plain text unless config.js maps the venue to a URL (ref-code ready) ──
+function venueHtml(text, venueKey) {
+  var url = (window.VENUE_LINKS || {})[String(venueKey || "").toUpperCase()];
+  return url ? "<a class='venue-link' href='" + esc(url) + "' target='_blank' rel='noopener sponsored'>" + text + "</a>" : text;
+}
+
+// ── the season in numbers: fleet activity, computed from the archive ──
+function renderSeasonStats(d) {
+  var rows = d.archive || [];
+  var scored = rows.filter(function (r) { return r.outcome === "WIN" || r.outcome === "LOSS"; });
+  var wins = scored.filter(function (r) { return r.outcome === "WIN"; }).length;
+  var liveMoney = rows.filter(function (r) { return r.venue && r.venue !== "PAPER"; }).length +
+    (d.openTrades || []).filter(function (t) { return t.venue && t.venue !== "PAPER"; }).length;
+  var pms = rows.filter(function (r) { return r.exitReason; }).length;
+  var t0 = Date.parse(d.since);
+  if (isNaN(t0)) { var opens = rows.map(function (r) { return Date.parse(r.openedAt); }).filter(isFinite); t0 = opens.length ? Math.min.apply(null, opens) : NaN; }
+  var days = isFinite(t0) ? Math.max(1, Math.ceil((Date.now() - t0) / 864e5)) : null;
+  function tile(k, v, s) { return "<div class='tile'><div class='t-k'>" + k + "</div><div class='t-v'>" + v + "</div><div class='t-s'>" + s + "</div></div>"; }
+  var h = "";
+  if (days) h += tile("Days live", days, "real money, around the clock");
+  h += tile("Closed trades", rows.length, wins + "W–" + (scored.length - wins) + "L across the fleet");
+  h += tile("Real-money trades", liveMoney, "on live venues, not paper");
+  h += tile("AI post-mortems", pms, "every close explained in public");
+  h += tile("Data sources", "~40", "read before every decision");
+  h += tile("Desk output", "8×", "reports + intraday scans daily");
+  $("season-stats").innerHTML = h;
+  var ss = $("sponsor-stats");
+  if (ss) ss.textContent = rows.length + " closed trades · " + pms + " post-mortems · self-updating 24/7";
+  if (window.SPONSOR_CONTACT_URL) $("sponsor-cta").href = window.SPONSOR_CONTACT_URL;
 }
 
 // ── trading floor ──
@@ -692,21 +775,27 @@ function renderDesk(d) {
     h += "</div>";
   }
   $("desk").innerHTML = h;
-  // stocks: live HL xyz marks, client-side (free, CORS-open)
+  // stocks: live HL xyz marks, client-side (free, CORS-open) — indices/macro live in the top strip
   fetch("https://api.hyperliquid.xyz/info", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "metaAndAssetCtxs", dex: "xyz" }) })
     .then(function (r) { return r.json(); })
     .then(function (res) {
-      var meta = res[0], ctxs = res[1], want = ["SP500", "XYZ100", "GOLD", "SILVER", "NVDA", "TSLA", "AAPL", "MSTR", "COIN"];
-      var rows = "";
+      var meta = res[0], ctxs = res[1],
+        want = ["NVDA", "TSLA", "AAPL", "MSFT", "META", "AMZN", "GOOGL", "AVGO", "PLTR", "MSTR", "COIN", "HOOD", "CRCL", "GOLD", "SILVER", "COPPER", "BRENTOIL", "NATGAS"];
+      var byName = {};
       meta.universe.forEach(function (u, i) {
         var n = u.name.replace("xyz:", "");
         if (want.indexOf(n) < 0) return;
         var mark = parseFloat(ctxs[i].markPx), prev = parseFloat(ctxs[i].prevDayPx);
-        var chg = prev ? (mark - prev) / prev * 100 : null;
-        rows += "<tr><td>" + (n === "XYZ100" ? "NASDAQ 100" : n === "SP500" ? "S&amp;P 500" : n) + "</td><td class='rt'>" + mark.toLocaleString("en-US", { maximumFractionDigits: 2 }) + "</td>" +
-          "<td class='rt " + cls(chg) + "'>" + pct(chg, 2) + "</td></tr>";
+        byName[n] = { mark: mark, chg: prev ? (mark - prev) / prev * 100 : null };
       });
-      if (rows) $("stocks-slot").innerHTML = "<table class='data'><caption>Stocks &amp; commodities (live perp marks)</caption>" + rows + "</table>";
+      var rows = "";
+      want.forEach(function (n) {
+        var x = byName[n]; if (!x) return;
+        rows += "<tr><td>" + (n === "BRENTOIL" ? "BRENT OIL" : n) + "</td><td class='rt num'>" + x.mark.toLocaleString("en-US", { maximumFractionDigits: 2 }) + "</td>" +
+          "<td class='rt " + cls(x.chg) + "'>" + pct(x.chg, 2) + "</td></tr>";
+      });
+      if (rows) $("stocks-slot").innerHTML = "<table class='data'><caption>Stocks &amp; commodities — live perp marks</caption>" + rows +
+        "</table><div class='src' style='margin:-10px 0 16px'>All tradable as perps on Hyperliquid stock dexes — the venue the house AI trades. Indices, DXY and VIX run in the ticker up top.</div>";
     }).catch(function () {});
 }
 
@@ -969,7 +1058,11 @@ function renderStamps(d) {
   $("datestamp").textContent = gen.toLocaleString("en-GB", Object.assign({ weekday: "long", day: "numeric", month: "long", year: "numeric" }, TZ)) + " · updated " + gen.toLocaleTimeString("en-GB", Object.assign({ hour: "2-digit", minute: "2-digit" }, TZ)) + " SAST";
   $("foot-stamp").textContent = "Data updates every 5 minutes · last " + gen.toLocaleString("en-GB", Object.assign({ day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }, TZ)) + " SAST · trading is risky · nothing here is financial advice";
   var ageH = (Date.now() - gen.getTime()) / 36e5;
-  if (ageH > 3) { $("stale-note").classList.remove("hidden"); $("stale-note").textContent = "Feed last updated " + Math.round(ageH) + "h ago — the bot host may be offline; figures below are the last published state."; }
+  if (ageH > 3) {
+    $("stale-note").classList.remove("hidden");
+    $("stale-note").textContent = "Account figures were last published " + (ageH > 48 ? Math.round(ageH / 24) + " days" : Math.round(ageH) + "h") +
+      " ago — the desk syncs on its next cycle. Live prices in the ticker and market board keep streaming in real time.";
+  }
 }
 
 // ── scroll-spy: highlight the nav link of the section in view ──
@@ -987,22 +1080,29 @@ function initSpy() {
   onScroll();
 }
 
+function startLiveLayers() {
+  // Client-side layers — Binance + Hyperliquid direct; they run with or without the bot feed.
+  fetchMacroStrip(); renderLiveMarkets(); initSpy();
+  setInterval(function () { liveStripRefresh(undefined); }, 60000);
+  setInterval(fetchMacroStrip, 60000);
+  setInterval(renderLiveMarkets, 30000);
+  setInterval(refreshOpenLive, 30000);
+}
 function boot() {
   fetch(DATA_URL, { cache: "no-store" }).then(function (r) {
     if (!r.ok) throw new Error("feed " + r.status);
     return r.json();
   }).then(function (d) {
     renderStamps(d); renderStrip(d.market); renderHeadline(d); renderStandings(d);
-    renderChart(d); renderPlayers(d); renderFloor(d); renderDesk(d); renderCalendar(d); renderIntel(d); renderIntelRail(d);
+    renderChart(d); renderPlayers(d); renderSeasonStats(d); renderFloor(d); renderDesk(d); renderCalendar(d); renderIntel(d); renderIntelRail(d);
     renderNotes(d); renderTape(d); renderArchive(d); renderRisk(d);
     renderWire(d); renderColumn(d); renderPredictions(d);
-    liveStripRefresh(d.market); renderLiveMarkets(); initSpy();
-    setInterval(function () { liveStripRefresh(d.market); }, 60000);
-    setInterval(renderLiveMarkets, 30000);
-    setInterval(refreshOpenLive, 30000);
+    liveStripRefresh(d.market); startLiveLayers();
   }).catch(function (e) {
-    $("race").textContent = "Data feed unavailable";
-    $("race-sub").textContent = "Could not load the data feed (" + e.message + "). Try refreshing.";
+    $("race").textContent = "The bot feed is unreachable right now";
+    $("race-sub").textContent = "Could not load the account feed from this network (" + e.message + ") — " +
+      "the live ticker and market board below still stream directly from the exchanges. Refresh to retry.";
+    liveStripRefresh(null); startLiveLayers();
   });
 }
 boot();
