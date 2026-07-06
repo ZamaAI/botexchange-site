@@ -240,6 +240,7 @@
   <p class="sub">Live board straight from the exchanges — always on, even between bot updates — plus a condensed view of the ~40 sources feeding every trading decision.</p>
   <div class="lm-wrap"><table class="data" id="live-markets"><tr><td><span class="src">Loading live prices…</span></td></tr></table></div>
   <div class="mini-grid" id="desk"></div>
+  <div id="top-traders"></div>
 
   <hr class="rule">
   <div class="kicker">News &amp; social — what the desk is reading</div>
@@ -846,6 +847,34 @@ function renderDesk(d) {
     }).catch(function () {});
 }
 
+// ── top traders on the venue (MetaMask-competition style): the venue's best public
+// accounts by 7-day PnL and their LIVE books — from the bot's report-stashed leaderboard
+// sweep (flat protocol/MM vaults filtered bot-side; only real books shown) ──
+function renderTopTraders(d) {
+  var t = d.marketsDesk && d.marketsDesk.topTraders;
+  if (!t || !t.length) return;
+  var kfmt = function (k) {
+    if (k == null || !isFinite(k)) return "—";
+    var a = Math.abs(k);
+    return (k < 0 ? "−" : "") + "$" + (a >= 1000 ? (a / 1000).toFixed(1) + "M" : Math.round(a) + "k");
+  };
+  var h = "<div class='wire-h' style='margin-top:20px'>Top traders on Hyperliquid — 7-day P&amp;L, live books only</div>";
+  t.forEach(function (tr, i) {
+    var who = tr.name ? esc(tr.name) : tr.addr.slice(0, 6) + "…" + tr.addr.slice(-4);
+    h += "<div class='titem'><div class='l1'><span class='num' style='color:var(--ink3)'>" + (i + 1) + "</span>" +
+      "<a class='venue-link num' style='font-weight:700' target='_blank' rel='noopener' href='https://hypurrscan.io/address/" + esc(tr.addr) + "'>" + who + "</a>" +
+      "<span class='src'>account $" + esc(tr.acctM) + "M</span>" +
+      "<span class='outc'><span class='" + cls(tr.weekPnlK) + "'>" + (tr.weekPnlK >= 0 ? "+" : "") + kfmt(tr.weekPnlK) + " 7d</span>" +
+      (tr.weekRoi != null ? " <span class='src'>(" + (tr.weekRoi >= 0 ? "+" : "") + esc(tr.weekRoi) + "%)</span>" : "") + "</span></div>" +
+      "<div class='lvls'>" + tr.positions.map(function (p) {
+        return "<b>" + esc(p.coin) + "</b> " + esc(p.side) + " " + kfmt(p.usdK) + (p.lev ? " " + esc(p.lev) + "x" : "") +
+          " (uPnL " + (p.upnlK >= 0 ? "+" : "") + kfmt(p.upnlK) + ")";
+      }).join(" · ") + "</div></div>";
+  });
+  h += "<div class='src' style='margin-top:6px'>Public leaderboard + on-chain positions, straight from the venue — the same smart-money read the agents get in their reports. Refreshed each report cycle.</div>";
+  $("top-traders").innerHTML = h;
+}
+
 // ── calendar / intelligence / stamps ──
 function renderCalendar(d) {
   var items = d.calendar || [];
@@ -1147,7 +1176,7 @@ function boot() {
     return r.json();
   }).then(function (d) {
     renderStamps(d); renderStrip(d.market); renderHeadline(d); renderStandings(d);
-    renderChart(d); renderPlayers(d); renderSeasonStats(d); renderFloor(d); renderDesk(d); renderCalendar(d); renderIntel(d); renderIntelRail(d);
+    renderChart(d); renderPlayers(d); renderSeasonStats(d); renderFloor(d); renderDesk(d); renderTopTraders(d); renderCalendar(d); renderIntel(d); renderIntelRail(d);
     renderNotes(d); renderTape(d); renderArchive(d); renderRisk(d);
     renderWire(d); renderColumn(d); renderPredictions(d);
     liveStripRefresh(d.market); startLiveLayers();
