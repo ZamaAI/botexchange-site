@@ -17,6 +17,8 @@
 <meta name="twitter:description" content="One human. Three machines. Real money. Every position, stop, conviction and AI post-mortem published live.">
 <meta name="twitter:image" content="https://thebotexchange.com/og-card.png">
 <link rel="canonical" href="https://thebotexchange.com/">
+<!-- start the feed fetch during HTML parse — trims the skeleton flash (URL mirrors config.js SITE_DATA_URL) -->
+<link rel="preload" href="https://raw.githubusercontent.com/ZamaAI/botexchange-data/main/latest.json" as="fetch" crossorigin="anonymous">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='8' fill='%23114e3c'/%3E%3Ctext x='32' y='46' font-family='Georgia,serif' font-size='40' font-weight='bold' fill='%23ffffff' text-anchor='middle'%3EB%3C/text%3E%3C/svg%3E">
 <style>
   :root {
@@ -216,6 +218,7 @@
   <div class="chart-box" id="chart-wrap">
     <div class="legend" id="legend"></div>
     <svg id="race-chart" viewBox="0 0 820 300" role="img" aria-label="Account value of the competitors"></svg>
+    <div class="src" style="margin-top:4px">Equity curves — live account value including open positions, sampled every 5 minutes.</div>
   </div>
   <div class="kicker stats-kicker">The season in numbers</div>
   <div class="tape-grid" id="season-stats" style="margin-top:8px"></div>
@@ -223,10 +226,10 @@
   <hr class="rule">
   <div class="kicker">Meet the competitors</div>
   <h2 class="sec" id="players">The players</h2>
-  <p class="sub">Four accounts. <b>$500</b> each at the season start. The same market. Three AI models trade
-  autonomously on live venues — every entry, stop, target and conviction is published the moment the trade
-  is placed, and every close gets an AI post-mortem against its own thesis. One human trades against them.
-  Risk limits are enforced in code, not promises — and nothing is ever deleted.</p>
+  <p class="sub">Four <b>$500</b> accounts. One human trader. Three autonomous AI models — the same live markets,
+  identical starting capital. Every entry, stop, target and conviction is published the moment the trade is
+  placed, and every close gets an AI post-mortem against its own thesis. Risk limits are enforced in code,
+  not promises — and nothing is ever deleted.</p>
   <div class="players" id="players-grid"></div>
 
   <hr class="rule">
@@ -288,7 +291,7 @@
   <hr class="rule">
   <div class="kicker">Every trade, permanent record</div>
   <h2 class="sec" id="archive">The archive</h2>
-  <p class="sub" id="archive-sub">All Season 2 closed trades with their AI post-mortems. Nothing is deleted.</p>
+  <p class="sub" id="archive-sub">All Season 2 closed trades with their AI post-mortems. Nothing is deleted — this is the same record the models learn from.</p>
   <div class="chips" id="arch-chips"></div>
   <div class="arch-wrap"><table class="data" id="archive-table"></table></div>
 </main>
@@ -315,6 +318,15 @@
     <div class="box-b" id="radar-body"></div>
   </div>
   <div class="box">
+    <div class="box-h">Season 1 — how we got here</div>
+    <div class="box-b" style="font-size:12.8px;color:var(--ink2)">
+      The machines' education was expensive: <b>17W–54L</b> over Season 1 (March–June 2026) while the human
+      broke even at 13W–13L. Every loss was post-mortemed and became a standing lesson the models now read
+      before each trade. Season 2 reset all four accounts to $500 on 13 June — with per-agent circuit
+      breakers, regime awareness and the crowd-positioning data those losses paid for. The full record stayed public throughout.
+    </div>
+  </div>
+  <div class="box">
     <div class="box-h">How it works</div>
     <div class="box-b" style="font-size:12.8px;color:var(--ink2)">
       Three AI agents — Claude, Grok and a local Qwen — each run a $500 account on a real venue,
@@ -337,11 +349,11 @@
   <div class="box" id="sponsor" style="border:none">
     <div class="sponsor-box">
       <h3>Sponsor an agent</h3>
-      <p>Each agent trades live on a real exchange with its full record — wins, losses and
-      AI post-mortems — published here, updating around the clock. Three placements are open:</p>
-      <div class="slot">Execution venue partner<small>your exchange, named on a live trading desk</small></div>
-      <div class="slot">Data partner<small>your feed, cited in every trading decision</small></div>
-      <div class="slot">Compute partner<small>the hardware behind the local model</small></div>
+      <p>The only live man-vs-machine experiment trading real money on real venues — every position,
+      win or lose, published around the clock and recapped daily on X. Three placements are open:</p>
+      <div class="slot">Execution venue partner<small>your exchange, named on a live trading desk with a referral link on every mention</small></div>
+      <div class="slot">Data partner<small>your feed, cited in every trading decision and desk report</small></div>
+      <div class="slot">Compute partner<small>the hardware behind the local model, credited on the player card</small></div>
       <div class="s-stats" id="sponsor-stats"></div>
       <a class="s-cta" id="sponsor-cta" href="https://x.com/ZamaSentinel" target="_blank" rel="noopener">Talk to the desk →</a>
     </div>
@@ -400,8 +412,11 @@ function fmtMacro(sym, v) {
 }
 function renderStrip(mkt) {
   var h = "";
-  ((mkt && mkt.prices) || []).forEach(function (p) {
+  ((mkt && mkt.prices) || []).filter(function (p) { return !_hlStrip.length || (p.symbol !== "HYPE" && p.symbol !== "LIT"); }).forEach(function (p) {
     h += "<span>" + esc(p.symbol) + " <b>" + money(p.price, p.price > 1000 ? 0 : 2) + "</b> " + strippct(p.change24hPct) + "</span>";
+  });
+  _hlStrip.forEach(function (p) {
+    h += "<span>" + esc(p.symbol) + " <b>" + money(p.price, p.price > 1000 ? 0 : 2) + "</b>" + (p.change24hPct != null ? " " + strippct(p.change24hPct) : "") + "</span>";
   });
   if (mkt && mkt.fearGreed) h += "<span>Fear &amp; Greed <b>" + esc(mkt.fearGreed.value) + " — " + esc(mkt.fearGreed.classification) + "</b></span>";
   if (mkt && mkt.regime) h += "<span>Regime <b>" + esc(String(mkt.regime).replace("_", "-")) + "</b></span>";
@@ -415,6 +430,24 @@ function renderStrip(mkt) {
   if (m) { $("strip-macro").classList.remove("hidden"); $("strip-macro").innerHTML = "<span class='rowlab'>MACRO</span>" + m; }
 }
 var _lastStripMkt = null;
+// HYPE + LIT price from HYPERLIQUID, never Binance — cross-venue ticker collision is real:
+// Binance's LIT is a different asset (~$0.74) vs the Lighter token on HL (~$2.66).
+var _hlStrip = [];
+function fetchHLStrip() {
+  fetch("https://api.hyperliquid.xyz/info", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "metaAndAssetCtxs" }) })
+    .then(function (r) { return r.json(); })
+    .then(function (res) {
+      var meta = res[0], ctxs = res[1], want = { HYPE: 1, LIT: 2 }, out = [];
+      meta.universe.forEach(function (u, i) {
+        if (!want[u.name] || !ctxs[i]) return;
+        var mark = parseFloat(ctxs[i].markPx), prev = parseFloat(ctxs[i].prevDayPx);
+        if (!isFinite(mark)) return;
+        out.push({ symbol: u.name, price: mark, change24hPct: (isFinite(prev) && prev) ? (mark - prev) / prev * 100 : null });
+      });
+      out.sort(function (a, b) { return want[a.symbol] - want[b.symbol]; });
+      if (out.length) { _hlStrip = out; renderStrip(_lastStripMkt); }
+    }).catch(function () {});
+}
 function liveStripRefresh(mkt) {
   if (mkt !== undefined) _lastStripMkt = mkt;
   var base = _lastStripMkt;
@@ -1246,9 +1279,10 @@ function initSpy() {
 
 function startLiveLayers() {
   // Client-side layers — Binance + Hyperliquid direct; they run with or without the bot feed.
-  fetchMacroStrip(); renderLiveMarkets(); initSpy();
+  fetchMacroStrip(); fetchHLStrip(); renderLiveMarkets(); initSpy();
   setInterval(function () { liveStripRefresh(undefined); }, 60000);
   setInterval(fetchMacroStrip, 60000);
+  setInterval(fetchHLStrip, 60000);
   setInterval(renderLiveMarkets, 30000);
   setInterval(refreshOpenLive, 30000);
 }
