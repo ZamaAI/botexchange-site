@@ -99,7 +99,7 @@
   .rule-li:last-child { border-bottom: none; }
   .rule-li::before { content: "§"; position: absolute; left: 0; color: var(--accent); font-family: var(--serif); }
 
-  .mini-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 0 28px; }
+  .mini-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 0 28px; align-items: start; }
   table.data { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-bottom: 16px; }
   table.data caption { text-align: left; font-weight: 700; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; padding-bottom: 5px; color: var(--ink); border-bottom: 2px solid var(--ink); }
   table.data td { padding: 6px 4px; border-bottom: 1px solid var(--line2); }
@@ -203,7 +203,7 @@
 </div></header>
 <nav class="sections"><div class="wrap">
   <a href="#race">The Race</a><a href="#players">Players</a><a href="#floor">Trading Floor</a><a href="#markets">Markets</a>
-  <a href="#wire">Wire</a><a href="#whales">Whale Feed</a><a href="#intel">Intelligence</a><a href="#desknotes">Desk Notes</a>
+  <a href="#whales">Whale Feed</a><a href="#wire">Wire</a><a href="#intel">Intelligence</a><a href="#desknotes">Desk Notes</a>
   <a href="#tape">The Tape</a><a href="#archive">Archive</a><a href="#sponsor">Sponsor</a>
 </div></nav>
 
@@ -232,7 +232,7 @@
   <hr class="rule">
   <div class="kicker">Live book</div>
   <h2 class="sec" id="floor">The trading floor</h2>
-  <p class="sub">Every position is published with its stop, target and conviction — and every close gets an AI post-mortem against its own thesis.</p>
+  <p class="sub" style="max-width:none">Every position is published with stop, target and conviction — every close gets an AI post-mortem.</p>
   <div class="floor">
     <div id="open-col"><span class="skel">Loading the live book…</span></div>
     <div id="closes-col"><span class="skel">Loading the latest closes…</span></div>
@@ -246,6 +246,12 @@
   <div class="mini-grid" id="desk"></div>
   <div id="top-traders"></div>
 
+  <div class="kicker" style="margin-top:24px">Smart money</div>
+  <h2 class="sec" id="whales">The whale feed</h2>
+  <p class="sub">Real trades from whale wallets the desk follows on-chain — per-coin net flow and the largest individual moves, via Cielo. The same feed the agents read before every trade.</p>
+  <div id="whale-flow"></div>
+  <div class="lm-wrap"><table class="data" id="whale-rows"><tr><td><span class="src">The whale desk publishes with each report cycle (00:00 / 06:00 / 12:00 / 18:00 SAST).</span></td></tr></table></div>
+
   <hr class="rule">
   <div class="kicker">News &amp; social — what the desk is reading</div>
   <h2 class="sec" id="wire">The wire</h2>
@@ -254,13 +260,6 @@
     <div id="wire-news"><span class="src">Headlines refresh with each report cycle.</span></div>
     <div id="wire-x"></div>
   </div>
-
-  <hr class="rule">
-  <div class="kicker">Smart money</div>
-  <h2 class="sec" id="whales">The whale feed</h2>
-  <p class="sub">Real trades from whale wallets the desk follows on-chain — per-coin net flow and the largest individual moves, via Cielo. The same feed the agents read before every trade.</p>
-  <div id="whale-flow"></div>
-  <div class="lm-wrap"><table class="data" id="whale-rows"><tr><td><span class="src">The whale desk publishes with each report cycle (00:00 / 06:00 / 12:00 / 18:00 SAST).</span></td></tr></table></div>
 
   <hr class="rule">
   <div class="kicker" id="intel-kicker">Exchange intelligence</div>
@@ -666,7 +665,7 @@ function renderFloor(d) {
   var open = d.openTrades || [], waits = d.awaiting || [];
   _openTrades = open;
   var liveOpen = open.filter(function (t) { return t.venue !== "PAPER"; });
-  var h = "";
+  var h = "<div class='wire-h'>Open positions</div>";
   if (!liveOpen.length) { var fnr = nextReport(); h += "<div class='flatnote'><b>Live venues are flat.</b> No open real-money risk — the agents are waiting for an edge. Next decision cycle " + fnr.label + " (in " + fnr.inStr + ").</div>"; }
   open.forEach(function (t, i) {
     var e = t.entry, s = t.stop, tg = t.target;
@@ -691,7 +690,7 @@ function renderFloor(d) {
       (t.trigger ? "<div class='trig'><b>Trigger:</b> " + esc(t.trigger) + "</div>" : "") +
       "<div class='why'>Anticipatory entries are the fleet's #1 loss cause — agents wait for the trigger to print.</div></div>";
   });
-  $("open-col").innerHTML = h || "<div class='flatnote'>Nothing on the book.</div>";
+  $("open-col").innerHTML = h;
   Array.prototype.forEach.call($("open-col").querySelectorAll(".th-more"), function (b) {
     var t = $("open-col").querySelector(".why[data-th='" + b.getAttribute("data-th") + "']");
     if (t && t.scrollHeight <= t.clientHeight + 4) { b.style.display = "none"; return; }
@@ -700,8 +699,8 @@ function renderFloor(d) {
       t.classList.toggle("clamp"); b.textContent = open ? "read more" : "show less";
     };
   });
-  var c = "";
-  (d.recentCloses || []).slice(0, 6).forEach(function (r) {
+  var c = "<div class='wire-h'>Recent closes — with AI post-mortems</div>";
+  (d.recentCloses || []).slice(0, 3).forEach(function (r) {
     var out = r.outcome === "BREAKEVEN" ? "<span class='outc' style='color:var(--ink3)'>BREAKEVEN</span>"
       : "<span class='outc " + (r.outcome === "WIN" ? "up" : "down") + "'>" + (r.pct != null ? pct(r.pct, 1) : esc(r.outcome)) + "</span>";
     var why = (r.exitReason || "").replace(/^[A-Z]+ [A-Z0-9]+: /, "").replace(/\[[^\]]*\]/g, "");
@@ -711,7 +710,7 @@ function renderFloor(d) {
       actorTag(r.actor) + out + "</div>" +
       (why ? "<div class='why'>" + esc(smartTrim(why, 220)) + "</div>" : "") + "</div>";
   });
-  $("closes-col").innerHTML = c || "<div class='flatnote'>No closed trades yet.</div>";
+  $("closes-col").innerHTML = (d.recentCloses || []).length ? c : c + "<div class='flatnote'>No closed trades yet.</div>";
   refreshOpenLive();
 }
 
@@ -890,7 +889,9 @@ function renderTopTraders(d) {
       "<span class='outc'><span class='" + cls(tr.weekPnlK) + "'>" + (tr.weekPnlK >= 0 ? "+" : "") + kfmt(tr.weekPnlK) + " 7d</span>" +
       (tr.weekRoi != null ? " <span class='src'>(" + (tr.weekRoi >= 0 ? "+" : "") + esc(tr.weekRoi) + "%)</span>" : "") + "</span></div>" +
       "<div class='lvls'>" + tr.positions.map(function (p) {
-        return "<b>" + esc(p.coin) + "</b> " + esc(p.side) + " " + kfmt(p.usdK) + (p.lev ? " " + esc(p.lev) + "x" : "") +
+        var entry = (p.entry != null && isFinite(p.entry))
+          ? " @ $" + (p.entry < 1 ? p.entry.toFixed(4) : Number(p.entry).toLocaleString("en-US", { maximumFractionDigits: 2 })) : "";
+        return "<b>" + esc(p.coin) + "</b> " + esc(p.side) + " " + kfmt(p.usdK) + (p.lev ? " " + esc(p.lev) + "x" : "") + entry +
           " (uPnL " + (p.upnlK >= 0 ? "+" : "") + kfmt(p.upnlK) + ")";
       }).join(" · ") + "</div></div>";
   });
