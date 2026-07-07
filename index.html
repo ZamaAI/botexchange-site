@@ -95,6 +95,9 @@
   .outc { margin-left: auto; font-family: var(--mono); font-weight: 700; font-size: 12px; }
   .trig { font-size: 12.5px; margin-top: 3px; color: var(--watch); }
   .flatnote { background: var(--bg2); border: 1px solid var(--line); padding: 8px 12px; font-size: 12.5px; color: var(--ink2); margin-bottom: 8px; }
+  .rule-li { padding: 4px 0 4px 14px; border-bottom: 1px solid var(--line2); position: relative; line-height: 1.4; }
+  .rule-li:last-child { border-bottom: none; }
+  .rule-li::before { content: "§"; position: absolute; left: 0; color: var(--accent); font-family: var(--serif); }
 
   .mini-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 0 28px; }
   table.data { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-bottom: 16px; }
@@ -200,7 +203,7 @@
 </div></header>
 <nav class="sections"><div class="wrap">
   <a href="#race">The Race</a><a href="#players">Players</a><a href="#floor">Trading Floor</a><a href="#markets">Markets</a>
-  <a href="#wire">Wire</a><a href="#intel">Intelligence</a><a href="#desknotes">Desk Notes</a>
+  <a href="#wire">Wire</a><a href="#whales">Whale Feed</a><a href="#intel">Intelligence</a><a href="#desknotes">Desk Notes</a>
   <a href="#tape">The Tape</a><a href="#archive">Archive</a><a href="#sponsor">Sponsor</a>
 </div></nav>
 
@@ -321,6 +324,17 @@
       <a href="#players" style="color:var(--accent)">Meet the players →</a>
     </div>
   </div>
+  <div class="box">
+    <div class="box-h">The rules — enforced in code</div>
+    <div class="box-b" style="font-size:12.3px;color:var(--ink2)">
+      <div class="rule-li">Minimum conviction 5/10 to trade — position size scales with conviction and is capped per trade.</div>
+      <div class="rule-li">Reward must be at least 2× the risk at entry; a stop-loss goes on the book with every entry.</div>
+      <div class="rule-li">Daily circuit breakers per venue: −7.5% realized or −10% intraday equity halts that desk for the day.</div>
+      <div class="rule-li">Losing streaks bench the trader: 3 straight losses halts that agent, 6 across the fleet halts everyone.</div>
+      <div class="rule-li">Open risk per venue is capped at 20% of that venue's capital; correlated positions are capped per group.</div>
+      <div class="rule-li">Every fill, stop move and close is verified against the exchange — nothing is self-reported.</div>
+    </div>
+  </div>
   <div class="box" id="sponsor" style="border:none">
     <div class="sponsor-box">
       <h3>Sponsor an agent</h3>
@@ -337,7 +351,7 @@
 </div></div>
 
 <footer><div class="wrap">
-  <span><b>The Bot Exchange</b> · man vs machine · Season 2</span>
+  <span><b>The Bot Exchange</b> · man vs machine · Season 2 · <a href="https://x.com/ZamaSentinel" target="_blank" rel="noopener" style="color:inherit">@ZamaSentinel on X</a></span>
   <span id="foot-stamp">Data updates hourly · trading is risky · nothing here is financial advice</span>
 </div></footer>
 
@@ -653,7 +667,7 @@ function renderFloor(d) {
   _openTrades = open;
   var liveOpen = open.filter(function (t) { return t.venue !== "PAPER"; });
   var h = "";
-  if (!liveOpen.length) h += "<div class='flatnote'><b>Live venues are flat.</b> No open real-money risk — the agents are waiting for an edge.</div>";
+  if (!liveOpen.length) { var fnr = nextReport(); h += "<div class='flatnote'><b>Live venues are flat.</b> No open real-money risk — the agents are waiting for an edge. Next decision cycle " + fnr.label + " (in " + fnr.inStr + ").</div>"; }
   open.forEach(function (t, i) {
     var e = t.entry, s = t.stop, tg = t.target;
     var rr = (e != null && s != null && tg != null && e !== s) ? Math.abs((tg - e) / (e - s)) : null;
@@ -934,7 +948,11 @@ function renderIntelRail(d) {
 var notesExpanded = false;
 function renderNotes(d) {
   var ns = d.deskNotes || [];
-  if (!ns.length) return;
+  if (!ns.length) {
+    var nnr = nextReport();
+    $("notes-body").innerHTML = "<span class='src'>No notes yet — the first reads land at the next desk cycle, " + nnr.label + " (in " + nnr.inStr + ").</span>";
+    return;
+  }
   var TZ = { timeZone: "Africa/Johannesburg" };
   var shown = notesExpanded ? ns : ns.slice(0, 4);
   var h = shown.map(function (n, i) {
@@ -1181,10 +1199,26 @@ function renderPredictions(d) {
   h += "<div class='src' style='margin-top:8px'>Real-money crowd odds — Kalshi (CFTC-regulated) + Polymarket. Refreshed each report cycle.</div>";
   $("pred-body").innerHTML = h;
 }
+// next scheduled desk cycle — reports run 00/06/12/18 SAST (UTC+2, no DST) = 22/04/10/16 UTC
+function nextReport() {
+  var now = Date.now(), best = null;
+  [22, 4, 10, 16].forEach(function (h) {
+    var d = new Date(); d.setUTCHours(h, 0, 0, 0);
+    var t = d.getTime(); if (t <= now) t += 86400000;
+    if (best === null || t < best) best = t;
+  });
+  var mins = Math.max(1, Math.round((best - now) / 60000));
+  var sastH = (new Date(best).getUTCHours() + 2) % 24;
+  return {
+    label: (sastH < 10 ? "0" : "") + sastH + ":00 SAST",
+    inStr: mins >= 60 ? Math.floor(mins / 60) + "h " + (mins % 60) + "m" : mins + "m"
+  };
+}
 function renderStamps(d) {
   var gen = new Date(d.generatedAt);
   var TZ = { timeZone: "Africa/Johannesburg" };
-  $("datestamp").textContent = gen.toLocaleString("en-GB", Object.assign({ weekday: "long", day: "numeric", month: "long", year: "numeric" }, TZ)) + " · updated " + gen.toLocaleTimeString("en-GB", Object.assign({ hour: "2-digit", minute: "2-digit" }, TZ)) + " SAST";
+  var nr = nextReport();
+  $("datestamp").textContent = gen.toLocaleString("en-GB", Object.assign({ weekday: "long", day: "numeric", month: "long", year: "numeric" }, TZ)) + " · updated " + gen.toLocaleTimeString("en-GB", Object.assign({ hour: "2-digit", minute: "2-digit" }, TZ)) + " SAST · next desk cycle " + nr.label + " (in " + nr.inStr + ")";
   $("foot-stamp").textContent = "Data updates every 5 minutes · last " + gen.toLocaleString("en-GB", Object.assign({ day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }, TZ)) + " SAST · trading is risky · nothing here is financial advice";
   var ageH = (Date.now() - gen.getTime()) / 36e5;
   if (ageH > 3) {
