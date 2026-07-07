@@ -436,6 +436,7 @@ function renderStrip(mkt) {
     var band = p.sym === "VIX" ? " <span style='color:var(--ink3)'>(" + vixBand(p.price) + ")</span>" : "";
     m += "<span>" + MACRO_SYMS[p.sym] + " <b>" + fmtMacro(p.sym, p.price) + "</b>" + band + (showChg ? " " + strippct(p.change) : "") + "</span>";
   });
+  if (mkt && mkt.stockFearGreed && m) m += "<span>Fear &amp; Greed <b>" + esc(mkt.stockFearGreed.value) + " — " + esc(mkt.stockFearGreed.classification) + "</b></span>";
   if (m) { $("strip-macro").classList.remove("hidden"); $("strip-macro").innerHTML = "<span class='rowlab'>MACRO</span>" + m; }
 }
 var _lastStripMkt = null;
@@ -466,7 +467,7 @@ function liveStripRefresh(mkt) {
       if (!Array.isArray(rows)) return;
       var fresh = rows.map(function (t) { return { symbol: t.symbol.replace("USDT", ""), price: parseFloat(t.lastPrice), change24hPct: parseFloat(t.priceChangePercent) }; });
       var rest = ((base && base.prices) || []).filter(function (p) { return ["BTC", "ETH", "SOL"].indexOf(p.symbol) < 0; });
-      _lastStripMkt = { prices: fresh.concat(rest), fearGreed: base && base.fearGreed, regime: base && base.regime };
+      _lastStripMkt = { prices: fresh.concat(rest), fearGreed: base && base.fearGreed, stockFearGreed: base && base.stockFearGreed, regime: base && base.regime };
       renderStrip(_lastStripMkt);
     }).catch(function () {});
 }
