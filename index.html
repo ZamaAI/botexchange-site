@@ -909,7 +909,7 @@ function renderDesk(d) {
     h += "</table>";
   }
   h += "<div id='stocks-slot'></div>";
-  if (mkt.fearGreed || mkt.regime || mkt.equityRegime) {
+  if (mkt.fearGreed || mkt.regime || mkt.equityRegime || (mkt.longShort || []).length) {
     h += "<div><table class='data'><caption>Sentiment</caption></table>";
     var fngBar = function (label, fg) {
       var v = Math.max(0, Math.min(100, fg.value));
@@ -917,15 +917,38 @@ function renderDesk(d) {
         "<div class='fng-bar'><span class='fng-mark' style='left:" + v + "%'></span><span class='fng-lab' style='left:" + v + "%'>" + v + " · " + esc(fg.classification) + "</span></div>";
     };
     if (mkt.fearGreed) h += fngBar("Crypto", mkt.fearGreed);
+    // Positioning — retail long/short account ratio (a crowded side = fuel for the move against it)
+    if ((mkt.longShort || []).length) {
+      h += "<table class='data'><caption>Positioning — long/short accounts (Binance)</caption>";
+      mkt.longShort.forEach(function (r) {
+        var lab = r.bias === "CROWDED LONG" ? "crowded long — flush risk" :
+                  r.bias === "CROWDED SHORT" ? "crowded short — squeeze fuel" : "balanced";
+        h += "<tr><td>" + esc(r.asset) + "</td><td class='rt num'>" + esc(r.longPct) + "% long</td>" +
+          "<td class='rt " + (r.bias === "BALANCED" ? "num" : "down") + "'>" + lab + "</td></tr>";
+      });
+      h += "</table>";
+    }
+    // Desk dials — funding temperature, crowding verdicts, macro coupling, regimes
+    var dials = "";
+    (mkt.funding || []).forEach(function (f) {
+      dials += "<tr><td>" + esc(f.asset) + " funding</td><td class='rt'><span class='num'>" +
+        (f.dailyPct >= 0 ? "+" : "") + Number(f.dailyPct).toFixed(3) + "%/day</span> · " + esc(f.signal) + "</td></tr>";
+    });
+    (mkt.crowding || []).forEach(function (c) {
+      var read = c.verdict === "CROWDED SHORT" ? "shorts crowded — squeeze fuel above" : "longs crowded — flush risk below";
+      dials += "<tr><td>Crowding — " + esc(c.asset) + "</td><td class='rt down'>" + read + "</td></tr>";
+    });
+    if (mkt.btcNqCorr) {
+      dials += "<tr><td>BTC↔Nasdaq 30d</td><td class='rt'><span class='num'>" + esc(mkt.btcNqCorr.corr) + "</span> · " +
+        esc(String(mkt.btcNqCorr.label).toLowerCase()) + "</td></tr>";
+    }
     var regimeRow = function (label, r) {
       return "<tr><td>" + label + " regime</td><td class='rt " + (r === "RISK_ON" ? "up" : r === "NEUTRAL" ? "num" : "down") + "'>" + esc(String(r).replace("_", "-")) + "</td></tr>";
     };
-    if (mkt.regime || mkt.equityRegime) {
-      h += "<table class='data'>";
-      if (mkt.regime) h += regimeRow("Crypto", mkt.regime);
-      if (mkt.equityRegime) h += regimeRow("Stocks", mkt.equityRegime);
-      h += "</table>";
-    }
+    if (mkt.regime) dials += regimeRow("Crypto", mkt.regime);
+    if (mkt.equityRegime) dials += regimeRow("Stocks", mkt.equityRegime);
+    if (dials) h += "<table class='data'>" + dials + "</table>";
+    h += "<div class='src' style='margin:-10px 0 16px'>Positioning, funding and crowding are the same reads the agents get — a crowded side is fuel for the move against it, not confirmation.</div>";
     h += "</div>";
   }
   $("desk").innerHTML = h;
