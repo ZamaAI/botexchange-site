@@ -253,6 +253,13 @@
   </div>
 
   <hr class="rule">
+  <div class="kicker">Smart money</div>
+  <h2 class="sec" id="whales">The whale feed</h2>
+  <p class="sub">Real trades from whale wallets the desk follows on-chain — per-coin net flow and the largest individual moves, via Cielo. The same feed the agents read before every trade.</p>
+  <div id="whale-flow"></div>
+  <div class="lm-wrap"><table class="data" id="whale-rows"><tr><td><span class="src">The whale desk publishes with each report cycle (00:00 / 06:00 / 12:00 / 18:00 SAST).</span></td></tr></table></div>
+
+  <hr class="rule">
   <div class="kicker" id="intel-kicker">Exchange intelligence</div>
   <h2 class="sec" id="intel">Exchange intelligence</h2>
   <p class="sub" id="intel-body">The next report publishes at 00:00, 06:00, 12:00 or 18:00 SAST.</p>
@@ -1107,6 +1114,44 @@ function renderWire(d) {
     $("wire-x").innerHTML = x;
   }
 }
+// ── the whale feed (Cielo smart money) ──
+function renderWhaleFeed(d) {
+  var wf = d.whaleFeed;
+  if (!wf || !wf.rows || !wf.rows.length) return;   // keep the publishes-with-report placeholder
+  var TZ = { timeZone: "Africa/Johannesburg" };
+  function usd(n) {
+    var a = Math.abs(n), s = a >= 1e6 ? "$" + (a / 1e6).toFixed(1) + "M" : a >= 1e3 ? "$" + (a / 1e3).toFixed(0) + "k" : "$" + a.toFixed(0);
+    return (n < 0 ? "−" : "") + s;
+  }
+  function age(ts) { var h = (Date.now() - ts) / 36e5; return h < 1 ? Math.max(1, Math.round(h * 60)) + "m" : h < 48 ? Math.round(h) + "h" : Math.round(h / 24) + "d"; }
+  if (wf.netFlow && wf.netFlow.length) {
+    var f = "<div class='wire-h'>net flow · last 48h · buy − sell</div><div style='margin:6px 0 14px'>";
+    wf.netFlow.forEach(function (e) {
+      var v = Number(e[1]) || 0;
+      f += "<span class='" + (v >= 0 ? "up" : "down") + "' style='font-family:var(--mono);font-size:12.5px;margin-right:14px;white-space:nowrap'>" + esc(e[0]) + " " + (v >= 0 ? "+" : "") + usd(v) + "</span>";
+    });
+    $("whale-flow").innerHTML = f + "</div>";
+  }
+  var h = "<caption>Largest moves from the followed wallets</caption>";
+  wf.rows.forEach(function (r) {
+    var what, dir = "";
+    if (r.kind === "PERP") {
+      dir = (r.side === "sell") ? "down" : "up";
+      what = esc(r.action || "") + " " + (r.side === "sell" ? "SELL" : "BUY") + " " + esc(r.symbol || "") +
+        (r.leverage ? " · " + Number(r.leverage) + "x" : "") + (r.liq ? " · LIQUIDATION" : "");
+    } else {
+      what = "SWAP " + esc(r.sold || "?") + " → " + esc(r.bought || "?") + (r.platform ? " · " + esc(r.platform) : "");
+    }
+    h += "<tr><td class='rt num' style='width:52px'>" + age(r.ts) + "</td>" +
+      "<td style='font-family:var(--mono);font-size:11.5px'>" + esc(r.wallet || "") + "</td>" +
+      "<td class='" + dir + "'>" + what + "</td>" +
+      "<td class='rt num'>" + usd(Number(r.usd) || 0) + "</td>" +
+      "<td class='rt num'>" + (r.price ? "$" + (r.price < 1 ? Number(r.price).toFixed(4) : Number(r.price).toLocaleString("en-US", { maximumFractionDigits: 2 })) : "—") + "</td>" +
+      "<td class='src'>" + esc(r.chain || "") + "</td></tr>";
+  });
+  if (wf.at) h += "<tr><td colspan='6'><span class='src'>Via Cielo · updated " + new Date(wf.at).toLocaleString("en-GB", Object.assign({ day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }, TZ)) + " SAST · refreshed each report cycle</span></td></tr>";
+  $("whale-rows").innerHTML = h;
+}
 // ── the research column (Qwen, 2×/day) ──
 function renderColumn(d) {
   if (!d.column || !d.column.text) return;
@@ -1180,7 +1225,7 @@ function boot() {
     renderStamps(d); renderStrip(d.market); renderHeadline(d); renderStandings(d);
     renderChart(d); renderPlayers(d); renderSeasonStats(d); renderFloor(d); renderDesk(d); renderTopTraders(d); renderCalendar(d); renderIntel(d); renderIntelRail(d);
     renderNotes(d); renderTape(d); renderArchive(d); renderRisk(d);
-    renderWire(d); renderColumn(d); renderPredictions(d);
+    renderWire(d); renderWhaleFeed(d); renderColumn(d); renderPredictions(d);
     liveStripRefresh(d.market); startLiveLayers();
   }).catch(function (e) {
     $("race").textContent = "The bot feed is unreachable right now";
