@@ -37,11 +37,11 @@
   .wrap { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
   .hidden { display: none !important; }
 
-  .strip { background: var(--accent); color: #eaf3ee; font-size: 12px; }
+  .strip { background: var(--accent); color: #eaf3ee; font-size: 13.5px; font-weight: 600; }
   .strip .wrap { display: flex; flex-wrap: wrap; gap: 6px 17px; padding: 6px 20px; }
   .strip .strip-macro { border-top: 1px solid rgba(255,255,255,.14); }
   .strip .rowlab { font: 700 10px var(--mono); letter-spacing: .12em; color: #86b598; align-self: center; }
-  .strip b { font-weight: 600; font-family: var(--mono); }
+  .strip b { font-weight: 700; font-family: var(--mono); }
   .strip .pos { color: #9fd8b4; } .strip .neg { color: #f2b8ae; }
 
   .mast { border-bottom: 2px solid var(--ink); }
@@ -437,7 +437,7 @@ function fetchHLStrip() {
   fetch("https://api.hyperliquid.xyz/info", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "metaAndAssetCtxs" }) })
     .then(function (r) { return r.json(); })
     .then(function (res) {
-      var meta = res[0], ctxs = res[1], want = { HYPE: 1, LIT: 2 }, out = [];
+      var meta = res[0], ctxs = res[1], want = { HYPE: 1 }, out = [];   // LIT dropped — kept the CRYPTO row to one line (operator call); collision note above still applies if re-added
       meta.universe.forEach(function (u, i) {
         if (!want[u.name] || !ctxs[i]) return;
         var mark = parseFloat(ctxs[i].markPx), prev = parseFloat(ctxs[i].prevDayPx);
