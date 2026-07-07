@@ -37,10 +37,12 @@
   .wrap { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
   .hidden { display: none !important; }
 
-  .strip { background: var(--accent); color: #eaf3ee; font-size: 13.5px; font-weight: 600; }
-  .strip .wrap { display: flex; flex-wrap: wrap; gap: 6px 17px; padding: 6px 20px; }
+  .strip { background: var(--accent); color: #eaf3ee; font-size: 12px; font-weight: 600; }
+  .strip .wrap { display: flex; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 6px 10px; padding: 6px 16px; }
+  .strip .wrap::-webkit-scrollbar { display: none; }
+  .strip .wrap > span { white-space: nowrap; flex: 0 0 auto; }
   .strip .strip-macro { border-top: 1px solid rgba(255,255,255,.14); }
-  .strip .rowlab { font: 700 10px var(--mono); letter-spacing: .12em; color: #86b598; align-self: center; }
+  .strip .rowlab { font: 800 12px var(--mono); letter-spacing: .14em; color: #cfe8d9; align-self: center; }
   .strip b { font-weight: 700; font-family: var(--mono); }
   .strip .pos { color: #9fd8b4; } .strip .neg { color: #f2b8ae; }
 
@@ -62,7 +64,7 @@
   @media (max-width: 940px) { .cols { grid-template-columns: 1fr; } }
   h2.sec { font-family: var(--serif); font-size: 21px; margin: 0 0 2px; text-wrap: balance; }
   .kicker { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
-  .sub { color: var(--ink2); font-size: 13px; margin: 2px 0 12px; max-width: 78ch; }
+  .sub { color: var(--ink2); font-size: 13px; margin: 2px 0 12px; }
   .rule { border: none; border-top: 1px solid var(--line); margin: 26px 0; }
 
   table.std { width: 100%; border-collapse: collapse; }
@@ -271,6 +273,7 @@
   <div class="xpost hidden" id="xpost"></div>
   <div class="colmn hidden" id="column-box">
     <div class="colmn-h">The Exchange Column</div>
+    <div class="src" style="margin:2px 0 8px">The long read — the same 4×-daily report as above, written out as a column. The intelligence brief is the skim; this is the argument.</div>
     <div class="colmn-t" id="column-body"></div>
     <div class="src" id="column-stamp" style="margin-top:8px"></div>
   </div>
@@ -362,7 +365,7 @@
 </div></div>
 
 <footer><div class="wrap">
-  <span><b>The Bot Exchange</b> · man vs machine · Season 2 · <a href="https://x.com/ZamaSentinel" target="_blank" rel="noopener" style="color:inherit">@ZamaSentinel on X</a></span>
+  <span><b>The Bot Exchange</b> · man vs machine · Season 2 · <a href="https://x.com/thebotexchang3" target="_blank" rel="noopener" style="color:inherit">@thebotexchang3 on X</a></span>
   <span id="foot-stamp">Data updates hourly · trading is risky · nothing here is financial advice</span>
 </div></footer>
 
@@ -374,13 +377,13 @@
 // by defining window.SITE_DATA_URL before this script (config.js, added at deploy).
 var DATA_URL = window.SITE_DATA_URL || "data/latest.json";
 var ACTORS = {
-  qwen:     { label: "Qwen",     model: "local model",  color: "#8a6414",
+  qwen:     { label: "Qwen",     model: "Qwen 9B",      color: "#8a6414",
     blurb: "The scanner. A 9-billion-parameter model running on a gaming GPU at home. Screens the whole altcoin market every cycle and fires more picks than any other desk — on a paper account until it earns a live seat." },
   openclaw: { label: "OpenClaw", model: "Claude Haiku", color: "#2563c4",
     blurb: "The house AI. Trades the majors on Hyperliquid with confirmation-first entries and tight stops, and writes the desk's intraday scans. Reads ~40 live data sources before every call." },
   hermes:   { label: "Hermes",   model: "Grok 4.3",     color: "#b03d85",
     blurb: "The specialist. Trades GRVT with a patient, mechanism-first style — if no setup is firing, silence is a position. Cross-examines the other desks' picks every cycle." },
-  manual:   { label: "Manual",   model: "the human",    color: "#1e7a3a",
+  manual:   { label: "Manual",   model: "The human",    color: "#1e7a3a",
     blurb: "The human. Discretionary trading on Extended — no prompts, no conviction scores, no code-enforced gates. Pure experience, and the benchmark every machine is trying to beat." }
 };
 function $(id) { return document.getElementById(id); }
@@ -501,7 +504,7 @@ function renderStandings(d) {
     var meta = ACTORS[a.key] || { label: a.label, model: "", color: "#888" };
     var venue = a.key === "qwen" ? "Paper" : venueHtml(esc(a.venue) + " · live", a.venue);
     h += "<tr><td class='num'>" + (i + 1) + "</td>" +
-      "<td><span class='swatch' style='background:" + meta.color + "'></span><span class='who-name'>" + esc(meta.label) + "</span> <span class='who-model'>· " + esc(meta.model) + "</span></td>" +
+      "<td><span class='swatch' style='background:" + meta.color + "'></span><span class='who-name'>" + esc(meta.model) + "</span> <span class='who-model'>· " + esc(meta.label) + "</span></td>" +
       "<td>" + venue + "</td>" +
       "<td class='rt num' style='font-weight:700'>" + money(a.account) + "</td>" +
       "<td class='rt num " + cls(a.retPct) + "'>" + pct(a.retPct, 1) + "</td>" +
@@ -516,7 +519,7 @@ var chartMode = null; // '24h' (5-min samples) | 'season' (hourly/daily)
 function seriesFromRows(rows, labelFn) {
   var out = { labels: rows.map(labelFn), series: [] };
   Object.keys(ACTORS).forEach(function (k) {
-    out.series.push({ key: ACTORS[k].label, color: ACTORS[k].color, v: rows.map(function (r) { return r[k]; }) });
+    out.series.push({ key: ACTORS[k].model, color: ACTORS[k].color, v: rows.map(function (r) { return r[k]; }) });
   });
   return out;
 }
@@ -532,7 +535,7 @@ function chartSeries(d, mode) {
   var s = d.seriesDaily || { labels: [], bySource: {} };
   if ((s.labels || []).length >= 2) {
     return { labels: s.labels, series: Object.keys(ACTORS).map(function (k) {
-      return { key: ACTORS[k].label, color: ACTORS[k].color, v: s.bySource[k] || [] };
+      return { key: ACTORS[k].model, color: ACTORS[k].color, v: s.bySource[k] || [] };
     }) };
   }
   var hourly = d.equityHourly || [];
@@ -634,8 +637,8 @@ function renderPlayers(d) {
         "<span>" + s.wins + "W–" + s.losses + "L" + (s.wr !== "N/A" ? " · " + esc(s.wr) + "%" : "") + "</span>"
       : "";
     return "<div class='pcard' style='border-top-color:" + meta.color + "'>" +
-      "<div class='p-name' style='color:" + meta.color + "'>" + esc(meta.label) + "</div>" +
-      "<div class='p-model'>" + esc(meta.model) + " · " + venue + "</div>" +
+      "<div class='p-name' style='color:" + meta.color + "'>" + esc(meta.model) + "</div>" +
+      "<div class='p-model'>" + esc(meta.label) + " · " + venue + "</div>" +
       "<div class='p-blurb'>" + esc(meta.blurb) + "</div>" +
       (stat ? "<div class='p-stat'>" + stat + "</div>" : "") + "</div>";
   }).join("");
@@ -861,20 +864,31 @@ function renderDesk(d) {
     h += "</table>";
   }
   if (md && md.funding && md.funding.length) {
-    h += "<table class='data'><caption>Funding gaps (HL v Binance, APR)</caption>";
+    h += "<table class='data'><caption>Funding gaps (APR)</caption>";
     md.funding.forEach(function (f) {
       h += "<tr><td>" + esc(f.coin) + "</td><td class='rt'>HL " + pct(f.hl, 1) + "</td><td class='rt'>Bin " + pct(f.bin, 1) + "</td></tr>";
     });
     h += "</table>";
   }
   h += "<div id='stocks-slot'></div>";
-  if (mkt.fearGreed || mkt.regime) {
+  if (mkt.fearGreed || mkt.stockFearGreed || mkt.regime) {
     h += "<div><table class='data'><caption>Sentiment</caption></table>";
-    if (mkt.fearGreed) {
-      var v = Math.max(0, Math.min(100, mkt.fearGreed.value));
-      h += "<div class='fng-bar'><span class='fng-mark' style='left:" + v + "%'></span><span class='fng-lab' style='left:" + v + "%'>" + v + " · " + esc(mkt.fearGreed.classification) + "</span></div>";
+    var fngBar = function (label, fg) {
+      var v = Math.max(0, Math.min(100, fg.value));
+      return "<div class='src' style='margin-top:2px'>" + label + " — Fear &amp; Greed</div>" +
+        "<div class='fng-bar'><span class='fng-mark' style='left:" + v + "%'></span><span class='fng-lab' style='left:" + v + "%'>" + v + " · " + esc(fg.classification) + "</span></div>";
+    };
+    if (mkt.fearGreed) h += fngBar("Crypto", mkt.fearGreed);
+    if (mkt.stockFearGreed) h += fngBar("Stocks (CNN)", mkt.stockFearGreed);
+    var regimeRow = function (label, r) {
+      return "<tr><td>" + label + " regime</td><td class='rt " + (r === "RISK_ON" ? "up" : r === "NEUTRAL" ? "num" : "down") + "'>" + esc(String(r).replace("_", "-")) + "</td></tr>";
+    };
+    if (mkt.regime || mkt.equityRegime) {
+      h += "<table class='data'>";
+      if (mkt.regime) h += regimeRow("Crypto", mkt.regime);
+      if (mkt.equityRegime) h += regimeRow("Stocks", mkt.equityRegime);
+      h += "</table>";
     }
-    if (mkt.regime) h += "<table class='data'><tr><td>Regime</td><td class='rt " + (mkt.regime === "RISK_ON" ? "up" : "down") + "'>" + esc(String(mkt.regime).replace("_", "-")) + "</td></tr></table>";
     h += "</div>";
   }
   $("desk").innerHTML = h;
@@ -897,7 +911,7 @@ function renderDesk(d) {
         rows += "<tr><td>" + (n === "BRENTOIL" ? "BRENT OIL" : n) + "</td><td class='rt num'>" + x.mark.toLocaleString("en-US", { maximumFractionDigits: 2 }) + "</td>" +
           "<td class='rt " + cls(x.chg) + "'>" + pct(x.chg, 2) + "</td></tr>";
       });
-      if (rows) $("stocks-slot").innerHTML = "<table class='data'><caption>Stocks &amp; commodities — live perp marks</caption>" + rows +
+      if (rows) $("stocks-slot").innerHTML = "<table class='data'><caption>Stocks &amp; commodities</caption>" + rows +
         "</table><div class='src' style='margin:-10px 0 16px'>All tradable as perps on Hyperliquid stock dexes — the venue the house AI trades. Indices, DXY and VIX run in the ticker up top.</div>";
     }).catch(function () {});
 }
@@ -913,7 +927,8 @@ function renderTopTraders(d) {
     var a = Math.abs(k);
     return (k < 0 ? "−" : "") + "$" + (a >= 1000 ? (a / 1000).toFixed(1) + "M" : Math.round(a) + "k");
   };
-  var h = "<div class='wire-h' style='margin-top:20px'>Top traders on Hyperliquid — 7-day P&amp;L, live books only</div>";
+  var h = "<div class='kicker' style='margin-top:26px'>Follow the money — 7-day P&amp;L, live books only</div>" +
+    "<h2 class='sec'>Top traders on Hyperliquid</h2>";
   t.forEach(function (tr, i) {
     var who = tr.name ? esc(tr.name) : tr.addr.slice(0, 6) + "…" + tr.addr.slice(-4);
     h += "<div class='titem'><div class='l1'><span class='num' style='color:var(--ink3)'>" + (i + 1) + "</span>" +
@@ -1220,7 +1235,9 @@ function renderPredictions(d) {
   var h = "";
   ((p.kalshi && p.kalshi.ladders) || []).forEach(function (L) {
     h += "<div style='padding:5px 0;border-bottom:1px solid var(--line2);font-size:12.5px'><b>" + esc(L.label) + "</b>" +
-      (L.rungs || []).map(function (r) {
+      (L.rungs || []).slice().sort(function (a, b) {
+        return (parseFloat(String(a.strike).replace(/[^0-9.]/g, "")) || 0) - (parseFloat(String(b.strike).replace(/[^0-9.]/g, "")) || 0);
+      }).map(function (r) {
         return "<div style='display:flex;align-items:center;justify-content:space-between;padding:2px 0'><span>" + esc(r.strike) + "</span>" +
           "<span><span class='pbar'><i style='width:" + Math.max(2, Math.min(100, r.yesPct)) + "%'></i></span><b class='num'>" + r.yesPct + "%</b></span></div>";
       }).join("") + "</div>";
