@@ -332,8 +332,8 @@
   <div class="box">
     <div class="box-h">How it works</div>
     <div class="box-b" style="font-size:12.8px;color:var(--ink2)">
-      Three AI agents — Claude, Grok and a local Qwen — each run a $500 account on a real venue,
-      picking trades from ~40 live data sources every six hours. A human trades against them.
+      Three AI agents — Claude and Grok live on real venues, a local Qwen on paper — each run a
+      $500 account, picking trades from ~40 live data sources every six hours. A human trades against them.
       Stops, targets, conviction and post-mortems: all published. Nothing is deleted.
       <a href="#players" style="color:var(--accent)">Meet the players →</a>
     </div>
@@ -358,7 +358,7 @@
       <div class="slot">Data partner<small>your feed, cited in every trading decision and desk report</small></div>
       <div class="slot">Compute partner<small>the hardware behind the local model, credited on the player card</small></div>
       <div class="s-stats" id="sponsor-stats"></div>
-      <a class="s-cta" id="sponsor-cta" href="https://x.com/ZamaSentinel" target="_blank" rel="noopener">Talk to the desk →</a>
+      <a class="s-cta" id="sponsor-cta" href="https://x.com/thebotexchang3" target="_blank" rel="noopener">Talk to the desk →</a>
     </div>
   </div>
 </aside>
@@ -400,14 +400,19 @@ function smartTrim(s, cap) {
   var last = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("! "), cut.lastIndexOf("? "));
   return last > cap * 0.5 ? cut.slice(0, last + 1) : cut.replace(/\s+\S*$/, "") + "…";
 }
-function strippct(v) { return '<b class="' + (v >= 0 ? "pos" : "neg") + '">' + (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(2) + "%</b>"; }
+function strippct(v) { return v == null || !isFinite(v) ? "" : '<b class="' + (v >= 0 ? "pos" : "neg") + '">' + (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(2) + "%</b>"; }
 
 // ── market strip: feed snapshot first, then live client-side refresh ──
 // Macro board rides the same strip: S&P 500, Nasdaq, gold, DXY, VIX — live
 // Hyperliquid stock-perp marks (client-side, keeps streaming when the host is off).
 var _macroStrip = [];
-var MACRO_SYMS = { SP500: "S&amp;P 500", XYZ100: "NASDAQ", GOLD: "GOLD", DXY: "DXY", VIX: "VIX", NVDA: "NVDA", TSLA: "TSLA", AAPL: "AAPL" };
-var MACRO_DOLLAR = { GOLD: 1, NVDA: 1, TSLA: 1, AAPL: 1 };
+var MACRO_SYMS = { SP500: "S&amp;P 500", XYZ100: "NASDAQ", GOLD: "GOLD", DXY: "DXY", VIX: "VIX" };
+var MACRO_DOLLAR = { GOLD: 1 };
+// VIX regime bracket (CBOE conventional bands)
+function vixBand(v) {
+  if (v == null || !isFinite(v)) return "";
+  return v < 15 ? "low volatility" : v < 20 ? "moderate volatility" : v < 30 ? "elevated volatility" : "high volatility";
+}
 function fmtMacro(sym, v) {
   if (v == null || !isFinite(v)) return "—";
   var s = v >= 1000 ? Math.round(v).toLocaleString("en-US") : MACRO_DOLLAR[sym] ? v.toFixed(2) : v.toFixed(v < 100 ? 2 : 1);
@@ -428,7 +433,8 @@ function renderStrip(mkt) {
   _macroStrip.forEach(function (p) {
     // DXY/VIX marks can sit on a flat prevDay — hide a meaningless +0.00%
     var showChg = p.change != null && Math.abs(p.change) >= 0.005;
-    m += "<span>" + MACRO_SYMS[p.sym] + " <b>" + fmtMacro(p.sym, p.price) + "</b>" + (showChg ? " " + strippct(p.change) : "") + "</span>";
+    var band = p.sym === "VIX" ? " <span style='color:var(--ink3)'>(" + vixBand(p.price) + ")</span>" : "";
+    m += "<span>" + MACRO_SYMS[p.sym] + " <b>" + fmtMacro(p.sym, p.price) + "</b>" + band + (showChg ? " " + strippct(p.change) : "") + "</span>";
   });
   if (m) { $("strip-macro").classList.remove("hidden"); $("strip-macro").innerHTML = "<span class='rowlab'>MACRO</span>" + m; }
 }
@@ -592,6 +598,7 @@ function renderChart(d) {
     if ((i % step === 0 && i <= data.labels.length - 1 - step) || i === data.labels.length - 1)
       el("text", { x: X(i), y: H - 8, "text-anchor": "middle", fill: "#7d897f", "font-size": 11, "font-family": "ui-monospace,Consolas,monospace" }).textContent = lb;
   });
+  var endLabels = [];
   data.series.forEach(function (s) {
     var pts = []; s.v.forEach(function (v, i) { if (v != null && isFinite(v)) pts.push(X(i) + "," + Y(v)); });
     if (!pts.length) return;
@@ -600,7 +607,22 @@ function renderChart(d) {
     if (lastIdx < 0) return;
     var ly = Y(s.v[lastIdx]);
     el("circle", { cx: X(lastIdx), cy: ly, r: 3.2, fill: s.color, stroke: "#fff", "stroke-width": 1.6 });
-    el("text", { x: W - m.r + 8, y: ly + 4, fill: s.color, "font-size": 12, "font-weight": 700, "font-family": "ui-monospace,Consolas,monospace" }).textContent = s.key + " " + Math.round(s.v[lastIdx]);
+    endLabels.push({ y: ly, color: s.color, text: s.key + " " + Math.round(s.v[lastIdx]) });
+  });
+  // De-overlap the end-of-line labels: sort by y, push apart to min 14px separation,
+  // then shift back up if the stack ran past the plot bottom (labels printed over
+  // each other whenever two accounts converged — e.g. Claude & Qwen on Season view).
+  endLabels.sort(function (a, b) { return a.y - b.y; });
+  var LH = 14;
+  for (var li = 1; li < endLabels.length; li++)
+    if (endLabels[li].y - endLabels[li - 1].y < LH) endLabels[li].y = endLabels[li - 1].y + LH;
+  var lastLb = endLabels.length && endLabels[endLabels.length - 1];
+  if (lastLb && lastLb.y > H - m.b - 2) {
+    var shift = lastLb.y - (H - m.b - 2);
+    endLabels.forEach(function (lb) { lb.y -= shift; });
+  }
+  endLabels.forEach(function (lb) {
+    el("text", { x: W - m.r + 8, y: Math.max(m.t + 8, lb.y) + 4, fill: lb.color, "font-size": 12, "font-weight": 700, "font-family": "ui-monospace,Consolas,monospace" }).textContent = lb.text;
   });
   var cross = el("line", { y1: m.t, y2: H - m.b, stroke: "#7d897f", opacity: 0 });
   var tt = $("tt");
@@ -871,7 +893,7 @@ function renderDesk(d) {
     h += "</table>";
   }
   h += "<div id='stocks-slot'></div>";
-  if (mkt.fearGreed || mkt.stockFearGreed || mkt.regime) {
+  if (mkt.fearGreed || mkt.regime || mkt.equityRegime) {
     h += "<div><table class='data'><caption>Sentiment</caption></table>";
     var fngBar = function (label, fg) {
       var v = Math.max(0, Math.min(100, fg.value));
@@ -879,7 +901,6 @@ function renderDesk(d) {
         "<div class='fng-bar'><span class='fng-mark' style='left:" + v + "%'></span><span class='fng-lab' style='left:" + v + "%'>" + v + " · " + esc(fg.classification) + "</span></div>";
     };
     if (mkt.fearGreed) h += fngBar("Crypto", mkt.fearGreed);
-    if (mkt.stockFearGreed) h += fngBar("Stocks (CNN)", mkt.stockFearGreed);
     var regimeRow = function (label, r) {
       return "<tr><td>" + label + " regime</td><td class='rt " + (r === "RISK_ON" ? "up" : r === "NEUTRAL" ? "num" : "down") + "'>" + esc(String(r).replace("_", "-")) + "</td></tr>";
     };
@@ -968,7 +989,7 @@ function renderIntel(d) {
     var summary = r.intelligence.replace(/^SUMMARY\s*/i, "").split(/\n\s*\n/)[0];
     $("intel-body").textContent = summary;
   }
-  if (r.xPost) { $("xpost").classList.remove("hidden"); $("xpost").innerHTML = "“" + esc(r.xPost) + "” <span class='src'>— @ZamaSentinel</span>"; }
+  if (r.xPost) { $("xpost").classList.remove("hidden"); $("xpost").innerHTML = "“" + esc(r.xPost) + "” <span class='src'>— @thebotexchang3</span>"; }
 }
 // ── social intel rail: narratives, radar coins, tweet of the day ──
 function renderIntelRail(d) {
