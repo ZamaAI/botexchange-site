@@ -530,7 +530,7 @@ function renderStandings(d) {
   rows.forEach(function (a, i) {
     var meta = ACTORS[a.key] || { label: a.label, model: "", color: "#888" };
     var isPaper = a.key === "qwen" || !a.venue || String(a.venue).toUpperCase() === "PAPER";
-    var venue = isPaper ? "Paper<span class='pill paper'>PAPER</span>" : venueHtml(esc(a.venue), a.venue) + "<span class='pill live'>LIVE</span>";
+    var venue = isPaper ? "<span class='pill paper' style='margin-left:0'>PAPER</span>" : venueHtml(esc(a.venue), a.venue) + "<span class='pill live'>LIVE</span>";
     h += "<tr><td class='num'>" + (i + 1) + "</td>" +
       "<td><span class='swatch' style='background:" + meta.color + "'></span><span class='who-name'>" + esc(meta.model) + "</span> <span class='who-model'>· " + esc(meta.label) + "</span></td>" +
       "<td>" + venue + "</td>" +
