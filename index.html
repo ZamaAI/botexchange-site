@@ -255,6 +255,7 @@
   <div class="lm-wrap"><table class="data" id="live-markets"><tr><td><span class="src">Loading live prices…</span></td></tr></table></div>
   <div class="mini-grid" id="desk"></div>
   <div id="top-traders"></div>
+  <div id="lighter-whales"></div>
 
   <div class="kicker" style="margin-top:24px">Smart money</div>
   <h2 class="sec" id="whales">The whale feed</h2>
@@ -1007,10 +1008,39 @@ function renderTopTraders(d) {
           ? " @ $" + (p.entry < 1 ? p.entry.toFixed(4) : Number(p.entry).toLocaleString("en-US", { maximumFractionDigits: 2 })) : "";
         return "<b>" + esc(p.coin) + "</b> " + esc(p.side) + " " + kfmt(p.usdK) + (p.lev ? " " + esc(p.lev) + "x" : "") + entry +
           " (uPnL " + (p.upnlK >= 0 ? "+" : "") + kfmt(p.upnlK) + ")";
-      }).join(" · ") + "</div></div>";
+      }).join(" · ") + "</div>" +
+      (tr.moves && tr.moves.length ? "<div class='src' style='margin-top:3px'>Moves since last cycle: " + tr.moves.map(function (m) {
+        var up = m.tag === "NEW" || m.tag === "ADDED";
+        return "<b class='" + (up ? "up" : "down") + "'>" + esc(m.tag) + "</b> " + esc(m.coin) + " " + esc(m.side);
+      }).join(" · ") + "</div>" : "") + "</div>";
   });
   h += "<div class='src' style='margin-top:6px'>Public leaderboard + on-chain positions, straight from the venue — the same smart-money read the agents get in their reports. Refreshed each report cycle.</div>";
   $("top-traders").innerHTML = h;
+}
+
+// ── Lighter whale desk (sampled prints — the venue the desk trades next season) ──
+function renderLighterWhales(d) {
+  var lw = d.marketsDesk && d.marketsDesk.lighterWhales;
+  if (!lw || !lw.accounts || !lw.accounts.length) return;
+  var kfmt = function (k) {
+    if (k == null || !isFinite(k)) return "—";
+    var a = Math.abs(k);
+    return (k < 0 ? "−" : "") + "$" + (a >= 1000 ? (a / 1000).toFixed(1) + "M" : Math.round(a) + "k");
+  };
+  var h = "<div class='kicker' style='margin-top:26px'>Sampled whale prints — 7 days, ≥$" + esc(lw.minUsdK) + "k a print</div>" +
+    "<h2 class='sec'>Big money on Lighter</h2>" +
+    "<p class='sub'>The most active large accounts from sampled public trade windows on Lighter — the venue the desk expands to next season. Every account's book is public on-venue.</p>";
+  lw.accounts.forEach(function (a, i) {
+    h += "<div class='titem'><div class='l1'><span class='num' style='color:var(--ink3)'>" + (i + 1) + "</span>" +
+      "<span class='num' style='font-weight:700'>acct " + esc(a.id) + "</span>" +
+      "<span class='src'>" + esc(a.prints) + " print(s) · " + kfmt(a.volK) + " printed" + (a.equity != null ? " · equity $" + Number(a.equity).toLocaleString("en-US") : "") + "</span>" +
+      "<span class='outc'><span class='" + cls(a.biasK) + "'>net " + (a.biasK >= 0 ? "BUY " : "SELL ") + kfmt(a.biasK) + "</span></span></div>" +
+      (a.positions && a.positions.length ? "<div class='lvls'>" + a.positions.map(function (p) {
+        return "<b>" + esc(p.coin) + "</b> " + esc(p.side) + " " + kfmt(p.usdK) + " (uPnL " + (p.upnlK >= 0 ? "+" : "") + kfmt(p.upnlK) + ")";
+      }).join(" · ") + "</div>" : "<div class='lvls src'>book flat</div>") + "</div>";
+  });
+  h += "<div class='src' style='margin-top:6px'>Sampled from hourly public trade windows on the top-volume markets — a taste of the tape, not the whole tape. Refreshed each report cycle.</div>";
+  $("lighter-whales").innerHTML = h;
 }
 
 // ── calendar / intelligence / stamps ──
@@ -1375,7 +1405,7 @@ function boot() {
     return r.json();
   }).then(function (d) {
     renderStamps(d); renderStrip(d.market); renderHeadline(d); renderStandings(d);
-    renderChart(d); renderPlayers(d); renderSeasonStats(d); renderFloor(d); renderDesk(d); renderTopTraders(d); renderCalendar(d); renderIntel(d); renderIntelRail(d);
+    renderChart(d); renderPlayers(d); renderSeasonStats(d); renderFloor(d); renderDesk(d); renderTopTraders(d); renderLighterWhales(d); renderCalendar(d); renderIntel(d); renderIntelRail(d);
     renderNotes(d); renderTape(d); renderArchive(d); renderRisk(d);
     renderWire(d); renderWhaleFeed(d); renderColumn(d); renderPredictions(d);
     liveStripRefresh(d.market); startLiveLayers();
