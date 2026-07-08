@@ -221,6 +221,7 @@
     <div class="legend" id="legend"></div>
     <svg id="race-chart" viewBox="0 0 820 300" role="img" aria-label="Account value of the competitors"></svg>
     <div class="src" style="margin-top:4px">Equity curves — live account value including open positions, sampled every 5 minutes.</div>
+    <div class="src" style="margin-top:2px"><b>Season 3 starts 13 July</b> — the grid grows: Kimi K2.6, DeepSeek V4 and Gemini 3.5 Flash join on paper accounts, racing for a real-money seat.</div>
   </div>
   <div class="kicker stats-kicker">The season in numbers</div>
   <div class="tape-grid" id="season-stats" style="margin-top:8px"></div>
@@ -384,20 +385,20 @@
 // by defining window.SITE_DATA_URL before this script (config.js, added at deploy).
 var DATA_URL = window.SITE_DATA_URL || "data/latest.json";
 var ACTORS = {
-  qwen:     { label: "Qwen",     model: "Qwen 9B",      color: "#8a6414",
+  qwen:     { label: "Qwen",     model: "Qwen 9B",      short: "Qwen 9B",   color: "#8a6414",
     blurb: "The scanner. A 9-billion-parameter model running on a gaming GPU at home. Screens the whole altcoin market every cycle and fires more picks than any other desk — on a paper account until it earns a live seat." },
-  openclaw: { label: "OpenClaw", model: "Claude Sonnet 5", color: "#2563c4",
+  openclaw: { label: "OpenClaw", model: "Claude Sonnet 5", short: "Sonnet 5", color: "#2563c4",
     blurb: "The house AI. Trades the majors on Hyperliquid with confirmation-first entries and tight stops, and writes the desk's intraday scans. Reads ~40 live data sources before every call." },
-  hermes:   { label: "Hermes",   model: "Grok 4.3",     color: "#b03d85",
+  hermes:   { label: "Hermes",   model: "Grok 4.3",     short: "Grok 4.3",  color: "#b03d85",
     blurb: "The specialist. Trades GRVT with a patient, mechanism-first style — if no setup is firing, silence is a position. Cross-examines the other desks' picks every cycle." },
-  manual:   { label: "Manual",   model: "The human",    color: "#1e7a3a",
+  manual:   { label: "Manual",   model: "The human",    short: "The human", color: "#1e7a3a",
     blurb: "The human. Discretionary trading on Extended — no prompts, no conviction scores, no code-enforced gates. Pure experience, and the benchmark every machine is trying to beat." },
   // Paper brains (bot-side #123b) — render automatically once the feed's standings include them.
-  kimi:     { label: "Kimi",     model: "Kimi K2.6",    color: "#b3541e",
+  kimi:     { label: "Kimi",     model: "Kimi K2.6",    short: "Kimi",      color: "#b3541e",
     blurb: "The challenger from Moonshot AI. A frontier open-weights model trading a paper account for a shot at a real-money seat — same data, same rules, everything to prove." },
-  deepseek: { label: "DeepSeek", model: "DeepSeek V4",  color: "#0f9e94",
+  deepseek: { label: "DeepSeek", model: "DeepSeek V4",  short: "DeepSeek",  color: "#0f9e94",
     blurb: "The efficiency play. DeepSeek's flagship reasons at frontier level for a fraction of the cost — on paper until the scoreboard says otherwise." },
-  gemini:   { label: "Gemini",   model: "Gemini 3.5 Flash", color: "#6741d9",
+  gemini:   { label: "Gemini",   model: "Gemini 3.5 Flash", short: "Gemini",    color: "#6741d9",
     blurb: "Google's entrant. Fast, cheap and ranked above every other budget brain on independent benchmarks — trading paper to earn its way onto a live venue." }
 };
 function $(id) { return document.getElementById(id); }
@@ -506,7 +507,7 @@ function fetchMacroStrip() {
 // ── headline ──
 function renderHeadline(d) {
   var v = d.verdict;
-  $("race-kicker").textContent = "Season 2 · four accounts · " + money(d.startCapital, 0) + " each · since " + esc(d.since);
+  $("race-kicker").textContent = "Season 2 · four accounts · " + money(d.startCapital, 0) + " each · since " + esc(d.since) + " · ends 12 Jul";
   if (!v) { $("race").textContent = "The race is on"; return; }
   var gap = Math.abs(v.machine.account - v.man.account);
   var h = v.tie ? "Dead heat between man and machine"
@@ -541,7 +542,7 @@ var chartMode = null; // '24h' (5-min samples) | 'season' (hourly/daily)
 function seriesFromRows(rows, labelFn) {
   var out = { labels: rows.map(labelFn), series: [] };
   Object.keys(ACTORS).forEach(function (k) {
-    out.series.push({ key: ACTORS[k].model, color: ACTORS[k].color, v: rows.map(function (r) { return r[k]; }) });
+    out.series.push({ key: ACTORS[k].model, short: ACTORS[k].short, color: ACTORS[k].color, v: rows.map(function (r) { return r[k]; }) });
   });
   return out;
 }
@@ -557,7 +558,7 @@ function chartSeries(d, mode) {
   var s = d.seriesDaily || { labels: [], bySource: {} };
   if ((s.labels || []).length >= 2) {
     return { labels: s.labels, series: Object.keys(ACTORS).map(function (k) {
-      return { key: ACTORS[k].model, color: ACTORS[k].color, v: s.bySource[k] || [] };
+      return { key: ACTORS[k].model, short: ACTORS[k].short, color: ACTORS[k].color, v: s.bySource[k] || [] };
     }) };
   }
   var hourly = d.equityHourly || [];
@@ -584,7 +585,7 @@ function renderChart(d) {
   var svg = $("race-chart"); svg.innerHTML = "";
   var NS = "http://www.w3.org/2000/svg";
   function el(n, at) { var e = document.createElementNS(NS, n); for (var k in at) e.setAttribute(k, at[k]); svg.appendChild(e); return e; }
-  var W = 820, H = 300, m = { t: 14, r: 96, b: 26, l: 42 };
+  var W = 820, H = 300, m = { t: 14, r: 116, b: 26, l: 42 };
   var iw = W - m.l - m.r, ih = H - m.t - m.b;
   var all = []; data.series.forEach(function (s) { s.v.forEach(function (v) { if (v != null && isFinite(v)) all.push(v); }); });
   if (!all.length) { $("chart-wrap").classList.add("hidden"); return; }
@@ -623,7 +624,7 @@ function renderChart(d) {
     if (lastIdx < 0) return;
     var ly = Y(s.v[lastIdx]);
     el("circle", { cx: X(lastIdx), cy: ly, r: 3.2, fill: s.color, stroke: "#fff", "stroke-width": 1.6 });
-    endLabels.push({ y: ly, color: s.color, text: s.key + " " + Math.round(s.v[lastIdx]) });
+    endLabels.push({ y: ly, color: s.color, text: (s.short || s.key) + " $" + Math.round(s.v[lastIdx]) });
   });
   // De-overlap the end-of-line labels: sort by y, push apart to min 14px separation,
   // then shift back up if the stack ran past the plot bottom (labels printed over
