@@ -106,6 +106,7 @@
   .mini-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 0 28px; align-items: start; }
   table.data { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-bottom: 16px; }
   table.data caption { text-align: left; font-weight: 700; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; padding-bottom: 5px; color: var(--ink); border-bottom: 2px solid var(--ink); }
+  table.data th { text-align: left; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink3); font-weight: 600; padding: 6px 4px; border-bottom: 2px solid var(--ink); }
   table.data td { padding: 6px 4px; border-bottom: 1px solid var(--line2); }
   table.data .rt { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
 
@@ -161,6 +162,9 @@
   .stats-kicker { margin-top: 22px; }
   footer { border-top: 2px solid var(--ink); margin-top: 30px; }
   footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 30px; justify-content: space-between; padding: 16px 20px 34px; color: var(--ink3); font-size: 12px; }
+  .pill { display: inline-block; font-size: 9.5px; font-weight: 700; letter-spacing: .08em; padding: 1px 5px; border-radius: 3px; vertical-align: 1px; margin-left: 5px; font-family: var(--mono); }
+  .pill.live { color: #1e7a3a; border: 1px solid #9ec9ab; background: #f0f7f2; }
+  .pill.paper { color: #8a6414; border: 1px solid #d9c489; background: #faf5e6; }
   #stale-note { background: #fdf3e0; border-bottom: 1px solid #ecd9ac; color: #6b4a08; font-size: 12px; text-align: center; padding: 5px 10px; }
 
   /* ── #116 additions: players, live position bars, tape analytics, archive filters, skeletons ── */
@@ -525,7 +529,8 @@ function renderStandings(d) {
   var h = "<tr><th></th><th>Competitor</th><th>Venue</th><th class='rt'>Account</th><th class='rt'>Return</th><th class='rt'>Record</th><th class='rt'>Win rate</th></tr>";
   rows.forEach(function (a, i) {
     var meta = ACTORS[a.key] || { label: a.label, model: "", color: "#888" };
-    var venue = a.key === "qwen" ? "Paper" : venueHtml(esc(a.venue) + " · live", a.venue);
+    var isPaper = a.key === "qwen" || !a.venue || String(a.venue).toUpperCase() === "PAPER";
+    var venue = isPaper ? "Paper<span class='pill paper'>PAPER</span>" : venueHtml(esc(a.venue), a.venue) + "<span class='pill live'>LIVE</span>";
     h += "<tr><td class='num'>" + (i + 1) + "</td>" +
       "<td><span class='swatch' style='background:" + meta.color + "'></span><span class='who-name'>" + esc(meta.model) + "</span> <span class='who-model'>· " + esc(meta.label) + "</span></td>" +
       "<td>" + venue + "</td>" +
