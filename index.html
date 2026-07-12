@@ -755,6 +755,9 @@ function renderFloor(d) {
     h += "<div class='titem'><div class='l1'><span class='asset'>" + esc(t.asset) + "</span>" +
       "<span class='dirpill " + (t.direction === "SHORT" ? "s" : "l") + "'>" + esc(t.direction) + "</span>" +
       actorTag(t.actor) +
+      (t.venue !== "PAPER"
+        ? "<span class='pill live'>" + esc(t.venue) + " · LIVE</span>"
+        : (t.actor === "qwen" ? "" : "<span class='pill paper' title='Tracked on paper — not a live order (agent benched or venue-unrouted)'>PAPER</span>")) +
       (t.smartMoney ? "<span class='smpill' title='Top Hyperliquid accounts hold this same trade'>TOP BOOKS AGREE ×" + esc(t.smartMoney) + "</span>" : "") +
       "<span class='outc'><span class='livepnl' data-pnl='" + i + "'></span> <span class='num'>conv " + esc(t.conviction) + "/10</span></span></div>" +
       "<div class='lvls'>entry " + money(e, e < 10 ? 4 : 2) + " · stop " + (t.levelsApprox ? "≈" : "") + money(s, s < 10 ? 4 : 2) + " · target " + (t.levelsApprox ? "≈" : "") + money(tg, tg < 10 ? 4 : 2) +
@@ -796,9 +799,10 @@ function renderFloor(d) {
 }
 
 // ── live P&L on open positions ──
-// VENUE-FIRST pricing: live positions price from Hyperliquid mids, never a Binance
-// bare-ticker lookup — cross-venue ticker collisions are real (HL LIT $2.66 vs Binance
-// LIT $0.74 rendered a healthy long as −72%). Paper rows still use Binance spot.
+// VENUE-FIRST pricing for ALL rows: cross-venue ticker collisions are real (HL LIT
+// $2.66 vs Binance LIT $0.74 rendered a healthy long as −72% — twice: once on the live
+// row, then again on a PAPER row when the agent was benched). HL mids first; Binance
+// bare-ticker only as a paper-row fallback, gated by a >50%-off-entry wrong-asset guard.
 function paintOpenLive(t, i, px) {
   var pnl = (px - t.entry) / t.entry * 100 * (t.direction === "SHORT" ? -1 : 1);
   var el = document.querySelector("[data-pnl='" + i + "']");
@@ -813,26 +817,26 @@ function paintOpenLive(t, i, px) {
 }
 function refreshOpenLive() {
   if (!_openTrades.length) return;
-  var anyLive = _openTrades.some(function (t) { return t.venue && t.venue !== "PAPER"; });
-  var midsP = anyLive
-    ? fetch("https://api.hyperliquid.xyz/info", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "allMids" }) })
-        .then(function (r) { return r.json(); }).catch(function () { return null; })
-    : Promise.resolve(null);
-  midsP.then(function (mids) {
-    _openTrades.forEach(function (t, i) {
-      var live = t.venue && t.venue !== "PAPER";
-      if (live) {
+  fetch("https://api.hyperliquid.xyz/info", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "allMids" }) })
+    .then(function (r) { return r.json(); }).catch(function () { return null; })
+    .then(function (mids) {
+      _openTrades.forEach(function (t, i) {
         var vpx = mids ? parseFloat(mids[t.asset.toUpperCase()]) : NaN;
-        if (isFinite(vpx)) paintOpenLive(t, i, vpx);
-        // venue price unavailable → show nothing rather than risk a wrong-asset price
-        return;
-      }
-      fetch("https://api.binance.com/api/v3/ticker/price?symbol=" + encodeURIComponent(t.asset.toUpperCase() + "USDT"))
-        .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (j) { if (j && j.price) paintOpenLive(t, i, parseFloat(j.price)); })
-        .catch(function () {});
+        if (isFinite(vpx)) { paintOpenLive(t, i, vpx); return; }
+        // live-venue row with no HL mid → show nothing rather than risk a wrong-asset price
+        if (t.venue && t.venue !== "PAPER") return;
+        fetch("https://api.binance.com/api/v3/ticker/price?symbol=" + encodeURIComponent(t.asset.toUpperCase() + "USDT"))
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (j) {
+            if (!j || !j.price) return;
+            var px = parseFloat(j.price);
+            // wrong-asset guard: a bare-ticker match >50% off entry is almost certainly
+            // a DIFFERENT asset sharing the ticker — show nothing over showing garbage.
+            if (isFinite(px) && t.entry && Math.abs(px - t.entry) / t.entry <= 0.5) paintOpenLive(t, i, px);
+          })
+          .catch(function () {});
+      });
     });
-  });
 }
 
 // ── reading the tape: season analytics computed client-side from the archive ──
