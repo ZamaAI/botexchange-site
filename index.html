@@ -775,7 +775,7 @@ function renderFloor(d) {
     h += "<div class='titem'><div class='l1'><span class='asset'>" + esc(t.asset) + "</span>" +
       "<span class='dirpill " + (t.direction === "SHORT" ? "s" : "l") + "'>" + esc(t.direction) + "</span>" +
       actorTag(String(t.brain || "").toLowerCase()) + "<span class='outc' style='color:var(--watch)'>WATCHING</span></div>" +
-      (t.trigger ? "<div class='trig'><b>Trigger:</b> " + esc(t.trigger) + "</div>" : "") +
+      (t.trigger ? "<div class='trig'><b>Trigger:</b> " + esc(smartTrim(String(t.trigger), 200)) + "</div>" : "") +
       "<div class='why'>Anticipatory entries are the fleet's #1 loss cause — agents wait for the trigger to print.</div></div>";
   });
   // The human's live book (Extended) — entry + live % only; feed omits it when flat/unreadable.
