@@ -225,7 +225,7 @@
     <div class="legend" id="legend"></div>
     <svg id="race-chart" viewBox="0 0 820 300" role="img" aria-label="Account value of the competitors"></svg>
     <div class="src" style="margin-top:4px">Equity curves — live account value including open positions, sampled every 5 minutes.</div>
-    <div class="src" style="margin-top:2px"><b>Season 3 starts 13 July</b> — the grid grows: Kimi K2.6, DeepSeek V4 and Gemini 3.5 Flash join on paper accounts, racing for a real-money seat.</div>
+    <div class="src" style="margin-top:2px"><b>Season 3 starts 15 July</b> — the grid grows: Kimi K2.6, DeepSeek V4 and Gemini 3.5 Flash join on paper accounts, racing for a real-money seat.</div>
   </div>
   <div class="kicker stats-kicker">The season in numbers</div>
   <div class="tape-grid" id="season-stats" style="margin-top:8px"></div>
@@ -512,7 +512,7 @@ function fetchMacroStrip() {
 // ── headline ──
 function renderHeadline(d) {
   var v = d.verdict;
-  $("race-kicker").textContent = "Season 2 · four accounts · " + money(d.startCapital, 0) + " each · since " + esc(d.since) + " · ends 12 Jul";
+  $("race-kicker").textContent = "Season 2 · four accounts · " + money(d.startCapital, 0) + " each · since " + esc(d.since) + " · closes 14 Jul";
   if (!v) { $("race").textContent = "The race is on"; return; }
   var gap = Math.abs(v.machine.account - v.man.account);
   var h = v.tie ? "Dead heat between man and machine"
@@ -778,6 +778,21 @@ function renderFloor(d) {
       (t.trigger ? "<div class='trig'><b>Trigger:</b> " + esc(t.trigger) + "</div>" : "") +
       "<div class='why'>Anticipatory entries are the fleet's #1 loss cause — agents wait for the trigger to print.</div></div>";
   });
+  // The human's live book (Extended) — entry + live % only; feed omits it when flat/unreadable.
+  var mb = d.manualBook;
+  if (mb && mb.positions && mb.positions.length) {
+    h += "<div class='wire-h' style='margin-top:14px'>The human&#39;s book</div>";
+    mb.positions.forEach(function (p) {
+      h += "<div class='titem'><div class='l1'><span class='asset'>" + esc(p.asset) + "</span>" +
+        "<span class='dirpill " + (p.direction === "SHORT" ? "s" : "l") + "'>" + esc(p.direction) + "</span>" +
+        actorTag("manual") +
+        "<span class='pill live'>EXTENDED · LIVE</span>" +
+        (p.stock ? "<span class='pill paper' title='Tokenized-equity perp'>STOCK</span>" : "") +
+        "<span class='outc'>" + (p.pnlPct != null ? "<span class='num " + cls(p.pnlPct) + "'>" + pct(p.pnlPct, 2) + "</span>" : "") + "</span></div>" +
+        "<div class='lvls'>entry " + money(p.entry, p.entry != null && p.entry < 10 ? 4 : 2) +
+        " · discretionary — no published stops; the trade joins the record at close</div></div>";
+    });
+  }
   $("open-col").innerHTML = h;
   Array.prototype.forEach.call($("open-col").querySelectorAll(".th-more"), function (b) {
     var t = $("open-col").querySelector(".why[data-th='" + b.getAttribute("data-th") + "']");
