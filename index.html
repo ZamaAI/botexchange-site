@@ -738,7 +738,7 @@ function posBar(t, i) {
     "<span class='pb-fill' style='left:" + Math.min(tgtSide, entryP) + "%;right:" + (100 - Math.max(tgtSide, entryP)) + "%;background:var(--up)'></span>" +
     "<span class='pb-entry' style='left:" + entryP + "%'></span>" +
     "<span class='pb-live hidden' data-pl='" + i + "' style='left:" + P(t.entry) + "%'></span>" +
-    "<span class='pb-lab' style='" + (stopSide < 50 ? "left:0" : "right:0") + "'>stop " + ap + fmt(t.stop) + "</span>" +
+    "<span class='pb-lab' style='" + (stopSide < 50 ? "left:0" : "right:0") + "'>stop " + ap + fmt(t.stop) + (t.trailed ? " 🔒" : "") + "</span>" +
     "<span class='pb-lab' style='" + (tgtSide < 50 ? "left:0" : "right:0") + "'>target " + ap + fmt(t.target) + "</span>" +
     "</div>";
 }
@@ -750,7 +750,9 @@ function renderFloor(d) {
   if (!liveOpen.length) { var fnr = nextReport(); h += "<div class='flatnote'><b>Live venues are flat.</b> No open real-money risk — the agents are waiting for an edge. Next decision cycle " + fnr.label + " (in " + fnr.inStr + ").</div>"; }
   open.forEach(function (t, i) {
     var e = t.entry, s = t.stop, tg = t.target;
-    var rr = (e != null && s != null && tg != null && e !== s) ? Math.abs((tg - e) / (e - s)) : null;
+    // rr from the feed = PLANNED R/R (initial stop) — the local fallback uses the current
+    // stop, which is wrong once the risk engine trails it (locked-profit stop ~at entry).
+    var rr = t.rr != null ? t.rr : ((e != null && s != null && tg != null && e !== s) ? Math.abs((tg - e) / (e - s)) : null);
     var age = t.openedAt ? Math.round((Date.now() - new Date(t.openedAt).getTime()) / 36e5) : null;
     h += "<div class='titem'><div class='l1'><span class='asset'>" + esc(t.asset) + "</span>" +
       "<span class='dirpill " + (t.direction === "SHORT" ? "s" : "l") + "'>" + esc(t.direction) + "</span>" +
@@ -760,7 +762,9 @@ function renderFloor(d) {
         : (t.actor === "qwen" ? "" : "<span class='pill paper' title='Tracked on paper — not a live order (agent benched or venue-unrouted)'>PAPER</span>")) +
       (t.smartMoney ? "<span class='smpill' title='Top Hyperliquid accounts hold this same trade'>TOP BOOKS AGREE ×" + esc(t.smartMoney) + "</span>" : "") +
       "<span class='outc'><span class='livepnl' data-pnl='" + i + "'></span> <span class='num'>conv " + esc(t.conviction) + "/10</span></span></div>" +
-      "<div class='lvls'>entry " + money(e, e < 10 ? 4 : 2) + " · stop " + (t.levelsApprox ? "≈" : "") + money(s, s < 10 ? 4 : 2) + " · target " + (t.levelsApprox ? "≈" : "") + money(tg, tg < 10 ? 4 : 2) +
+      "<div class='lvls'>entry " + money(e, e < 10 ? 4 : 2) + " · stop " + (t.levelsApprox ? "≈" : "") + money(s, s < 10 ? 4 : 2) +
+      (t.trailed ? " <span title='The risk engine has trailed this stop from its original level — profit locked in'>🔒 trailed</span>" : "") +
+      " · target " + (t.levelsApprox ? "≈" : "") + money(tg, tg < 10 ? 4 : 2) +
       (rr ? " · R/R " + rr.toFixed(1) : "") + (age != null ? " · open " + (age < 48 ? age + "h" : Math.round(age / 24) + "d") : "") + "</div>" +
       posBar(t, i) +
       (t.thesis && !/scanner pick \(paper\)|see COIN SCANNER/i.test(t.thesis)
