@@ -8,7 +8,8 @@ window.VENUE_LINKS = {
   HL: "https://app.hyperliquid.xyz/join/ZAMMA",
   HYPERLIQUID: "https://app.hyperliquid.xyz/join/ZAMMA",
   GRVT: "https://grvt.io/?ref=KBZMVSI",
-  EXTENDED: "https://extended.exchange/"
+  EXTENDED: "https://extended.exchange/",
+  LIGHTER: "https://app.lighter.xyz/?referral=ZAMA"
 };
 
 // Sponsor CTA target (X profile DM / contact page / mailto).
