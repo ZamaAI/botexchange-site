@@ -173,11 +173,11 @@
 
   /* ── #116 additions: players, live position bars, tape analytics, archive filters, skeletons ── */
   .players { display: grid; grid-template-columns: repeat(auto-fit, minmax(186px, 1fr)); gap: 13px; margin-top: 14px; }
-  .pcard { border: 1px solid var(--line); border-top: 3px solid var(--line); padding: 12px 14px 10px; background: #fff; }
+  .pcard { border: 1px solid var(--line); border-top: 3px solid var(--line); padding: 12px 14px 10px; background: #fff; display: flex; flex-direction: column; }
   .pcard .p-name { font-family: var(--serif); font-weight: 700; font-size: 17px; }
   .pcard .p-model { color: var(--ink3); font-size: 11.5px; margin-bottom: 6px; }
   .pcard .p-blurb { font-size: 12.5px; color: var(--ink2); line-height: 1.5; min-height: 56px; }
-  .pcard .p-stat { border-top: 1px solid var(--line2); margin-top: 8px; padding-top: 7px; font-family: var(--mono); font-size: 12px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; }
+  .pcard .p-stat { border-top: 1px solid var(--line2); margin-top: auto; padding-top: 7px; font-family: var(--mono); font-size: 12px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; }
   .live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--up); margin-right: 5px; animation: pulse 2s infinite; vertical-align: 1px; }
   @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
   .posbar { position: relative; height: 7px; background: var(--line2); border-radius: 3px; margin: 9px 2px 16px; }
@@ -540,8 +540,11 @@ function renderStandings(d) {
   var h = "<tr><th></th><th>Competitor</th><th>Venue</th><th class='rt'>Account</th><th class='rt'>Return</th><th class='rt'>Record</th><th class='rt'>Win rate</th></tr>";
   rows.forEach(function (a, i) {
     var meta = ACTORS[a.key] || { label: a.label, model: "", color: "#888" };
-    var isPaper = a.key === "qwen" || !a.venue || String(a.venue).toUpperCase() === "PAPER";
-    var venue = isPaper ? "<span class='pill paper' style='margin-left:0'>PAPER</span>" : venueHtml(esc(a.venue), a.venue) + "<span class='pill live'>LIVE</span>";
+    var isPaper = a.paper === true || a.key === "qwen" || !a.venue || String(a.venue).toUpperCase() === "PAPER";
+    var hasVenue = a.venue && String(a.venue).toUpperCase() !== "PAPER";
+    var venue = isPaper
+      ? (hasVenue ? venueHtml(esc(a.venue), a.venue) + " " : "") + "<span class='pill paper'" + (hasVenue ? "" : " style='margin-left:0'") + ">PAPER</span>"
+      : venueHtml(esc(a.venue), a.venue) + "<span class='pill live'>LIVE</span>";
     h += "<tr><td class='num'>" + (i + 1) + "</td>" +
       "<td><span class='swatch' style='background:" + meta.color + "'></span><span class='who-name'>" + esc(meta.model) + "</span> <span class='who-model'>· " + esc(meta.label) + "</span></td>" +
       "<td>" + venue + "</td>" +
@@ -686,7 +689,7 @@ function renderPlayers(d) {
     var meta = ACTORS[k]; if (!meta) return "";
     var s = byKey[k];
     var venue = k === "manual" ? venueHtml("Extended · live", "EXTENDED") : k === "qwen" ? "Paper account"
-      : (s ? venueHtml(esc(String(s.venue).toUpperCase()) + " · live", s.venue) : "");
+      : (s ? venueHtml(esc(String(s.venue).toUpperCase()) + (s.paper ? " · paper" : " · live"), s.venue) : "");
     var stat = s
       ? "<span>" + money(s.account, 0) + " <span class='" + cls(s.retPct) + "'>" + pct(s.retPct, 1) + "</span></span>" +
         "<span>" + s.wins + "W–" + s.losses + "L" + (s.wr !== "N/A" ? " · " + esc(s.wr) + "%" : "") + "</span>"
