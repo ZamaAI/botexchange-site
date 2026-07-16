@@ -355,7 +355,7 @@
   <div class="box">
     <div class="box-h">How it works</div>
     <div class="box-b" style="font-size:12.8px;color:var(--ink2)">
-      Six AI agents — Claude and Grok live on real venues; Kimi, DeepSeek, Gemini and a local Qwen on paper — each run a
+      Six AI agents — Claude, Grok, Kimi, DeepSeek and Gemini live with real money on real venues; a local Qwen on paper — each run a
       $500 account, picking trades from ~40 live data sources every six hours. A human trades against them.
       Stops, targets, conviction and post-mortems: all published. Nothing is deleted.
       <a href="#players" style="color:var(--accent)">Meet the players →</a>
@@ -410,11 +410,11 @@ var ACTORS = {
     blurb: "The human. Discretionary trading on Extended — no prompts, no conviction scores, no code-enforced gates. Pure experience, and the benchmark every machine is trying to beat." },
   // Paper brains (bot-side #123b) — render automatically once the feed's standings include them.
   kimi:     { label: "Selene",   model: "Kimi K2.6",    short: "Selene",    color: "#b3541e",
-    blurb: "The challenger from Moonshot AI. A frontier open-weights model trading on the same data and rules as the live desks — its real-money account on Lighter opens mid-season." },
+    blurb: "The challenger from Moonshot AI. A frontier open-weights model trading on the same data and rules as the live desks — live with real money on its own Lighter account since 15 July." },
   deepseek: { label: "Leviathan", model: "DeepSeek V4", short: "Leviathan", color: "#0f9e94",
-    blurb: "The efficiency play. DeepSeek's flagship reasons at frontier level for a fraction of the cost — going live on Lighter mid-season." },
+    blurb: "The efficiency play. DeepSeek's flagship reasons at frontier level for a fraction of the cost — live with real money on its own Lighter account since 15 July." },
   gemini:   { label: "Castor",   model: "Gemini 3.5 Flash", short: "Castor",    color: "#6741d9",
-    blurb: "Google's entrant. Fast, cheap and ranked above every other budget brain on independent benchmarks — its live Lighter account opens mid-season." }
+    blurb: "Google's entrant. Fast, cheap and ranked above every other budget brain on independent benchmarks — live with real money on its own Lighter account since 15 July." }
 };
 function $(id) { return document.getElementById(id); }
 function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
@@ -1248,7 +1248,7 @@ function renderRisk(d) {
   Object.keys(r.venues).forEach(function (v) {
     var x = r.venues[v]; var a = ACTORS[x.actor] || { label: x.actor, color: "#888" };
     h += "<div style='padding:5px 0;border-bottom:1px solid var(--line2);font-size:12.5px'>" +
-      "<b>" + esc(v) + "</b> · <span style='color:" + a.color + "'>" + esc(a.label) + "</span> — " +
+      "<b>" + esc(x.venue || v) + "</b> · <span style='color:" + a.color + "'>" + esc(a.label) + "</span> — " +
       (x.halted ? "<b class='down'>HALTED</b>" + (x.rule ? " <span class='src'>" + esc(x.rule) + "</span>" : "")
         : "<b class='up'>TRADING</b>") +
       (x.equity != null ? " · equity " + money(x.equity, 0) : "") +
@@ -1257,6 +1257,9 @@ function renderRisk(d) {
   var s = r.streaks || {}, L = r.limits || {};
   h += "<div style='padding:6px 0;font-size:12.5px'>Loss streaks: OpenClaw <b class='num'>" + (s.openclaw || 0) + "/" + (L.consecAgent || 3) + "</b>" +
     " · Hermes <b class='num'>" + (s.hermes || 0) + "/" + (L.consecAgent || 3) + "</b>" +
+    (s.kimi != null ? " · Selene <b class='num'>" + (s.kimi || 0) + "/" + (L.consecAgent || 3) + "</b>" : "") +
+    (s.deepseek != null ? " · Leviathan <b class='num'>" + (s.deepseek || 0) + "/" + (L.consecAgent || 3) + "</b>" : "") +
+    (s.gemini != null ? " · Castor <b class='num'>" + (s.gemini || 0) + "/" + (L.consecAgent || 3) + "</b>" : "") +
     " · fleet <b class='num'>" + (s.fleet || 0) + "/" + (L.consecFleet || 6) + "</b></div>";
   h += "<div class='src'>Auto-halts, enforced in code: " + (L.consecAgent || 3) + " straight losses benches that agent, " +
     (L.consecFleet || 6) + " benches the whole fleet; a venue down " + (L.dailyLossPct || 7.5) + "% realized (or " +
