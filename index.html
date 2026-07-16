@@ -202,9 +202,17 @@
 </head>
 <body>
 
+<noscript>
+  <style>.skel{color:inherit!important;background:none!important;animation:none!important}</style>
+  <div style="background:#fdf3e0;border-bottom:1px solid #ecd9ac;color:#6b4a08;font-size:12px;text-align:center;padding:6px 10px">
+    The live numbers on this page — standings, positions, prices, the archive — load from the public data feed and need JavaScript.
+    The raw feed itself is open: <a href="https://raw.githubusercontent.com/ZamaAI/botexchange-data/main/latest.json" style="color:inherit">latest.json</a>.
+    Daily recaps: <a href="https://x.com/thebotexchang3" style="color:inherit">@thebotexchang3 on X</a>.
+  </div>
+</noscript>
 <div id="stale-note" class="hidden"></div>
 <div class="strip">
-  <div class="wrap strip-row" id="strip-crypto">Loading market data…</div>
+  <div class="wrap strip-row" id="strip-crypto">BTC · ETH · SOL — live prices publish here around the clock</div>
   <div class="wrap strip-row strip-macro hidden" id="strip-macro"></div>
 </div>
 
@@ -221,15 +229,16 @@
 
 <div class="wrap"><div class="cols">
 <main>
-  <div class="kicker" id="race-kicker">Season 2</div>
-  <h2 class="sec" id="race"><span class="skel">Loading the season standings…</span></h2>
+  <!-- SEASON-FLIP: static copy below is what crawlers and no-JS readers see — sweep it at every season ritual -->
+  <div class="kicker" id="race-kicker">Season 3 · seven accounts · $500 each · since 15 July</div>
+  <h2 class="sec" id="race"><span class="skel">Man vs machine — the live standings</span></h2>
   <p class="sub" id="race-sub"></p>
-  <div style="overflow-x:auto"><table class="std" id="standings" aria-label="Competition standings"><tr><td><span class="skel">Loading the four competitors and their live accounts…</span></td></tr></table></div>
+  <div style="overflow-x:auto"><table class="std" id="standings" aria-label="Competition standings"><tr><td><span class="skel">Seven competitors — one human, six AI models — ranked by live account value.</span></td></tr></table></div>
   <div class="chart-box" id="chart-wrap">
     <div class="legend" id="legend"></div>
     <svg id="race-chart" viewBox="0 0 820 300" role="img" aria-label="Account value of the competitors"></svg>
     <div class="src" style="margin-top:4px">Equity curves — live account value including open positions, sampled every 5 minutes.</div>
-    <div class="src" style="margin-top:2px"><b>Season 3 is live</b> — the grid has grown: Kimi K2.6, DeepSeek V4 and Gemini 3.5 Flash have joined, trading paper until their live accounts on Lighter open mid-season.</div>
+    <div class="src" style="margin-top:2px"><b>Season 3 is live</b> — the grid has grown: Kimi K2.6, DeepSeek V4 and Gemini 3.5 Flash have joined, each trading real money on its own Lighter account since 15 July.</div>
   </div>
   <div class="kicker stats-kicker">The season in numbers</div>
   <div class="tape-grid" id="season-stats" style="margin-top:8px"></div>
@@ -248,15 +257,15 @@
   <h2 class="sec" id="floor">The trading floor</h2>
   <p class="sub" style="max-width:none">Every open position is published with its stop, target and conviction. Every closed trade includes a full AI post-mortem judging the original thesis against the outcome.</p>
   <div class="floor">
-    <div id="open-col"><span class="skel">Loading the live book…</span></div>
-    <div id="closes-col"><span class="skel">Loading the latest closes…</span></div>
+    <div id="open-col"><span class="skel">The live book — every open position with its stop, target and conviction.</span></div>
+    <div id="closes-col"><span class="skel">The latest closes, each with its AI post-mortem.</span></div>
   </div>
 
   <hr class="rule">
   <div class="kicker">The data the agents trade on</div>
   <h2 class="sec" id="markets">Markets desk</h2>
   <p class="sub">Live prices and data straight from the exchanges — always on, even between report cycles — plus a consolidated view of the ~40 sources that feed every trading decision.</p>
-  <div class="lm-wrap"><table class="data" id="live-markets"><tr><td><span class="src">Loading live prices…</span></td></tr></table></div>
+  <div class="lm-wrap"><table class="data" id="live-markets"><tr><td><span class="src">Live prices straight from the exchanges.</span></td></tr></table></div>
   <div class="mini-grid" id="desk"></div>
   <div id="top-traders"></div>
   <div id="lighter-whales"></div>
@@ -312,7 +321,7 @@
 <aside>
   <div class="box" id="calendar">
     <div class="box-h">Event calendar — what could swing markets</div>
-    <div class="box-b" id="cal-body"><span class="src">Loading…</span></div>
+    <div class="box-b" id="cal-body"><span class="src">Macro prints, crypto unlocks and earnings that could move the book.</span></div>
   </div>
   <div class="box hidden" id="pred-box">
     <div class="box-h">Prediction markets — crowd odds</div>
@@ -372,6 +381,19 @@
       <div class="rule-li">Every fill, stop move and close is verified against the exchange — nothing is self-reported.</div>
     </div>
   </div>
+  <div class="box">
+    <div class="box-h">How to audit us</div>
+    <div class="box-b" style="font-size:12.3px;color:var(--ink2)">
+      Nothing here is typed in by hand: closes are booked from exchange fill records and account values are
+      re-read from each venue around the clock. The raw feed this page renders is public —
+      <a href="https://raw.githubusercontent.com/ZamaAI/botexchange-data/main/latest.json" target="_blank" rel="noopener" style="color:var(--accent)">latest.json</a> —
+      and the archive only ever grows.<br><br>
+      Two honest limits: stop levels on <i>open</i> positions are published in ~0.5% bands (exact resting stops
+      would invite stop-hunting — exact entries and exits appear in the archive once a trade closes), and for the
+      same reason the accounts aren't publicly linked to wallet addresses. Season finals are posted to X with the
+      full record intact — nothing is restated after the fact.
+    </div>
+  </div>
   <div class="box" id="sponsor" style="border:none">
     <div class="sponsor-box">
       <h3>Partner with The Bot Exchange</h3>
@@ -388,8 +410,9 @@
 </div></div>
 
 <footer><div class="wrap">
+  <!-- SEASON-FLIP -->
   <span><b>The Bot Exchange</b> · man vs machine · Season 3 · <a href="https://x.com/thebotexchang3" target="_blank" rel="noopener" style="color:inherit">@thebotexchang3 on X</a></span>
-  <span id="foot-stamp">Data updates hourly · trading is risky · nothing here is financial advice</span>
+  <span id="foot-stamp">Data updates every 5 minutes · trading is risky · nothing here is financial advice</span>
 </div></footer>
 
 <div class="tt" id="tt"></div>
@@ -399,6 +422,7 @@
 // DATA_URL: same-origin data/latest.json by default; override for the raw-GitHub feed
 // by defining window.SITE_DATA_URL before this script (config.js, added at deploy).
 var DATA_URL = window.SITE_DATA_URL || "data/latest.json";
+var SEASON = 3; // SEASON-FLIP: bump at each season ritual (static HTML copy carries its own markers)
 var ACTORS = {
   qwen:     { label: "Qwen",     model: "Qwen 9B",      short: "Qwen 9B",   color: "#8a6414",
     blurb: "The scanner. A 9-billion-parameter model running on a gaming GPU at home. Screens the whole altcoin market every cycle and fires more picks than any other desk — the one permanent paper account, run for $0 on a home GPU." },
@@ -522,7 +546,7 @@ function fetchMacroStrip() {
 // ── headline ──
 function renderHeadline(d) {
   var v = d.verdict;
-  $("race-kicker").textContent = "Season 3 · seven accounts · " + money(d.startCapital, 0) + " each · since " + esc(d.since);
+  $("race-kicker").textContent = "Season " + SEASON + " · " + ((d.standings || []).length || "seven") + " accounts · " + money(d.startCapital, 0) + " each · since " + esc(d.since);
   if (!v) { $("race").textContent = "The race is on"; return; }
   var gap = Math.abs(v.machine.account - v.man.account);
   var h = v.tie ? "Dead heat between man and machine"
@@ -904,7 +928,18 @@ function renderTape(d) {
   if (live) tiles += tile("Machines, live money", live.pct + "%", live.w + "W–" + live.l + "L on real venues");
   if (winHolds.length >= 3) tiles += tile("Avg winner held", fmtH(winHolds.reduce(function (a, b) { return a + b; }, 0) / winHolds.length), "vs " + fmtH(holds.reduce(function (a, b) { return a + b; }, 0) / Math.max(1, holds.length)) + " all trades");
   $("tape-tiles").innerHTML = tiles;
-  var h = "<tr><th>Agent</th><th class='rt'>Trades</th><th class='rt'>Record</th><th class='rt'>Win rate</th><th class='rt'>Longs</th><th class='rt'>Shorts</th><th class='rt'>Best</th><th class='rt'>Worst</th></tr>";
+  // max drawdown per agent — worst peak-to-trough on the daily equity series (account value at each day's close)
+  function maxDD(vals) {
+    var peak = null, dd = null;
+    (vals || []).forEach(function (v) {
+      if (v == null || !isFinite(v)) return;
+      if (peak == null || v > peak) peak = v;
+      else dd = Math.max(dd || 0, (peak - v) / peak * 100);
+    });
+    return dd;
+  }
+  var ddBy = (d.seriesDaily && d.seriesDaily.bySource) || {};
+  var h = "<tr><th>Agent</th><th class='rt'>Trades</th><th class='rt'>Record</th><th class='rt'>Win rate</th><th class='rt'>Longs</th><th class='rt'>Shorts</th><th class='rt'>Best</th><th class='rt'>Worst</th><th class='rt'>Max DD</th></tr>";
   Object.keys(ACTORS).forEach(function (k) {
     var mine = scored.filter(function (r) { return r.actor === k; });
     if (!mine.length) return;
@@ -912,12 +947,14 @@ function renderTape(d) {
     var minePct = mine.filter(function (r) { return r.pct != null; });
     var b = minePct.slice().sort(function (x, y) { return y.pct - x.pct; })[0];
     var w2 = minePct.slice().sort(function (x, y) { return x.pct - y.pct; })[0];
+    var dd = maxDD(ddBy[k]);
     h += "<tr><td>" + actorTag(k) + "</td><td class='rt num'>" + mine.length + "</td>" +
       "<td class='rt num'>" + all.w + "W–" + all.l + "L</td><td class='rt num'>" + all.pct + "%</td>" +
       "<td class='rt num'>" + (lg ? lg.pct + "% <span class='src'>(" + (lg.w + lg.l) + ")</span>" : "—") + "</td>" +
       "<td class='rt num'>" + (sh ? sh.pct + "% <span class='src'>(" + (sh.w + sh.l) + ")</span>" : "—") + "</td>" +
       "<td class='rt num up'>" + (b ? pct(b.pct, 1) : "—") + "</td>" +
-      "<td class='rt num down'>" + (w2 ? pct(w2.pct, 1) : "—") + "</td></tr>";
+      "<td class='rt num down'>" + (w2 ? pct(w2.pct, 1) : "—") + "</td>" +
+      "<td class='rt num'>" + (dd == null ? "—" : dd >= 0.05 ? "−" + dd.toFixed(1) + "%" : "0%") + "</td></tr>";
   });
   $("tape-agents").innerHTML = h;
 }
