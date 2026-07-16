@@ -13,4 +13,4 @@ window.VENUE_LINKS = {
 };
 
 // Sponsor CTA target (X profile DM / contact page / mailto).
-window.SPONSOR_CONTACT_URL = "https://x.com/ZamaSentinel";
+window.SPONSOR_CONTACT_URL = "https://x.com/zamma3";
