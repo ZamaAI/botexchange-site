@@ -1501,9 +1501,18 @@ function renderAll(d) {
   liveStripRefresh(d.market); startLiveLayers();
 }
 function boot() {
-  fetch(DATA_URL, { cache: "no-store" }).then(function (r) {
-    if (!r.ok) throw new Error("feed " + r.status);
-    return r.json();
+  // fetch chain: same-domain proxy → direct GitHub feed → localStorage snapshot → error
+  var fetchFeed = function (url) {
+    return fetch(url, { cache: "no-store" }).then(function (r) {
+      if (!r.ok) throw new Error("feed " + r.status);
+      return r.json();
+    });
+  };
+  fetchFeed(DATA_URL).catch(function (e1) {
+    if (window.SITE_DATA_FALLBACK_URL && window.SITE_DATA_FALLBACK_URL !== DATA_URL) {
+      return fetchFeed(window.SITE_DATA_FALLBACK_URL);
+    }
+    throw e1;
   }).then(function (d) {
     // stash the last good feed so a future failed load degrades to a stamped
     // snapshot instead of a dead error (~163KB, well under the storage quota)
