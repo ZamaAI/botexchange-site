@@ -75,6 +75,9 @@
   .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 8px; vertical-align: -1px; }
   .who-name { font-weight: 700; }
   .who-model { color: var(--ink3); font-size: 12px; }
+  .who-style { display: block; color: var(--ink3); font-size: 11px; margin: 1px 0 0 20px; font-style: italic; }
+  .hook { font-size: 13px; color: var(--ink2); margin: 0 0 10px; padding: 8px 12px; border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
+  .hook a { color: var(--accent); font-weight: 700; text-decoration: none; }
 
   #race-chart { width: 100%; height: auto; cursor: crosshair; display: block; }
   .chart-box { border: 1px solid var(--line); padding: 14px 14px 6px; margin-top: 14px; background: #fff; }
@@ -230,6 +233,9 @@
 <div class="wrap"><div class="cols">
 <main>
   <!-- SEASON-FLIP: static copy below is what crawlers and no-JS readers see — sweep it at every season ritual -->
+  <p class="hook">Real capital. Code-enforced rules. Nothing deleted — the only public experiment where human and machine
+  trading decisions are recorded, post-mortemed and archived side by side.
+  <a href="https://x.com/thebotexchang3" target="_blank" rel="noopener">Follow the experiment →</a></p>
   <div class="kicker" id="race-kicker">Season 3 · seven accounts · $500 each · since 15 July</div>
   <h2 class="sec" id="race"><span class="skel">Man vs machine — the live standings</span></h2>
   <p class="sub" id="race-sub"></p>
@@ -425,19 +431,26 @@ var DATA_URL = window.SITE_DATA_URL || "data/latest.json";
 var SEASON = 3; // SEASON-FLIP: bump at each season ritual (static HTML copy carries its own markers)
 var ACTORS = {
   qwen:     { label: "Qwen",     model: "Qwen 9B",      short: "Qwen 9B",   color: "#8a6414",
+    style: "Scanner volume — screens the whole altcoin board every cycle",
     blurb: "The scanner. A 9-billion-parameter model running on a gaming GPU at home. Screens the whole altcoin market every cycle and fires more picks than any other desk — the one permanent paper account, run for $0 on a home GPU." },
   openclaw: { label: "OpenClaw", model: "Claude Sonnet 5", short: "Sonnet 5", color: "#2563c4",
+    style: "Confirmation-first majors — level-anchored entries, tight stops",
     blurb: "The house AI. Trades the majors on Hyperliquid with confirmation-first entries and tight stops, and writes the desk's intraday scans. Reads ~40 live data sources before every call." },
   hermes:   { label: "Hermes",   model: "Grok 4.5",     short: "Grok 4.5",  color: "#b03d85",
+    style: "Mechanism-first patience — silence is a position",
     blurb: "The specialist. Trades GRVT with a patient, mechanism-first style — if no setup is firing, silence is a position. Cross-examines the other desks' picks every cycle." },
   manual:   { label: "Manual",   model: "The human",    short: "The human", color: "#1e7a3a",
+    style: "Discretionary swing — pure experience, no code gates",
     blurb: "The human. Discretionary trading on Extended — no prompts, no conviction scores, no code-enforced gates. Pure experience, and the benchmark every machine is trying to beat." },
   // Paper brains (bot-side #123b) — render automatically once the feed's standings include them.
   kimi:     { label: "Selene",   model: "Kimi K2.6",    short: "Selene",    color: "#b3541e",
+    style: "Full data feed — deep-reasoning reads (the A/B full arm)",
     blurb: "The challenger from Moonshot AI. A frontier open-weights model trading on the same data and rules as the live desks — live with real money on its own Lighter account since 15 July." },
   deepseek: { label: "Leviathan", model: "DeepSeek V4", short: "Leviathan", color: "#0f9e94",
+    style: "Lean derivatives-core feed — disciplined and cheap",
     blurb: "The efficiency play. DeepSeek's flagship reasons at frontier level for a fraction of the cost — live with real money on its own Lighter account since 15 July." },
   gemini:   { label: "Castor",   model: "Gemini 3.5 Flash", short: "Castor",    color: "#6741d9",
+    style: "Lean feed — terse trigger-shooter, fires only on sharp edges",
     blurb: "Google's entrant. Fast, cheap and ranked above every other budget brain on independent benchmarks — live with real money on its own Lighter account since 15 July." }
 };
 function $(id) { return document.getElementById(id); }
@@ -570,7 +583,8 @@ function renderStandings(d) {
       ? (hasVenue ? venueHtml(esc(a.venue), a.venue) + " " : "") + "<span class='pill paper'" + (hasVenue ? "" : " style='margin-left:0'") + ">PAPER</span>"
       : venueHtml(esc(a.venue), a.venue) + "<span class='pill live'>LIVE</span>";
     h += "<tr><td class='num'>" + (i + 1) + "</td>" +
-      "<td><span class='swatch' style='background:" + meta.color + "'></span><span class='who-name'>" + esc(meta.model) + "</span> <span class='who-model'>· " + esc(meta.label) + "</span></td>" +
+      "<td><span class='swatch' style='background:" + meta.color + "'></span><span class='who-name'>" + esc(meta.model) + "</span> <span class='who-model'>· " + esc(meta.label) + "</span>" +
+      (meta.style ? "<span class='who-style'>" + esc(meta.style) + "</span>" : "") + "</td>" +
       "<td>" + venue + "</td>" +
       "<td class='rt num' style='font-weight:700'>" + money(a.account) + "</td>" +
       "<td class='rt num " + cls(a.retPct) + "'>" + pct(a.retPct, 1) + "</td>" +
@@ -1479,17 +1493,35 @@ function startLiveLayers() {
   setInterval(renderLiveMarkets, 30000);
   setInterval(refreshOpenLive, 30000);
 }
+function renderAll(d) {
+  renderStamps(d); renderStrip(d.market); renderHeadline(d); renderStandings(d);
+  renderChart(d); renderPlayers(d); renderSeasonStats(d); renderFloor(d); renderDesk(d); renderTopTraders(d); renderLighterWhales(d); renderCalendar(d); renderIntel(d); renderIntelRail(d);
+  renderNotes(d); renderTape(d); renderArchive(d); renderRisk(d);
+  renderWire(d); renderWhaleFeed(d); renderColumn(d); renderPredictions(d);
+  liveStripRefresh(d.market); startLiveLayers();
+}
 function boot() {
   fetch(DATA_URL, { cache: "no-store" }).then(function (r) {
     if (!r.ok) throw new Error("feed " + r.status);
     return r.json();
   }).then(function (d) {
-    renderStamps(d); renderStrip(d.market); renderHeadline(d); renderStandings(d);
-    renderChart(d); renderPlayers(d); renderSeasonStats(d); renderFloor(d); renderDesk(d); renderTopTraders(d); renderLighterWhales(d); renderCalendar(d); renderIntel(d); renderIntelRail(d);
-    renderNotes(d); renderTape(d); renderArchive(d); renderRisk(d);
-    renderWire(d); renderWhaleFeed(d); renderColumn(d); renderPredictions(d);
-    liveStripRefresh(d.market); startLiveLayers();
+    // stash the last good feed so a future failed load degrades to a stamped
+    // snapshot instead of a dead error (~163KB, well under the storage quota)
+    try { localStorage.setItem("tbx_feed_cache", JSON.stringify({ at: Date.now(), d: d })); } catch (e) {}
+    renderAll(d);
   }).catch(function (e) {
+    // Graceful fallback: a visitor whose network can't reach the feed host still
+    // sees the full site from their last successful load, honestly stamped.
+    var cached = null;
+    try { cached = JSON.parse(localStorage.getItem("tbx_feed_cache") || "null"); } catch (e2) {}
+    if (cached && cached.d) {
+      renderAll(cached.d);
+      var mins = Math.round((Date.now() - cached.at) / 60000);
+      var ago = mins < 1 ? "moments" : mins < 120 ? mins + " min" : Math.round(mins / 60) + "h";
+      $("race-sub").innerHTML = "<b>Live feed unreachable from this network</b> — showing the last snapshot this browser loaded, " +
+        ago + " ago. The price ticker and market board still stream live from the exchanges. Refresh to retry.";
+      return;
+    }
     $("race").textContent = "The bot feed is unreachable right now";
     $("race-sub").textContent = "Could not load the account feed from this network (" + e.message + ") — " +
       "the live ticker and market board below still stream directly from the exchanges. Refresh to retry.";
