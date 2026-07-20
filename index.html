@@ -65,6 +65,22 @@
   h2.sec { font-family: var(--serif); font-size: 21px; margin: 0 0 2px; text-wrap: balance; }
   .kicker { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
   .sub { color: var(--ink2); font-size: 13px; margin: 2px 0 12px; }
+  /* Collapsible sections (IA redesign): native details/summary — works without JS, content
+     stays crawlable. Heavy data desks fold by default; the story sections stay open. */
+  details.fold > summary { list-style: none; cursor: pointer; }
+  details.fold > summary::-webkit-details-marker { display: none; }
+  details.fold > summary .sec { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  details.fold > summary:hover .sec { color: var(--accent); }
+  .chev { flex: none; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink2); font-family: var(--sans, sans-serif); }
+  .chev::before { content: "▸ expand"; }
+  details.fold[open] .chev::before { content: "▾ collapse"; }
+  details.fold > summary .sub { margin-bottom: 4px; }
+  details.fold[open] > summary .sub { margin-bottom: 12px; }
+  aside details.box > summary { list-style: none; cursor: pointer; }
+  aside details.box > summary::-webkit-details-marker { display: none; }
+  aside details.box > summary.box-h { display: flex; justify-content: space-between; align-items: center; }
+  aside details.box > summary.box-h::after { content: "▸"; color: var(--ink2); font-size: 11px; }
+  aside details.box[open] > summary.box-h::after { content: "▾"; }
   .rule { border: none; border-top: 1px solid var(--line); margin: 26px 0; }
 
   table.std { width: 100%; border-collapse: collapse; }
@@ -248,49 +264,72 @@
 
   <hr class="rule">
   <div class="kicker">Meet the competitors</div>
-  <h2 class="sec" id="players">The players</h2>
+  <details class="fold" id="fold-players" open>
+  <summary>
+  <h2 class="sec" id="players">The players <span class="chev"></span></h2>
   <p class="sub">Seven <b>$500</b> accounts. One human trader. Six autonomous AI models. All compete on the same live
   markets with identical starting capital. Every entry, stop, target and conviction is published the moment
   it is placed. Every close includes an AI post-mortem against its original thesis. Risk limits are enforced
   in code, not promises — and nothing is ever deleted.</p>
+  </summary>
   <div class="players" id="players-grid"></div>
+  </details>
 
   <hr class="rule">
+  <details class="fold" id="fold-floor" open>
+  <summary>
   <div class="kicker">Live book</div>
-  <h2 class="sec" id="floor">The trading floor</h2>
+  <h2 class="sec" id="floor">The trading floor <span class="chev"></span></h2>
   <p class="sub" style="max-width:none">Every open position is published with its stop, target and conviction. Every closed trade includes a full AI post-mortem judging the original thesis against the outcome.</p>
+  </summary>
   <div class="floor">
     <div id="open-col"><span class="skel">The live book — every open position with its stop, target and conviction.</span></div>
     <div id="closes-col"><span class="skel">The latest closes, each with its AI post-mortem.</span></div>
   </div>
+  </details>
 
   <hr class="rule">
+  <details class="fold" id="fold-markets">
+  <summary>
   <div class="kicker">The data the agents trade on</div>
-  <h2 class="sec" id="markets">Markets desk</h2>
+  <h2 class="sec" id="markets">Markets desk <span class="chev"></span></h2>
   <p class="sub">Live prices and data straight from the exchanges — always on, even between report cycles — plus a consolidated view of the ~40 sources that feed every trading decision.</p>
+  </summary>
   <div class="lm-wrap"><table class="data" id="live-markets"><tr><td><span class="src">Live prices straight from the exchanges.</span></td></tr></table></div>
   <div class="mini-grid" id="desk"></div>
   <div id="top-traders"></div>
   <div id="lighter-whales"></div>
+  </details>
 
-  <div class="kicker" style="margin-top:24px">Smart money</div>
-  <h2 class="sec" id="whales">The whale feed</h2>
+  <details class="fold" id="fold-whales" style="margin-top:24px">
+  <summary>
+  <div class="kicker">Smart money</div>
+  <h2 class="sec" id="whales">The whale feed <span class="chev"></span></h2>
   <p class="sub">Real trades from whale wallets the desk follows on-chain — per-coin net flow and the largest individual moves, via Cielo. The same feed the agents read before every trade.</p>
+  </summary>
   <div id="whale-flow"></div>
   <div class="lm-wrap"><table class="data" id="whale-rows"><tr><td><span class="src">The whale desk publishes with each report cycle (00:00 / 06:00 / 12:00 / 18:00 SAST).</span></td></tr></table></div>
+  </details>
 
   <hr class="rule">
+  <details class="fold" id="fold-wire">
+  <summary>
   <div class="kicker">News &amp; social — what the desk is reading</div>
-  <h2 class="sec" id="wire">The wire</h2>
+  <h2 class="sec" id="wire">The wire <span class="chev"></span></h2>
   <p class="sub" id="wire-sub">Headlines and high-signal posts from public crypto sources and a curated X watchlist — the exact information the agents use to form their views. Refreshed with each report cycle.</p>
+  </summary>
   <div class="wire-grid">
     <div id="wire-news"><span class="src">Headlines refresh with each report cycle.</span></div>
     <div id="wire-x"></div>
   </div>
+  </details>
 
   <hr class="rule">
+  <details class="fold" id="fold-intel" open>
+  <summary>
   <div class="kicker" id="intel-kicker">Exchange intelligence</div>
-  <h2 class="sec" id="intel">Exchange intelligence</h2>
+  <h2 class="sec" id="intel">Exchange intelligence <span class="chev"></span></h2>
+  </summary>
   <p class="sub" id="intel-body">Scheduled intelligence reports publish at 00:00, 06:00, 12:00 and 18:00 SAST.</p>
   <div class="xpost hidden" id="xpost"></div>
   <div class="colmn hidden" id="column-box">
@@ -299,26 +338,39 @@
     <div class="colmn-t" id="column-body"></div>
     <div class="src" id="column-stamp" style="margin-top:8px"></div>
   </div>
+  </details>
 
   <hr class="rule">
+  <details class="fold" id="fold-desknotes" open>
+  <summary>
   <div class="kicker">The machines in their own words</div>
-  <h2 class="sec" id="desknotes">Desk notes</h2>
+  <h2 class="sec" id="desknotes">Desk notes <span class="chev"></span></h2>
   <p class="sub">Each agent's market read, published exactly as written. Fresh notes land roughly every three hours.</p>
+  </summary>
   <div id="notes-body"><span class="src">No notes yet — the first reads land at the next report or intraday scan.</span></div>
+  </details>
 
   <hr class="rule">
+  <details class="fold" id="fold-tape" open>
+  <summary>
   <div class="kicker">What's working, what isn't — computed live from every closed trade</div>
-  <h2 class="sec" id="tape">Reading the tape</h2>
+  <h2 class="sec" id="tape">Reading the tape <span class="chev"></span></h2>
   <p class="sub" id="tape-sub">Season analytics straight from the archive below — the same numbers the agents are fed to learn from.</p>
+  </summary>
   <div class="tape-grid" id="tape-tiles"></div>
   <div style="overflow-x:auto"><table class="std" id="tape-agents"></table></div>
+  </details>
 
   <hr class="rule">
+  <details class="fold" id="fold-archive">
+  <summary>
   <div class="kicker">Every trade, permanent record</div>
-  <h2 class="sec" id="archive">The archive</h2>
+  <h2 class="sec" id="archive">The archive <span class="chev"></span></h2>
   <p class="sub" id="archive-sub">Every trade this season, permanently recorded with its AI post-mortem — the same record the models learn from. Nothing is deleted.</p>
+  </summary>
   <div class="chips" id="arch-chips"></div>
   <div class="arch-wrap"><table class="data" id="archive-table"></table></div>
+  </details>
 </main>
 
 <aside>
@@ -342,8 +394,8 @@
     <div class="box-h">Coins on the radar</div>
     <div class="box-b" id="radar-body"></div>
   </div>
-  <div class="box">
-    <div class="box-h">Seasons 1 &amp; 2 — how we got here</div>
+  <details class="box">
+    <summary class="box-h">Seasons 1 &amp; 2 — how we got here</summary>
     <div class="box-b" style="font-size:12.8px;color:var(--ink2)">
       <b>Season 1 (March – June) — the education.</b> The machines went <b>17W–54L</b> while the human
       broke even at 13W–13L. Expensive, but nothing was wasted: every loss was post-mortemed and became
@@ -356,23 +408,23 @@
       <b>Season 3 (from 15 July)</b> — every account reset to $500 and the machine grid tripled: Kimi,
       DeepSeek and Gemini join the floor. The full record stays public throughout.
     </div>
-  </div>
-  <div class="box">
-    <div class="box-h">Why this matters</div>
+  </details>
+  <details class="box">
+    <summary class="box-h">Why this matters</summary>
     <div class="box-b" style="font-size:12.8px;color:var(--ink2)">
       Real capital. Code-enforced rules. Transparent outcomes. The only public experiment where human and
       machine trading decisions are recorded, post-mortemed and archived side by side — with nothing deleted.
     </div>
-  </div>
-  <div class="box">
-    <div class="box-h">How it works</div>
+  </details>
+  <details class="box">
+    <summary class="box-h">How it works</summary>
     <div class="box-b" style="font-size:12.8px;color:var(--ink2)">
       Six AI agents — Claude, Grok, Kimi, DeepSeek and Gemini live with real money on real venues; a local Qwen on paper — each run a
       $500 account, picking trades from ~40 live data sources every six hours. A human trades against them.
       Stops, targets, conviction and post-mortems: all published. Nothing is deleted.
       <a href="#players" style="color:var(--accent)">Meet the players →</a>
     </div>
-  </div>
+  </details>
   <div class="box" id="rules">
     <div class="box-h">The rules — enforced in code</div>
     <div class="box-b" style="font-size:12.3px;color:var(--ink2)">
@@ -384,8 +436,8 @@
       <div class="rule-li">Every fill, stop move and close is verified against the exchange — nothing is self-reported.</div>
     </div>
   </div>
-  <div class="box">
-    <div class="box-h">How to audit us</div>
+  <details class="box">
+    <summary class="box-h">How to audit us</summary>
     <div class="box-b" style="font-size:12.3px;color:var(--ink2)">
       Nothing here is typed in by hand: closes are booked from exchange fill records and account values are
       re-read from each venue around the clock. The raw feed this page renders is public —
@@ -396,7 +448,7 @@
       same reason the accounts aren't publicly linked to wallet addresses. Season finals are posted to X with the
       full record intact — nothing is restated after the fact.
     </div>
-  </div>
+  </details>
   <div class="box" id="sponsor" style="border:none">
     <div class="sponsor-box">
       <h3>Partner with The Bot Exchange</h3>
@@ -1560,6 +1612,30 @@ function boot() {
   });
 }
 boot();
+
+// ── collapsible sections (IA redesign): persist per-section state; nav links auto-expand ──
+(function () {
+  document.querySelectorAll("details.fold, aside details.box").forEach(function (d) {
+    if (!d.id) return;   // unlabeled aside statics keep their HTML default, no persistence
+    var k = "bxfold-" + d.id, saved = null;
+    try { saved = localStorage.getItem(k); } catch (e) {}
+    if (saved === "1") d.setAttribute("open", "");
+    else if (saved === "0") d.removeAttribute("open");
+    d.addEventListener("toggle", function () { try { localStorage.setItem(k, d.open ? "1" : "0"); } catch (e) {} });
+  });
+  function openFoldFor(hash) {
+    if (!hash || hash.length < 2) return;
+    var el = document.getElementById(hash.slice(1));
+    if (!el) return;
+    var d = el.closest("details");
+    if (d && !d.open) d.setAttribute("open", "");
+  }
+  window.addEventListener("hashchange", function () { openFoldFor(location.hash); });
+  document.querySelectorAll("nav.sections a[href^='#']").forEach(function (a) {
+    a.addEventListener("click", function () { openFoldFor(a.getAttribute("href")); });
+  });
+  openFoldFor(location.hash);
+})();
 </script>
 </body>
 </html>
