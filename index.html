@@ -500,6 +500,19 @@ function renderStrip(mkt) {
     var band = p.sym === "VIX" ? " (" + vixBand(p.price) + ")" : "";
     m += "<span>" + MACRO_SYMS[p.sym] + " <b>" + fmtMacro(p.sym, p.price) + "</b>" + band + (showChg ? " " + strippct(p.change) : "") + "</span>";
   });
+  // DXY/VIX from the feed (Yahoo cash values, server-side) — their xyz perp markets are
+  // dead (frozen oracle marks), so they never come through _macroStrip. Feed-absent → omitted.
+  var liveSyms = {};
+  _macroStrip.forEach(function (p) { liveSyms[p.sym] = 1; });
+  var feedMac = (mkt && mkt.macro) || {};
+  [["DXY", "dxy"], ["VIX", "vix"]].forEach(function (pair) {
+    if (liveSyms[pair[0]]) return;
+    var v = feedMac[pair[1]];
+    if (!v || v.price == null || !isFinite(v.price)) return;
+    var band = pair[0] === "VIX" ? " (" + vixBand(v.price) + ")" : "";
+    var showChg = v.change != null && isFinite(v.change) && Math.abs(v.change) >= 0.005;
+    m += "<span>" + MACRO_SYMS[pair[0]] + " <b>" + fmtMacro(pair[0], v.price) + "</b>" + band + (showChg ? " " + strippct(v.change) : "") + "</span>";
+  });
   if (mkt && mkt.stockFearGreed && m) m += "<span>Fear &amp; Greed <b>" + esc(mkt.stockFearGreed.value) + " — " + esc(mkt.stockFearGreed.classification) + "</b></span>";
   if (mkt && mkt.equityRegime && m) m += "<span>Regime <b>" + esc(String(mkt.equityRegime).replace("_", "-")) + "</b></span>";
   if (m) { $("strip-macro").classList.remove("hidden"); $("strip-macro").innerHTML = "<span class='rowlab'>MACRO</span>" + m; }
@@ -532,7 +545,7 @@ function liveStripRefresh(mkt) {
       if (!Array.isArray(rows)) return;
       var fresh = rows.map(function (t) { return { symbol: t.symbol.replace("USDT", ""), price: parseFloat(t.lastPrice), change24hPct: parseFloat(t.priceChangePercent) }; });
       var rest = ((base && base.prices) || []).filter(function (p) { return ["BTC", "ETH", "SOL"].indexOf(p.symbol) < 0; });
-      _lastStripMkt = { prices: fresh.concat(rest), fearGreed: base && base.fearGreed, stockFearGreed: base && base.stockFearGreed, regime: base && base.regime, equityRegime: base && base.equityRegime };
+      _lastStripMkt = { prices: fresh.concat(rest), fearGreed: base && base.fearGreed, stockFearGreed: base && base.stockFearGreed, regime: base && base.regime, equityRegime: base && base.equityRegime, macro: base && base.macro };
       renderStrip(_lastStripMkt);
     }).catch(function () {});
 }
@@ -544,7 +557,11 @@ function fetchMacroStrip() {
       meta.universe.forEach(function (u, i) {
         var n = u.name.replace("xyz:", "");
         if (!MACRO_SYMS[n]) return;
+        // Dead xyz market (no book, mark pinned to a frozen oracle — xyz:VIX sat at 20.0,
+        // xyz:DXY at 97.15 forever). Skip; the feed's market.macro (Yahoo cash) covers DXY/VIX.
+        if (ctxs[i].midPx == null) return;
         var mark = parseFloat(ctxs[i].markPx), prev = parseFloat(ctxs[i].prevDayPx);
+        if (!isFinite(mark)) return;
         out.push({ sym: n, price: mark, change: prev ? (mark - prev) / prev * 100 : null });
       });
       var order = Object.keys(MACRO_SYMS);
