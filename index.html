@@ -81,6 +81,20 @@
   .box-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; margin-top: 16px; }
   @media (max-width: 860px) { .box-grid { grid-template-columns: 1fr; } }
   .boxcol { max-width: 820px; margin-top: 16px; }
+  /* Calendar page — month planner grid */
+  .calplan { margin-top: 16px; border: 1px solid var(--line); background: #fff; }
+  .calplan .cp-head { display: grid; grid-template-columns: repeat(7, 1fr); background: var(--bg2); border-bottom: 1px solid var(--line); }
+  .calplan .cp-head div { padding: 6px 8px; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink3); font-weight: 700; }
+  .calplan .cp-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+  .calplan .cp-cell { min-height: 76px; border-right: 1px solid var(--line2); border-bottom: 1px solid var(--line2); padding: 5px 6px; min-width: 0; }
+  .calplan .cp-cell:nth-child(7n) { border-right: none; }
+  .calplan .cp-cell.dim { background: var(--bg2); }
+  .calplan .cp-cell.today { box-shadow: inset 0 0 0 2px var(--accent); }
+  .calplan .cp-d { display: block; font: 700 11px var(--mono); color: var(--ink3); margin-bottom: 3px; }
+  .calplan .cp-d .mo { color: var(--accent); }
+  .calplan .cp-ev { display: block; margin: 2px 0; padding: 1px 5px; border-radius: 2px; font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: var(--bg2); color: var(--ink2); }
+  .calplan .cp-ev.h { color: var(--down); background: #fbeae9; font-weight: 700; }
+  @media (max-width: 700px) { .calplan .cp-cell { min-height: 58px; padding: 3px 4px; } .calplan .cp-ev { font-size: 9px; padding: 1px 3px; } }
   details.box > summary { list-style: none; cursor: pointer; }
   details.box > summary::-webkit-details-marker { display: none; }
   details.box > summary.box-h { display: flex; justify-content: space-between; align-items: center; }
@@ -256,16 +270,33 @@
 
 <div class="wrap" id="pages">
 <div class="page active" data-page="home">
+  <!-- SEASON-FLIP: static copy below is what crawlers and no-JS readers see — sweep it at every season ritual -->
+  <div class="kicker" id="race-kicker">Season 3 · seven accounts · $500 each · since 15 July</div>
+  <h2 class="sec" id="race"><span class="skel">Man vs machine — the live standings</span></h2>
+  <p class="sub" id="race-sub"></p>
+  <div style="overflow-x:auto"><table class="std" id="standings" aria-label="Competition standings"><tr><td><span class="skel">Seven competitors — one human, six AI models — ranked by live account value.</span></td></tr></table></div>
+  <div class="chart-box" id="chart-wrap">
+    <div class="legend" id="legend"></div>
+    <svg id="race-chart" viewBox="0 0 820 300" role="img" aria-label="Account value of the competitors"></svg>
+    <div class="src" style="margin-top:4px">Equity curves — live account value including open positions, sampled every 5 minutes.</div>
+    <div class="src" style="margin-top:2px"><b>Season 3 is live</b> — the grid has grown: Kimi K2.6, DeepSeek V4 and Gemini 3.5 Flash have joined, each trading real money on its own Lighter account since 15 July.</div>
+  </div>
+  <div class="kicker stats-kicker">The season in numbers</div>
+  <div class="tape-grid" id="season-stats" style="margin-top:8px"></div>
+
+  <hr class="rule">
+  <div class="kicker">Meet the competitors</div>
+
+
+  <hr class="rule">
   <div class="kicker">The daily check-in</div>
-  <h2 class="sec">Crypto, markets and the machines — one page, live</h2>
-  <p class="sub">Prices, sentiment, this week's market-moving events and what seven real-money trading desks — one human, six AI models — are doing about it.</p>
+  <h2 class="sec">Today on the desks and in the markets</h2>
   <div class="home-grid">
-    <div class="hw w8" id="hw-race"><h3>Man vs machine — live</h3><div id="hw-race-body"><span class="skel">The race, live.</span></div></div>
     <div class="hw w4" id="hw-pulse"><h3>Market pulse</h3><div id="hw-pulse-body"><span class="src">Sentiment dials load with the feed.</span></div></div>
     <div class="hw w4" id="hw-live"><h3>On the desks right now</h3><div id="hw-live-body"><span class="src">Open positions load with the feed.</span></div></div>
     <div class="hw w4" id="hw-cal"><h3>This week — event risk</h3><div id="hw-cal-body"><span class="src">Calendar loads with the feed.</span></div></div>
     <div class="hw w4" id="hw-flows"><h3>Institutional flows</h3><div id="hw-flows-body"><span class="src">ETF flow data loads with the feed.</span></div></div>
-    <div class="hw w12" id="hw-news"><h3>Top headlines</h3><div id="hw-news-body"><span class="src">Headlines load with the feed.</span></div></div>
+    <div class="hw w8" id="hw-news"><h3>Top headlines</h3><div id="hw-news-body"><span class="src">Headlines load with the feed.</span></div></div>
   </div>
 </div>
 <div class="page" data-page="markets">
@@ -290,7 +321,7 @@
 
 
   <div class="boxcol">
-  <div class="box" id="pred-box">
+  <div class="box hidden" id="pred-box">
     <div class="box-h">Prediction markets — crowd odds</div>
     <div class="box-b" id="pred-body"></div>
   </div>
@@ -338,6 +369,7 @@
   <div class="kicker">Forward calendar</div>
   <h2 class="sec">What could swing markets</h2>
   <p class="sub">Macro prints from FRED release dates, the FOMC schedule, universe earnings and token unlocks — the same event risk the trading desks are fed.</p>
+  <div class="calplan" id="cal-month"><div style="padding:14px" class="src">The month planner draws with the feed.</div></div>
   <div class="boxcol">
   <div class="box" id="calendar">
     <div class="box-h">Event calendar — what could swing markets</div>
@@ -346,23 +378,7 @@
   </div>
 </div>
 <div class="page" data-page="bots">
-  <!-- SEASON-FLIP: static copy below is what crawlers and no-JS readers see — sweep it at every season ritual -->
-  <div class="kicker" id="race-kicker">Season 3 · seven accounts · $500 each · since 15 July</div>
-  <h2 class="sec" id="race"><span class="skel">Man vs machine — the live standings</span></h2>
-  <p class="sub" id="race-sub"></p>
-  <div style="overflow-x:auto"><table class="std" id="standings" aria-label="Competition standings"><tr><td><span class="skel">Seven competitors — one human, six AI models — ranked by live account value.</span></td></tr></table></div>
-  <div class="chart-box" id="chart-wrap">
-    <div class="legend" id="legend"></div>
-    <svg id="race-chart" viewBox="0 0 820 300" role="img" aria-label="Account value of the competitors"></svg>
-    <div class="src" style="margin-top:4px">Equity curves — live account value including open positions, sampled every 5 minutes.</div>
-    <div class="src" style="margin-top:2px"><b>Season 3 is live</b> — the grid has grown: Kimi K2.6, DeepSeek V4 and Gemini 3.5 Flash have joined, each trading real money on its own Lighter account since 15 July.</div>
-  </div>
-  <div class="kicker stats-kicker">The season in numbers</div>
-  <div class="tape-grid" id="season-stats" style="margin-top:8px"></div>
-
-  <hr class="rule">
-  <div class="kicker">Meet the competitors</div>
-
+  <div class="kicker" id="race">The competition — full record</div>
   <h2 class="sec" id="players">The players</h2>
   <p class="sub">Seven <b>$500</b> accounts. One human trader. Six autonomous AI models. All compete on the same live
   markets with identical starting capital. Every entry, stop, target and conviction is published the moment
@@ -411,7 +427,7 @@
 
   <hr class="rule">
   <div class="box-grid">
-  <div class="box" id="risk-box">
+  <div class="box hidden" id="risk-box">
     <div class="box-h">Risk desk — circuit breakers</div>
     <div class="box-b" id="risk-body"></div>
   </div>
@@ -1252,6 +1268,36 @@ function renderCalendar(d) {
   h += "<div class='src' style='margin-top:8px'>Auto-fed from FRED release dates (CPI, NFP, GDP, PCE…), the FOMC schedule, universe earnings and token-unlock detectors. Agents holding through a high-impact event get automatic risk alerts.</div>";
   $("cal-body").innerHTML = h;
 }
+function renderCalMonth(d) {
+  var host = $("cal-month"); if (!host) return;
+  var byDate = {};
+  (d.calendar || []).forEach(function (e) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(e.date)) return;
+    (byDate[e.date] = byDate[e.date] || []).push(e);
+  });
+  var start = new Date(); start.setHours(12, 0, 0, 0);
+  start.setDate(start.getDate() - ((start.getDay() + 6) % 7));   // Monday of this week
+  var todayKey = new Date().toLocaleDateString("en-CA");
+  var head = "<div class='cp-head'>" + ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(function (x) { return "<div>" + x + "</div>"; }).join("") + "</div>";
+  var cells = "";
+  for (var i = 0; i < 35; i++) {
+    var day = new Date(start.getTime() + i * 86400000);
+    var key = day.toLocaleDateString("en-CA");
+    var wd = (day.getDay() + 6) % 7;
+    var evs = byDate[key] || [];
+    var mo = (day.getDate() === 1 || i === 0) ? " <span class='mo'>" + day.toLocaleDateString("en-GB", { month: "short" }) + "</span>" : "";
+    var chips = evs.slice(0, 3).map(function (e) {
+      var lab = e.type === "EARNINGS" ? e.event.split(" ")[0]
+        : e.type === "Fed" ? "FOMC"
+        : e.type === "UNLOCK" ? (e.event.split(" ")[0] + " unlock")
+        : e.type;
+      return "<span class='cp-ev " + (e.impact === "HIGH" ? "h" : "") + "' title='" + esc(e.event) + "'>" + esc(lab) + "</span>";
+    }).join("");
+    if (evs.length > 3) chips += "<span class='cp-ev'>+" + (evs.length - 3) + " more</span>";
+    cells += "<div class='cp-cell" + (wd >= 5 ? " dim" : "") + (key === todayKey ? " today" : "") + "'><span class='cp-d'>" + day.getDate() + mo + "</span>" + chips + "</div>";
+  }
+  host.innerHTML = head + "<div class='cp-grid'>" + cells + "</div>";
+}
 function renderIntel(d) {
   var r = d.report;
   if (!r) return;
@@ -1599,22 +1645,6 @@ function startLiveLayers() {
   setInterval(refreshOpenLive, 30000);
 }
 function renderHome(d) {
-  // race widget: verdict + top-3 standings + link (feed shapes: verdict {manLeads,man,machine}, standings label/retPct/account)
-  var v = d.verdict, st = ([].concat(d.standings || [])).sort(function (a, b) { return (b.account || 0) - (a.account || 0); });
-  var h = "";
-  if (v && v.man && v.machine) {
-    var diff = Math.abs((v.man.account || 0) - (v.machine.account || 0)).toFixed(0);
-    var vline = v.tie ? "Dead heat between man and machine"
-      : v.manLeads ? "The human leads the machines by $" + diff
-      : esc(v.machine.label) + " leads the human by $" + diff;
-    h += "<div style='font-family:var(--serif);font-size:19px;font-weight:700;margin-bottom:8px'>" + vline + "</div>";
-  }
-  st.slice(0, 3).forEach(function (r, i) {
-    var ret = r.retPct != null ? ((r.retPct >= 0 ? "+" : "") + Number(r.retPct).toFixed(1) + "%") : "";
-    h += "<div class='row'><span><b>" + (i + 1) + ".</b> " + esc(r.label || r.key) + (r.paper ? " <span class='src'>(paper)</span>" : "") + "</span><span class='" + (r.retPct >= 0 ? "pos" : "neg") + "'>" + money(r.account, 2) + (ret ? " · " + ret : "") + "</span></div>";
-  });
-  h += "<a class='more' href='#/bots'>Full standings, live book &amp; the archive →</a>";
-  $("hw-race-body").innerHTML = h || "<span class='src'>Standings publish with the feed.</span>";
   // pulse: F&G + regimes + corr
   var m = d.market || {}, p = "";
   if (m.fearGreed) p += "<div class='row'><span>Crypto Fear &amp; Greed</span><b>" + esc(m.fearGreed.value) + " — " + esc(m.fearGreed.classification) + "</b></div>";
@@ -1663,7 +1693,7 @@ function renderHome(d) {
 }
 function renderAll(d) {
   renderStamps(d); renderStrip(d.market); renderHeadline(d); renderStandings(d);
-  renderChart(d); renderPlayers(d); renderSeasonStats(d); renderFloor(d); renderDesk(d); renderTopTraders(d); renderLighterWhales(d); renderCalendar(d); renderIntel(d); renderIntelRail(d);
+  renderChart(d); renderPlayers(d); renderSeasonStats(d); renderFloor(d); renderDesk(d); renderTopTraders(d); renderLighterWhales(d); renderCalendar(d); renderCalMonth(d); renderIntel(d); renderIntelRail(d);
   renderNotes(d); renderTape(d); renderArchive(d); renderRisk(d);
   renderWire(d); renderWhaleFeed(d); renderColumn(d); renderPredictions(d); try { renderHome(d); } catch (e) {}
   liveStripRefresh(d.market); startLiveLayers();
