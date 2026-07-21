@@ -1294,13 +1294,13 @@ function renderCalendar(d) {
   // Feed now carries the full macro (FRED) + earnings + unlock lanes — keep every HIGH
   // event in-window (FOMC must not be crowded out by near-term weekly claims), fill the
   // rest with the nearest MED rows, re-sort by date for display.
-  if (items.length > 14) {
+  if (items.length > 18) {
     var hi = items.filter(function (e) { return e.impact === "HIGH"; });
-    var rest = items.filter(function (e) { return e.impact !== "HIGH"; }).slice(0, Math.max(0, 14 - hi.length));
+    var rest = items.filter(function (e) { return e.impact !== "HIGH"; }).slice(0, Math.max(4, 18 - hi.length));
     items = hi.concat(rest).sort(function (a, b) { return String(a.date).localeCompare(String(b.date)); });
   }
   var h = "";
-  items.slice(0, 18).forEach(function (e) {
+  items.forEach(function (e) {
     var dt = /^\d{4}-\d{2}-\d{2}$/.test(e.date) ? new Date(e.date + "T12:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : esc(e.date);
     var impCls = e.impact === "HIGH" ? "h" : e.impact === "MED" ? "m" : "l";
     h += "<div class='cal-item'><span class='cal-date'>" + dt + "</span><span>" + esc(e.event) + "</span><span class='imp " + impCls + "'>" + esc(e.impact) + "</span></div>";
