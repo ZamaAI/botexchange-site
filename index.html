@@ -82,6 +82,7 @@
   @media (max-width: 860px) { .box-grid { grid-template-columns: 1fr; } }
   .boxcol { max-width: 820px; margin-top: 16px; }
   .mkt-top { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 22px; align-items: start; }
+  .mkt-side .box-b { max-height: 620px; overflow-y: auto; }
   @media (max-width: 980px) { .mkt-top { grid-template-columns: minmax(0, 1fr); } }
   .cal-cols { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 20px; align-items: start; margin-top: 16px; }
   @media (max-width: 980px) { .cal-cols { grid-template-columns: minmax(0, 1fr); } }
@@ -150,7 +151,8 @@
   .rule-li:last-child { border-bottom: none; }
   .rule-li::before { content: "§"; position: absolute; left: 0; color: var(--accent); font-family: var(--serif); }
 
-  .mini-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 0 28px; align-items: start; }
+  .mini-grid { columns: 3 215px; column-gap: 28px; }
+  .mini-grid > * { break-inside: avoid; -webkit-column-break-inside: avoid; width: 100%; margin: 0 0 18px; }
   table.data { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-bottom: 16px; }
   table.data caption { text-align: left; font-weight: 700; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; padding-bottom: 5px; color: var(--ink); border-bottom: 2px solid var(--ink); }
   table.data th { text-align: left; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink3); font-weight: 600; padding: 6px 4px; border-bottom: 2px solid var(--ink); }
@@ -297,19 +299,16 @@
   <div class="tape-grid" id="season-stats" style="margin-top:8px"></div>
 
   <hr class="rule">
-  <div class="kicker">Meet the competitors</div>
-
-
-  <hr class="rule">
   <div class="kicker">The daily check-in</div>
   <h2 class="sec">Today on the desks and in the markets</h2>
   <div class="home-grid">
     <div class="hw w4" id="hw-pulse"><h3>Market pulse</h3><div id="hw-pulse-body"><span class="src">Sentiment dials load with the feed.</span></div></div>
     <div class="hw w4" id="hw-live"><h3>Open positions</h3><div id="hw-live-body"><span class="src">Open positions load with the feed.</span></div></div>
     <div class="hw w4" id="hw-cal"><h3>This week — event risk</h3><div id="hw-cal-body"><span class="src">Calendar loads with the feed.</span></div></div>
+    <div class="hw w8" id="hw-news"><h3>Top headlines</h3><div id="hw-news-body"><span class="src">Headlines load with the feed.</span></div></div>
     <div class="hw w4" id="hw-flows"><h3>Institutional flows</h3><div id="hw-flows-body"><span class="src">ETF flow data loads with the feed.</span></div></div>
     <div class="hw w4" id="hw-movers"><h3>Top movers — 24h</h3><div id="hw-movers-body"><span class="src">Movers load with the feed.</span></div></div>
-    <div class="hw w8" id="hw-news"><h3>Top headlines</h3><div id="hw-news-body"><span class="src">Headlines load with the feed.</span></div></div>
+    <div class="hw w8" id="hw-closes"><h3>Recent closes</h3><div id="hw-closes-body"><span class="src">Closed trades load with the feed.</span></div></div>
   </div>
 </div>
 <div class="page" data-page="markets">
@@ -1520,7 +1519,7 @@ function renderLiveMarkets() {
     .then(function (rows) {
       if (!rows || !rows.length) return;
       rows.sort(function (a, b) { return parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume); });
-      var shown = lmExpanded ? rows : rows.slice(0, 10);
+      var shown = lmExpanded ? rows : rows.slice(0, 16);
       var h = "<tr><th>Coin</th><th class='rt'>Price</th><th class='rt'>24h</th><th class='rt'>24h range</th><th class='rt'>Volume</th></tr>";
       shown.forEach(function (t) {
         var sym = t.symbol.replace("USDT", ""), p = parseFloat(t.lastPrice), c = parseFloat(t.priceChangePercent);
@@ -1532,7 +1531,7 @@ function renderLiveMarkets() {
           "<td class='rt num'>$" + (vol >= 1e9 ? (vol / 1e9).toFixed(2) + "B" : (vol / 1e6).toFixed(0) + "M") + "</td></tr>";
       });
       h += "<tr><td colspan='5'><button class='morelink' id='lm-more'>" +
-        (lmExpanded ? "Show top 10" : "Show all " + rows.length + " coins") + "</button></td></tr>";
+        (lmExpanded ? "Show top 16" : "Show all " + rows.length + " coins") + "</button></td></tr>";
       $("live-markets").innerHTML = h;
       $("lm-more").onclick = function () { lmExpanded = !lmExpanded; renderLiveMarkets(); };
     }).catch(function () {});
@@ -1757,6 +1756,20 @@ function renderHome(d) {
     n += "<div class='row'><span>" + esc(typeof x.t === "string" ? x.t : (x.t.title || "")) + "</span><span class='src' style='flex:none'>" + esc(x.s) + "</span></div>";
   });
   if (n) { n += "<a class='more' href='#/news'>All news &amp; intelligence →</a>"; $("hw-news-body").innerHTML = n; }
+  // recent closes: outcome chips + trimmed post-mortem (full versions live on The Bots)
+  var rc = d.recentCloses || [], rcH = "";
+  rc.slice(0, 3).forEach(function (r) {
+    var chip = r.outcome === "WIN" ? "<span class='wlchip w'>W</span>"
+      : r.outcome === "LOSS" ? "<span class='wlchip lo'>L</span>"
+      : "<span class='wlchip be'>BE</span>";
+    var why = (r.exitReason || "").replace(/^[A-Z]+ [A-Z0-9]+: /, "").replace(/\[[^\]]*\]/g, "");
+    var m = /WHY: (.*)$/.exec(why); if (m) why = m[1];
+    rcH += "<div class='row' style='align-items:baseline'><span><b>" + esc(r.asset) + "</b> " + esc(r.direction) + " · " + esc(r.actor || "") +
+      (why ? " <span class='src'>" + esc(smartTrim(why, 110)) + "</span>" : "") + "</span>" +
+      "<span style='flex:none' class='" + (r.outcome === "WIN" ? "pos" : r.outcome === "LOSS" ? "neg" : "") + "'>" + chip +
+      (r.pct != null && r.outcome !== "BREAKEVEN" ? pct(r.pct, 1) : esc(r.outcome === "BREAKEVEN" ? "flat" : r.outcome)) + "</span></div>";
+  });
+  if (rcH) { rcH += "<a class='more' href='#/bots'>Every close, with its post-mortem →</a>"; $("hw-closes-body").innerHTML = rcH; }
 }
 function renderAll(d) {
   renderStamps(d); renderStrip(d.market); renderHeadline(d); renderStandings(d);
