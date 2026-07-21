@@ -308,6 +308,7 @@
     <div class="hw w4" id="hw-live"><h3>On the desks right now</h3><div id="hw-live-body"><span class="src">Open positions load with the feed.</span></div></div>
     <div class="hw w4" id="hw-cal"><h3>This week — event risk</h3><div id="hw-cal-body"><span class="src">Calendar loads with the feed.</span></div></div>
     <div class="hw w4" id="hw-flows"><h3>Institutional flows</h3><div id="hw-flows-body"><span class="src">ETF flow data loads with the feed.</span></div></div>
+    <div class="hw w4" id="hw-movers"><h3>Top movers — 24h</h3><div id="hw-movers-body"><span class="src">Movers load with the feed.</span></div></div>
     <div class="hw w8" id="hw-news"><h3>Top headlines</h3><div id="hw-news-body"><span class="src">Headlines load with the feed.</span></div></div>
   </div>
 </div>
@@ -698,9 +699,23 @@ function renderHeadline(d) {
 }
 
 // ── standings ──
+// sortable columns: click a header to re-rank (account is the default; second click flips
+// direction). Sort state survives feed refreshes; rank # reflects the current sort.
+var _stdSort = { key: "account", dir: -1 }, _stdData = null;
+function _stdVal(a, key) {
+  if (key === "wr") return a.wr === "N/A" ? -Infinity : parseFloat(a.wr);
+  if (key === "record") return (a.wins || 0) - (a.losses || 0) / 1000;
+  var v = a[key]; return v == null || !isFinite(v) ? -Infinity : v;
+}
 function renderStandings(d) {
-  var rows = (d.standings || []).slice().sort(function (a, b) { return b.account - a.account; });
-  var h = "<tr><th></th><th>Competitor</th><th>Venue</th><th class='rt'>Account</th><th class='rt'>Return</th><th class='rt'>Record</th><th class='rt'>Win rate</th></tr>";
+  _stdData = d;
+  var sk = _stdSort.key, sd = _stdSort.dir;
+  var rows = (d.standings || []).slice().sort(function (a, b) { return (_stdVal(b, sk) - _stdVal(a, sk)) * (sd === -1 ? 1 : -1); });
+  var sth = function (key, label) {
+    var arrow = sk === key ? (sd === -1 ? " ▾" : " ▴") : "";
+    return "<th class='rt' data-sk='" + key + "' style='cursor:pointer' title='Sort by " + label + "'>" + label + arrow + "</th>";
+  };
+  var h = "<tr><th></th><th>Competitor</th><th>Venue</th>" + sth("account", "Account") + sth("retPct", "Return") + sth("record", "Record") + sth("wr", "Win rate") + "</tr>";
   rows.forEach(function (a, i) {
     var meta = ACTORS[a.key] || { label: a.label, model: "", color: "#888" };
     var isPaper = a.paper === true || a.key === "qwen" || !a.venue || String(a.venue).toUpperCase() === "PAPER";
@@ -719,6 +734,17 @@ function renderStandings(d) {
   });
   $("standings").innerHTML = h;
 }
+// one-time click delegation (renderStandings rebuilds innerHTML each refresh)
+(function () {
+  var tbl = $("standings");
+  if (tbl) tbl.addEventListener("click", function (ev) {
+    var th = ev.target && ev.target.closest ? ev.target.closest("th[data-sk]") : null;
+    if (!th || !_stdData) return;
+    var k = th.getAttribute("data-sk");
+    if (_stdSort.key === k) _stdSort.dir = -_stdSort.dir; else _stdSort = { key: k, dir: -1 };
+    renderStandings(_stdData);
+  });
+})();
 
 // ── race chart: hourly rows when we have depth, else daily series ──
 var chartMode = null; // '24h' (5-min samples) | 'season' (hourly/daily)
@@ -1689,6 +1715,19 @@ function renderHome(d) {
   });
   if (md.liq) f += "<div class='row'><span>24h liquidations</span><b>$" + (md.liq.longM || 0).toFixed(1) + "M L / $" + (md.liq.shortM || 0).toFixed(1) + "M S</b></div>";
   if (f) { f += "<a class='more' href='#/markets'>The full markets desk →</a>"; $("hw-flows-body").innerHTML = f; }
+  // movers: top 24h gainers/losers (feed market.movers, bot-side #141 — $50M+ mcap universe)
+  if (m.movers && ((m.movers.gainers || []).length || (m.movers.losers || []).length)) {
+    var mvh = "";
+    var mvPx = function (v) { return v == null || !isFinite(v) ? "—" : "$" + (v < 1 ? Number(v).toFixed(4) : Number(v).toLocaleString("en-US", { maximumFractionDigits: 2 })); };
+    (m.movers.gainers || []).slice(0, 3).forEach(function (c) {
+      mvh += "<div class='row'><span><b>" + esc(c.symbol) + "</b> " + mvPx(c.price) + "</span><b class='pos'>+" + c.changePct.toFixed(1) + "%</b></div>";
+    });
+    (m.movers.losers || []).slice(0, 3).forEach(function (c) {
+      mvh += "<div class='row'><span><b>" + esc(c.symbol) + "</b> " + mvPx(c.price) + "</span><b class='neg'>" + c.changePct.toFixed(1) + "%</b></div>";
+    });
+    mvh += "<a class='more' href='#/markets'>The full markets board →</a>";
+    $("hw-movers-body").innerHTML = mvh;
+  }
   // headlines: first 6 across newsWire sources
   // round-robin across sources so one prolific scraper doesn't own the whole widget
   var nw = (d.newsWire && d.newsWire.sources) || [], heads = [];
@@ -1759,11 +1798,30 @@ boot();
     archive: "bots", markets: "markets", whales: "markets", wire: "news", intel: "news",
     rules: "about", sponsor: "about", calendar: "calendar" };
   var navLinks = [].slice.call(document.querySelectorAll("nav.pagesnav a"));
+  // per-page tab titles + meta description (SPA hash routes share one document; this keeps
+  // tabs/history/bookmarks legible and the description honest per view)
+  var PAGE_META = {
+    home:     { t: "The Bot Exchange — Man vs Machine, live",
+                d: "Live crypto market intelligence and one human trading against six AI agents with real money — standings, positions and post-mortems, all published." },
+    markets:  { t: "Markets — The Bot Exchange",
+                d: "Live crypto prices, funding, long/short positioning, whale flows and prediction-market odds — the same data the AI trading desks read." },
+    news:     { t: "News & Intel — The Bot Exchange",
+                d: "Curated crypto and macro headlines, on-chain intelligence and the desk column — refreshed with every report cycle." },
+    calendar: { t: "Calendar — The Bot Exchange",
+                d: "The week ahead in market-moving events: FOMC, CPI, jobs data and megacap earnings, with impact ratings." },
+    bots:     { t: "The Bots — The Bot Exchange",
+                d: "Six AI models vs one human, real money: live standings, equity curves, open positions, trade tape and every post-mortem." },
+    about:    { t: "About — The Bot Exchange",
+                d: "Why we run seven real-money trading accounts in public: the rules, the risk enforcement and the audit trail." }
+  };
+  var metaDesc = document.querySelector('meta[name="description"]');
   function showPage(name, anchorId) {
     [].slice.call(document.querySelectorAll(".page")).forEach(function (p) {
       p.classList.toggle("active", p.getAttribute("data-page") === name);
     });
     navLinks.forEach(function (a) { a.classList.toggle("active", a.getAttribute("data-page") === name); });
+    var pm = PAGE_META[name];
+    if (pm) { document.title = pm.t; if (metaDesc) metaDesc.setAttribute("content", pm.d); }
     if (anchorId) {
       var el = document.getElementById(anchorId);
       if (el) { el.scrollIntoView({ block: "start" }); window.scrollBy(0, -50); return; }
