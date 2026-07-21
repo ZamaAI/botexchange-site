@@ -305,7 +305,7 @@
   <h2 class="sec">Today on the desks and in the markets</h2>
   <div class="home-grid">
     <div class="hw w4" id="hw-pulse"><h3>Market pulse</h3><div id="hw-pulse-body"><span class="src">Sentiment dials load with the feed.</span></div></div>
-    <div class="hw w4" id="hw-live"><h3>On the desks right now</h3><div id="hw-live-body"><span class="src">Open positions load with the feed.</span></div></div>
+    <div class="hw w4" id="hw-live"><h3>Open positions</h3><div id="hw-live-body"><span class="src">Open positions load with the feed.</span></div></div>
     <div class="hw w4" id="hw-cal"><h3>This week — event risk</h3><div id="hw-cal-body"><span class="src">Calendar loads with the feed.</span></div></div>
     <div class="hw w4" id="hw-flows"><h3>Institutional flows</h3><div id="hw-flows-body"><span class="src">ETF flow data loads with the feed.</span></div></div>
     <div class="hw w4" id="hw-movers"><h3>Top movers — 24h</h3><div id="hw-movers-body"><span class="src">Movers load with the feed.</span></div></div>
@@ -1031,15 +1031,17 @@ function renderFloor(d) {
 // bare-ticker only as a paper-row fallback, gated by a >50%-off-entry wrong-asset guard.
 function paintOpenLive(t, i, px) {
   var pnl = (px - t.entry) / t.entry * 100 * (t.direction === "SHORT" ? -1 : 1);
-  var el = document.querySelector("[data-pnl='" + i + "']");
-  if (el) { el.innerHTML = "<span class='live-dot'></span><span class='" + cls(pnl) + "'>" + pct(pnl, 2) + "</span>"; }
+  // paint ALL matches — the Home widget mirrors the floor's data-pnl/data-pl indices
+  [].slice.call(document.querySelectorAll("[data-pnl='" + i + "']")).forEach(function (el) {
+    el.innerHTML = "<span class='live-dot'></span><span class='" + cls(pnl) + "'>" + pct(pnl, 2) + "</span>";
+  });
   var lo = Math.min(t.stop, t.target), hi = Math.max(t.stop, t.target);
-  var lv = document.querySelector("[data-pl='" + i + "']");
-  if (lv && hi > lo) {
+  [].slice.call(document.querySelectorAll("[data-pl='" + i + "']")).forEach(function (lv) {
+    if (!(hi > lo)) return;
     lv.classList.remove("hidden");
     lv.style.left = Math.max(0, Math.min(100, (px - lo) / (hi - lo) * 100)) + "%";
     lv.style.background = pnl >= 0 ? "var(--up)" : "var(--down)";
-  }
+  });
 }
 function refreshOpenLive() {
   if (!_openTrades.length) return;
@@ -1304,7 +1306,7 @@ function renderCalendar(d) {
     var impCls = e.impact === "HIGH" ? "h" : e.impact === "MED" ? "m" : "l";
     h += "<div class='cal-item'><span class='cal-date'>" + dt + "</span><span>" + esc(e.event) + "</span><span class='imp " + impCls + "'>" + esc(e.impact) + "</span></div>";
   });
-  h += "<div class='src' style='margin-top:8px'>Auto-fed from FRED release dates (CPI, NFP, GDP, PCE…), the FOMC schedule, universe earnings and token-unlock detectors. Agents holding through a high-impact event get automatic risk alerts.</div>";
+  h += "<div class='src' style='margin-top:8px'>Auto-fed from FRED release dates (CPI, NFP, GDP, PCE…), the FOMC schedule, universe earnings, token-unlock detectors and the crypto event calendar (upgrades, activations, governance votes). Agents holding through a high-impact event get automatic risk alerts.</div>";
   $("cal-body").innerHTML = h;
 }
 function renderCalMonth(d) {
@@ -1329,6 +1331,7 @@ function renderCalMonth(d) {
       var lab = e.type === "EARNINGS" ? e.event.split(" ")[0]
         : e.type === "Fed" ? "FOMC"
         : e.type === "UNLOCK" ? (e.event.split(" ")[0] + " unlock")
+        : e.type === "CRYPTO" ? e.event.split(" ")[0]
         : e.type;
       return "<span class='cp-ev " + (e.impact === "HIGH" ? "h" : "") + "' title='" + esc(e.event) + "'>" + esc(lab) + "</span>";
     }).join("");
@@ -1692,14 +1695,26 @@ function renderHome(d) {
   if (m.equityRegime) p += "<div class='row'><span>Equity regime</span><b>" + esc(String(m.equityRegime).replace("_", "-")) + "</b></div>";
   if (m.btcNqCorr) p += "<div class='row'><span>BTC↔Nasdaq 30d</span><b>" + m.btcNqCorr.corr.toFixed(2) + " " + esc(m.btcNqCorr.label) + "</b></div>";
   if (p) $("hw-pulse-body").innerHTML = p;
-  // live desks: open trades
+  // open positions: floor-style compact items — dir/actor/venue pills, live P&L span and
+  // the stop→target position bar (same data-pnl/data-pl indices as the floor; the live
+  // layer paints ALL matching elements, so both copies stay in sync)
   var ot = d.openTrades || [], l = "";
   if (!ot.length) l = "<div class='row'><span>All seven desks are flat</span><b>0 open</b></div>";
-  else ot.slice(0, 5).forEach(function (t) {
-    l += "<div class='row'><span><b>" + esc(t.asset) + "</b> " + esc(t.direction) + " · " + esc(t.actor || "") + "</span><span>" + (t.venue === "PAPER" ? "paper" : "LIVE") + "</span></div>";
+  else ot.slice(0, 4).forEach(function (t) {
+    var i = ot.indexOf(t);
+    l += "<div class='titem' style='padding:8px 0'><div class='l1'><span class='asset'>" + esc(t.asset) + "</span>" +
+      "<span class='dirpill " + (t.direction === "SHORT" ? "s" : "l") + "'>" + esc(t.direction) + "</span>" +
+      actorTag(t.actor) +
+      (t.venue !== "PAPER" ? "<span class='pill live'>" + esc(t.venue) + "</span>" : "<span class='pill paper'>PAPER</span>") +
+      "<span class='outc'><span class='livepnl' data-pnl='" + i + "'></span>" +
+      (t.conviction != null ? " <span class='num'>conv " + esc(t.conviction) + "/10</span>" : "") + "</span></div>" +
+      posBar(t, i) + "</div>";
   });
+  if (ot.length > 4) l += "<div class='row'><span>+" + (ot.length - 4) + " more open</span><span></span></div>";
+  if ((d.awaiting || []).length) l += "<div class='row'><span>Watch-list</span><b>" + d.awaiting.length + " trigger" + (d.awaiting.length > 1 ? "s" : "") + " armed</b></div>";
   l += "<a class='more' href='#/bots'>The trading floor →</a>";
   $("hw-live-body").innerHTML = l;
+  refreshOpenLive();
   // calendar: next 5
   var c = "";
   (d.calendar || []).slice(0, 5).forEach(function (e) {
