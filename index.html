@@ -1152,6 +1152,17 @@ function renderDesk(d) {
     });
     h += "</table>";
   }
+  // chain rotation: per-chain DEX volume + 7d momentum (feed market.chainRotation, bot-side #144c/#145)
+  var cr = mkt.chainRotation;
+  if (cr && cr.chains && cr.chains.length) {
+    h += "<table class='data'><caption>Chain rotation · 24h DEX volume</caption>";
+    cr.chains.slice(0, 10).forEach(function (c) {
+      var vol = c.vol24h >= 1e9 ? "$" + (c.vol24h / 1e9).toFixed(2) + "B" : "$" + Math.round(c.vol24h / 1e6) + "M";
+      var d7 = (c.d7 == null || !isFinite(c.d7)) ? "—" : (c.d7 >= 0 ? "+" : "−") + Math.abs(c.d7).toFixed(1) + "%/7d";
+      h += "<tr><td>" + esc(c.name) + (c.token ? " <span class='src'>$" + esc(c.token) + "</span>" : "") + "</td><td class='rt'>" + vol + "</td><td class='rt " + cls(c.d7) + "'>" + d7 + "</td></tr>";
+    });
+    h += "</table>";
+  }
   if (md && md.funding && md.funding.length) {
     h += "<table class='data'><caption>Funding gaps (APR)</caption>";
     md.funding.forEach(function (f) {
