@@ -100,6 +100,7 @@
   .calplan .cp-d .mo { color: var(--accent); }
   .calplan .cp-ev { display: block; margin: 2px 0; padding: 1px 5px; border-radius: 2px; font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: var(--bg2); color: var(--ink2); }
   .calplan .cp-ev.h { color: var(--down); background: #fbeae9; font-weight: 700; }
+  .calplan .cp-ev.ha { color: var(--down); background: transparent; box-shadow: inset 0 0 0 1px #e0a8a4; font-weight: 700; }
   @media (max-width: 700px) { .calplan .cp-cell { min-height: 58px; padding: 3px 4px; } .calplan .cp-ev { font-size: 9px; padding: 1px 3px; } }
   details.box > summary { list-style: none; cursor: pointer; }
   details.box > summary::-webkit-details-marker { display: none; }
@@ -167,6 +168,7 @@
   .cal-date { font-family: var(--mono); font-weight: 700; }
   .imp { font-size: 10px; font-weight: 700; letter-spacing: .05em; padding: 1px 6px; border-radius: 2px; }
   .imp.h { color: var(--down); background: #fbeae9; }
+  .imp.ha { color: var(--down); background: transparent; box-shadow: inset 0 0 0 1px #e0a8a4; }
   .imp.m { color: var(--watch); background: #fdf3e0; }
   .imp.l { color: var(--ink3); background: var(--bg2); }
   .src { color: var(--ink3); font-size: 11px; }
@@ -1299,6 +1301,14 @@ function renderLighterWhales(d) {
 }
 
 // ── calendar / intelligence / stamps ──
+// Asset-scoped HIGH (a single coin's upgrade/fork/launch) renders outlined, not solid red —
+// it can gap that asset through stops, but it is not a market-wide event like FOMC/CPI.
+function isAssetHigh(e) { return e.impact === "HIGH" && e.type === "CRYPTO"; }
+function impBadge(e) {
+  if (isAssetHigh(e)) return "<span class='imp ha' title='High impact for " + esc(String(e.event || "").split(" ")[0]) + " holders — not a market-wide event'>HIGH</span>";
+  var c = e.impact === "HIGH" ? "h" : e.impact === "MED" ? "m" : "l";
+  return "<span class='imp " + c + "'>" + esc(e.impact) + "</span>";
+}
 function renderCalendar(d) {
   var items = d.calendar || [];
   if (!items.length) { $("cal-body").innerHTML = "<span class='src'>No high-impact events on the radar.</span>"; return; }
@@ -1313,10 +1323,9 @@ function renderCalendar(d) {
   var h = "";
   items.forEach(function (e) {
     var dt = /^\d{4}-\d{2}-\d{2}$/.test(e.date) ? new Date(e.date + "T12:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : esc(e.date);
-    var impCls = e.impact === "HIGH" ? "h" : e.impact === "MED" ? "m" : "l";
-    h += "<div class='cal-item'><span class='cal-date'>" + dt + "</span><span>" + esc(e.event) + "</span><span class='imp " + impCls + "'>" + esc(e.impact) + "</span></div>";
+    h += "<div class='cal-item'><span class='cal-date'>" + dt + "</span><span>" + esc(e.event) + "</span>" + impBadge(e) + "</div>";
   });
-  h += "<div class='src' style='margin-top:8px'>Auto-fed from FRED release dates (CPI, NFP, GDP, PCE…), the FOMC schedule, universe earnings, token-unlock detectors and the crypto event calendar (upgrades, activations, governance votes). Agents holding through a high-impact event get automatic risk alerts.</div>";
+  h += "<div class='src' style='margin-top:8px'>Auto-fed from FRED release dates (CPI, NFP, GDP, PCE…), the FOMC schedule, universe earnings, token-unlock detectors and the crypto event calendar (upgrades, activations, governance votes). Solid HIGH = market-wide; outlined HIGH = high for that asset only. Agents holding through a high-impact event get automatic risk alerts.</div>";
   $("cal-body").innerHTML = h;
 }
 function renderCalMonth(d) {
@@ -1343,7 +1352,7 @@ function renderCalMonth(d) {
         : e.type === "UNLOCK" ? (e.event.split(" ")[0] + " unlock")
         : e.type === "CRYPTO" ? e.event.split(" ")[0]
         : e.type;
-      return "<span class='cp-ev " + (e.impact === "HIGH" ? "h" : "") + "' title='" + esc(e.event) + "'>" + esc(lab) + "</span>";
+      return "<span class='cp-ev " + (e.impact === "HIGH" ? (isAssetHigh(e) ? "ha" : "h") : "") + "' title='" + esc(e.event) + "'>" + esc(lab) + "</span>";
     }).join("");
     if (evs.length > 3) chips += "<span class='cp-ev'>+" + (evs.length - 3) + " more</span>";
     cells += "<div class='cp-cell" + (wd >= 5 ? " dim" : "") + (key === todayKey ? " today" : "") + "'><span class='cp-d'>" + day.getDate() + mo + "</span>" + chips + "</div>";
@@ -1729,7 +1738,7 @@ function renderHome(d) {
   var c = "";
   (d.calendar || []).slice(0, 5).forEach(function (e) {
     var dt = /^\d{4}-\d{2}-\d{2}$/.test(e.date) ? new Date(e.date + "T12:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : e.date;
-    c += "<div class='row'><span>" + esc(dt) + " · " + esc(e.event) + "</span><span class='imp " + (e.impact === "HIGH" ? "h" : "m") + "'>" + esc(e.impact) + "</span></div>";
+    c += "<div class='row'><span>" + esc(dt) + " · " + esc(e.event) + "</span>" + impBadge(e) + "</div>";
   });
   if (c) { c += "<a class='more' href='#/calendar'>The full calendar →</a>"; $("hw-cal-body").innerHTML = c; }
   // flows: ETF + liquidations from marketsDesk
