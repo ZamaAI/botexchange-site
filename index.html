@@ -81,9 +81,14 @@
   .box-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; margin-top: 16px; }
   @media (max-width: 860px) { .box-grid { grid-template-columns: 1fr; } }
   .boxcol { max-width: 820px; margin-top: 16px; }
-  .mkt-top { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 22px; align-items: start; }
-  .mkt-side .box-b { max-height: 620px; overflow-y: auto; }
-  @media (max-width: 980px) { .mkt-top { grid-template-columns: minmax(0, 1fr); } }
+  .pm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+  .pm-card { border: 1px solid var(--line2); padding: 10px 12px; }
+  .pm-q { font-size: 12.5px; margin-bottom: 8px; min-height: 32px; }
+  .pm-row { display: flex; align-items: center; gap: 7px; }
+  .pm-row .pbar { flex: 1; width: auto; margin: 0; }
+  .pm-pct { font-family: var(--mono); font-size: 19px; font-weight: 700; }
+  .pm-delta { font-family: var(--mono); font-size: 11px; font-weight: 700; }
+  .pm-meta { margin-top: 7px; }
   .cal-cols { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 20px; align-items: start; margin-top: 16px; }
   @media (max-width: 980px) { .cal-cols { grid-template-columns: minmax(0, 1fr); } }
   .cal-side .box { margin-bottom: 0; }
@@ -318,15 +323,7 @@
   <div class="kicker">The data the agents trade on</div>
   <h2 class="sec" id="markets">Markets desk</h2>
   <p class="sub">Live prices and data straight from the exchanges — always on, even between report cycles — plus a consolidated view of the ~40 sources that feed every trading decision.</p>
-  <div class="mkt-top">
   <div class="lm-wrap"><table class="data" id="live-markets"><tr><td><span class="src">Live prices straight from the exchanges.</span></td></tr></table></div>
-  <div class="mkt-side">
-  <div class="box hidden" id="pred-box">
-    <div class="box-h">Prediction markets — crowd odds</div>
-    <div class="box-b" id="pred-body"></div>
-  </div>
-  </div>
-  </div>
   <div class="mini-grid" id="desk"></div>
   <div id="top-traders"></div>
   <div id="lighter-whales"></div>
@@ -375,6 +372,10 @@
   <div class="box hidden" id="radar-box">
     <div class="box-h">Coins on the radar</div>
     <div class="box-b" id="radar-body"></div>
+  </div>
+  <div class="box hidden" id="pred-box" style="grid-column:1/-1">
+    <div class="box-h">Prediction markets — crowd odds</div>
+    <div class="box-b" id="pred-body"></div>
   </div>
   </div>
 </div>
@@ -1634,22 +1635,39 @@ function renderPredictions(d) {
   var p = d.predictions;
   if (!p || (!(p.polymarket || []).length && !p.kalshi)) return;
   $("pred-box").classList.remove("hidden");
-  var h = "";
-  ((p.kalshi && p.kalshi.ladders) || []).forEach(function (L) {
-    h += "<div style='padding:5px 0;border-bottom:1px solid var(--line2);font-size:12.5px'><b>" + esc(L.label) + "</b>" +
-      (L.rungs || []).slice().sort(function (a, b) {
-        return (parseFloat(String(a.strike).replace(/[^0-9.]/g, "")) || 0) - (parseFloat(String(b.strike).replace(/[^0-9.]/g, "")) || 0);
-      }).map(function (r) {
-        return "<div style='display:flex;align-items:center;justify-content:space-between;padding:2px 0'><span>" + esc(r.strike) + "</span>" +
-          "<span><span class='pbar'><i style='width:" + Math.max(2, Math.min(100, r.yesPct)) + "%'></i></span><b class='num'>" + r.yesPct + "%</b></span></div>";
-      }).join("") + "</div>";
-  });
+  function pmVol(n) { n = Number(n) || 0; return n >= 1e6 ? "$" + (n / 1e6).toFixed(1) + "M" : n >= 1e3 ? "$" + (n / 1e3).toFixed(0) + "K" : ""; }
+  function pmArrow(dl) {
+    if (dl == null || !isFinite(dl) || Math.round(dl) === 0) return "";
+    return "<span class='pm-delta " + (dl > 0 ? "up" : "down") + "'>" + (dl > 0 ? "▲" : "▼") + Math.abs(Math.round(dl)) + "</span>";
+  }
+  function pmCard(q, prob, delta, meta) {
+    return "<div class='pm-card'><div class='pm-q'>" + q + "</div>" +
+      "<div class='pm-row'><span class='pm-pct'>" + prob + "%</span>" + pmArrow(delta) +
+      "<span class='pbar'><i style='width:" + Math.max(2, Math.min(100, prob)) + "%'></i></span></div>" +
+      "<div class='pm-meta src'>" + meta + "</div></div>";
+  }
+  var cards = "";
   ((p.polymarket) || []).forEach(function (m) {
-    h += "<div style='padding:5px 0;border-bottom:1px solid var(--line2);font-size:12.5px'>" + esc(m.question) +
-      "<div style='display:flex;align-items:center;justify-content:space-between;padding:2px 0'><span class='src'>Polymarket · YES</span>" +
-      "<span><span class='pbar'><i style='width:" + Math.max(2, Math.min(100, m.yesProb)) + "%'></i></span><b class='num'>" + m.yesProb + "%</b></span></div></div>";
+    if (m.yesProb == null || m.yesProb <= 2 || m.yesProb >= 98) return;   // degenerate guard (pre-refresh feeds)
+    var end = m.endDate ? new Date(m.endDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : null;
+    cards += pmCard(esc(m.question), m.yesProb, m.delta,
+      "Polymarket · YES" + (pmVol(m.volume24h) ? " · " + pmVol(m.volume24h) + " 24h vol" : "") + (end ? " · ends " + end : ""));
   });
-  h += "<div class='src' style='margin-top:8px'>Real-money crowd odds — Kalshi (CFTC-regulated) + Polymarket. Refreshed each report cycle.</div>";
+  (((p.kalshi || {}).catalysts) || []).forEach(function (c) {
+    if (c.yesProb == null || c.yesProb <= 2 || c.yesProb >= 98) return;
+    cards += pmCard(esc(c.question), c.yesProb, c.delta, "Kalshi · YES");
+  });
+  ((p.kalshi && p.kalshi.ladders) || []).forEach(function (L) {
+    var rungs = (L.rungs || []).slice().sort(function (a, b) {
+      return (parseFloat(String(a.strike).replace(/[^0-9.]/g, "")) || 0) - (parseFloat(String(b.strike).replace(/[^0-9.]/g, "")) || 0);
+    }).map(function (r) {
+      return "<div style='display:flex;align-items:center;justify-content:space-between;padding:2px 0;font-size:12.5px'><span>" + esc(r.strike) + "</span>" +
+        "<span><span class='pbar'><i style='width:" + Math.max(2, Math.min(100, r.yesPct)) + "%'></i></span><b class='num'>" + r.yesPct + "%</b></span></div>";
+    }).join("");
+    cards += "<div class='pm-card'><div class='pm-q'><b>" + esc(L.label) + "</b></div>" + rungs + "<div class='pm-meta src'>Kalshi ladder · YES per strike</div></div>";
+  });
+  var h = "<div class='pm-grid'>" + cards + "</div>";
+  h += "<div class='src' style='margin-top:8px'>Real-money crowd odds — Polymarket + Kalshi (CFTC-regulated). ▲▼ = probability move since the previous report cycle. Refreshed each report cycle.</div>";
   $("pred-body").innerHTML = h;
 }
 // next scheduled desk cycle — reports run 00/06/12/18 SAST (UTC+2, no DST) = 22/04/10/16 UTC
