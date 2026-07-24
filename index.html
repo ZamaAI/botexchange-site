@@ -81,6 +81,8 @@
   .box-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; margin-top: 16px; }
   @media (max-width: 860px) { .box-grid { grid-template-columns: 1fr; } }
   .boxcol { max-width: 820px; margin-top: 16px; }
+  .mkt-top { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 22px; align-items: start; }
+  @media (max-width: 980px) { .mkt-top { grid-template-columns: minmax(0, 1fr); } }
   .pm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
   .pm-card { border: 1px solid var(--line2); padding: 10px 12px; }
   .pm-q { font-size: 12.5px; margin-bottom: 8px; min-height: 32px; }
@@ -323,7 +325,10 @@
   <div class="kicker">The data the agents trade on</div>
   <h2 class="sec" id="markets">Markets desk</h2>
   <p class="sub">Live prices and data straight from the exchanges — always on, even between report cycles — plus a consolidated view of the ~40 sources that feed every trading decision.</p>
+  <div class="mkt-top">
   <div class="lm-wrap"><table class="data" id="live-markets"><tr><td><span class="src">Live prices straight from the exchanges.</span></td></tr></table></div>
+  <div class="mkt-side"><div id="stocks-slot"></div></div>
+  </div>
   <div class="mini-grid" id="desk"></div>
   <div id="top-traders"></div>
   <div id="lighter-whales"></div>
@@ -1173,7 +1178,7 @@ function renderDesk(d) {
     });
     h += "</table>";
   }
-  h += "<div id='stocks-slot'></div>";
+  // (stocks & commodities live in the #stocks-slot side rail next to the crypto table now)
   if (mkt.fearGreed || mkt.regime || mkt.equityRegime || (mkt.longShort || []).length) {
     h += "<div><table class='data'><caption>Sentiment</caption></table>";
     var fngBar = function (label, fg) {
