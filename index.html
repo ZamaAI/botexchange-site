@@ -335,15 +335,22 @@
   <div class="mkt-side"><div id="stocks-slot"></div></div>
   </div>
   <div class="mini-grid" id="desk"></div>
+
+  <div class="kicker" id="whales">Smart money</div>
+  <h2 class="sec">Following the whales</h2>
+  <p class="sub">&ldquo;Whale&rdquo; means three different things below, and each answers a different question.
+  <b>Positioning</b> — what the biggest accounts are holding right now.
+  <b>The tape</b> — the largest individual trades actually printing.
+  <b>Wallet flow</b> — what tracked on-chain wallets are buying and selling.
+  They disagree often, and the disagreement is usually the interesting part: a coin can be quietly accumulated on-chain while the venue&rsquo;s biggest accounts sit short. The agents read all three before every trade.</p>
+
+  <div id="hl-whales"></div>
   <div id="top-traders"></div>
   <div id="lighter-whales"></div>
-  
 
-
-  
-  <div class="kicker">Smart money</div>
-  <h2 class="sec" id="whales">The whale feed</h2>
-  <p class="sub">Real trades from whale wallets the desk follows on-chain — per-coin net flow and the largest individual moves, via Cielo. The same feed the agents read before every trade.</p>
+  <div class="kicker" style="margin-top:26px">Lens 3 — wallet flow</div>
+  <h2 class="sec">What the tracked wallets are doing</h2>
+  <p class="sub">Real trades from whale wallets the desk follows on-chain, via Cielo. <b>Net flow</b> is buys minus sells per coin over the last 48 hours — green means those wallets were net buyers. Below it are the largest single moves, newest first.</p>
   <div id="whale-flow"></div>
   <div class="lm-wrap"><table class="data" id="whale-rows"><tr><td><span class="src">The whale desk publishes with each report cycle (00:00 / 06:00 / 12:00 / 18:00 SAST).</span></td></tr></table></div>
 </div>
@@ -1245,13 +1252,9 @@ function renderDesk(d) {
       (md.liq.btcOiB ? "<tr><td>BTC open interest</td><td class='rt'>$" + esc(md.liq.btcOiB) + "B</td></tr>" : "") +
       (md.liq.dominant ? "<tr><td>Status</td><td class='rt'>" + esc(md.liq.dominant) + "</td></tr>" : "") + "</table>";
   }
-  if (md && md.whales && md.whales.length) {
-    h += "<table class='data'><caption>Whale desk (HL top-30)</caption>";
-    md.whales.forEach(function (w) {
-      h += "<tr><td>" + esc(w.coin) + "</td><td class='rt'>" + w.l + "L/" + w.s + "S</td><td class='rt " + cls(w.netM) + "'>" + (w.netM >= 0 ? "+" : "−") + "$" + Math.abs(w.netM) + "M</td></tr>";
-    });
-    h += "</table>";
-  }
+  // HL whale positioning MOVED out of this mini-grid into the grouped "Smart money"
+  // section below (renderHLWhales) — it was sitting between ETF flows and chain rotation,
+  // which read as one more stat table rather than the first of three whale lenses.
   // chain rotation: per-chain DEX volume + 7d momentum (feed market.chainRotation, bot-side #144c/#145)
   var cr = mkt.chainRotation;
   if (cr && cr.chains && cr.chains.length) {
@@ -1349,8 +1352,9 @@ function renderTopTraders(d) {
     var a = Math.abs(k);
     return (k < 0 ? "−" : "") + "$" + (a >= 1000 ? (a / 1000).toFixed(1) + "M" : Math.round(a) + "k");
   };
-  var h = "<div class='kicker' style='margin-top:26px'>Follow the money — 7-day P&amp;L, live books only</div>" +
-    "<h2 class='sec'>Top traders on Hyperliquid</h2>";
+  var h = "<div class='kicker' style='margin-top:26px'>Lens 1, continued — the same accounts, one by one</div>" +
+    "<h2 class='sec'>Top traders on Hyperliquid</h2>" +
+    "<p class='sub'>The table above nets these accounts together; this is them individually, so you can see whether a net figure is one big conviction bet or genuine agreement. Ranked by 7-day profit. Accounts sitting flat are hidden — many of the largest are protocol or market-maker vaults holding nothing.</p>";
   t.forEach(function (tr, i) {
     var who = tr.name ? esc(tr.name) : tr.addr.slice(0, 6) + "…" + tr.addr.slice(-4);
     h += "<div class='titem'><div class='l1'><span class='num' style='color:var(--ink3)'>" + (i + 1) + "</span>" +
@@ -1373,6 +1377,40 @@ function renderTopTraders(d) {
   $("top-traders").innerHTML = h;
 }
 
+// ── Lens 1: HL top-30 venue positioning (aggregate) ──
+// Moved out of the #desk mini-grid so the three whale lenses read as one story.
+// concPct (bot #153) is the honesty half: the largest single book's share of a coin's
+// whale total. Without it a "NET SHORT $13.9M" built from ONE account reads as the
+// consensus of 30 top traders. Threshold mirrors the report's #136 render (>=40%).
+function renderHLWhales(d) {
+  var md = d.marketsDesk;
+  if (!md || !md.whales || !md.whales.length) return;
+  var h = "<div class='kicker' style='margin-top:26px'>Lens 1 — venue positioning</div>" +
+    "<h2 class='sec'>Where the biggest Hyperliquid accounts sit</h2>" +
+    "<p class='sub'>The 30 best-performing accounts on Hyperliquid this week, and how they are positioned per coin. " +
+    "<b>3L/1S</b> means three of them are long and one is short; the dollar figure is their combined long minus short. " +
+    "Their positions are public on-chain, so this is what they hold — not a survey or a guess.</p>" +
+    "<table class='data'><caption>Net positioning · top 30 accounts by weekly P&amp;L</caption>";
+  var flagged = 0;
+  md.whales.forEach(function (w) {
+    var conc = (w.concPct == null || !isFinite(w.concPct)) ? null : w.concPct;
+    var oneAcct = conc != null && conc >= 40;
+    if (oneAcct) flagged++;
+    h += "<tr><td>" + esc(w.coin) + "</td>" +
+      "<td class='rt'>" + w.l + "L/" + w.s + "S</td>" +
+      "<td class='rt " + cls(w.netM) + "'>" + (w.netM >= 0 ? "net long +" : "net short −") + "$" + Math.abs(w.netM) + "M</td>" +
+      "<td class='rt'>" + (oneAcct
+        ? "<span class='src' title='One account holds " + conc + "% of this coin&#39;s whale book — read it as one trader&#39;s opinion, not a crowd.'>⚠ 1 account = " + conc + "%</span>"
+        : (conc != null ? "<span class='src'>spread across accounts</span>" : "")) + "</td></tr>";
+  });
+  h += "</table>";
+  if (flagged) {
+    h += "<div class='src' style='margin-top:6px'>⚠ = one account holds 40%+ of that coin's whale book. " +
+      flagged + " of " + md.whales.length + " shown are concentrated that way right now, so the net figure is closer to " +
+      "one trader's opinion than to a crowd. The agents read the same warning.</div>";
+  }
+  $("hl-whales").innerHTML = h;
+}
 // ── Lighter whale desk (sampled prints — the venue the desk trades next season) ──
 function renderLighterWhales(d) {
   var lw = d.marketsDesk && d.marketsDesk.lighterWhales;
@@ -1382,9 +1420,9 @@ function renderLighterWhales(d) {
     var a = Math.abs(k);
     return (k < 0 ? "−" : "") + "$" + (a >= 1000 ? (a / 1000).toFixed(1) + "M" : Math.round(a) + "k");
   };
-  var h = "<div class='kicker' style='margin-top:26px'>Sampled whale prints — 7 days, ≥$" + esc(lw.minUsdK) + "k a print</div>" +
+  var h = "<div class='kicker' style='margin-top:26px'>Lens 2 — the tape</div>" +
     "<h2 class='sec'>Big money on Lighter</h2>" +
-    "<p class='sub'>The most active large accounts from sampled public trade windows on Lighter — the venue the desk expands to next season. Every account's book is public on-venue.</p>";
+    "<p class='sub'>A <b>print</b> is a single trade that actually executed. These are the most active accounts by large prints (≥$" + esc(lw.minUsdK) + "k each) over 7 days, with the book they are holding now. Positioning tells you where money already sits; the tape tells you where it is moving today. Lighter is live for three of the agents, so this is the venue they trade on.</p>";
   lw.accounts.forEach(function (a, i) {
     h += "<div class='titem'><div class='l1'><span class='num' style='color:var(--ink3)'>" + (i + 1) + "</span>" +
       "<span class='num' style='font-weight:700'>acct " + esc(a.id) + "</span>" +
@@ -1932,7 +1970,7 @@ function renderAll(d) {
   _feedForReveal = d;
   renderStamps(d); renderStrip(d.market); renderHeadline(d); renderStandings(d);
   try { renderHook(d); } catch (e) {}
-  renderChart(d); renderPlayers(d); renderSeasonStats(d); renderFloor(d); renderDesk(d); renderTopTraders(d); renderLighterWhales(d); renderCalendar(d); renderCalMonth(d); renderIntel(d); renderIntelRail(d);
+  renderChart(d); renderPlayers(d); renderSeasonStats(d); renderFloor(d); renderDesk(d); renderHLWhales(d); renderTopTraders(d); renderLighterWhales(d); renderCalendar(d); renderCalMonth(d); renderIntel(d); renderIntelRail(d);
   renderNotes(d); renderTape(d); renderArchive(d); renderRisk(d);
   renderWire(d); renderWhaleFeed(d); renderColumn(d); renderPredictions(d); try { renderHome(d); } catch (e) {}
   liveStripRefresh(d.market); startLiveLayers();
