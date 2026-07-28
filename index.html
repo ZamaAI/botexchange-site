@@ -678,33 +678,79 @@ var _lastStripMkt = null;
 // HYPE + LIT price from HYPERLIQUID, never Binance — cross-venue ticker collision is real:
 // Binance's LIT is a different asset (~$0.74) vs the Lighter token on HL (~$2.66).
 var _hlStrip = [];
-function fetchHLStrip() {
-  fetch("https://api.hyperliquid.xyz/info", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "metaAndAssetCtxs" }) })
+// ── shared Hyperliquid perp context: ONE fetch feeds the ticker strip AND the markets board ──
+// Hyperliquid, not Binance, is the client-side price source for this page. api.binance.com
+// answers HTTP 451 ("Unavailable For Legal Reasons") to US IPs on PUBLIC ticker endpoints too,
+// not just trading ones — so the old browser-side calls rendered an empty table for the single
+// largest market, and for anyone whose ISP/DNS blocks Binance. HL's MAINNET api is globally
+// reachable (only the app.hyperliquid.xyz frontend and the TESTNET api are geofenced) and it
+// serves `Access-Control-Allow-Origin: *`, so it is safe to call straight from a browser.
+var _hlCtx = null, _hlCtxAt = 0, _hlCtxPending = null;
+function hlPerpCtx() {
+  var now = Date.now();
+  if (_hlCtx && now - _hlCtxAt < 20000) return Promise.resolve(_hlCtx);
+  if (_hlCtxPending) return _hlCtxPending;
+  _hlCtxPending = fetch("https://api.hyperliquid.xyz/info", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "metaAndAssetCtxs" }) })
     .then(function (r) { return r.json(); })
     .then(function (res) {
-      var meta = res[0], ctxs = res[1], want = { HYPE: 1 }, out = [];   // LIT dropped — kept the CRYPTO row to one line (operator call); collision note above still applies if re-added
+      var meta = res && res[0], ctxs = res && res[1], map = {};
+      if (!meta || !meta.universe || !ctxs) throw new Error("metaAndAssetCtxs: bad shape");
       meta.universe.forEach(function (u, i) {
-        if (!want[u.name] || !ctxs[i]) return;
-        var mark = parseFloat(ctxs[i].markPx), prev = parseFloat(ctxs[i].prevDayPx);
-        if (!isFinite(mark)) return;
-        out.push({ symbol: u.name, price: mark, change24hPct: (isFinite(prev) && prev) ? (mark - prev) / prev * 100 : null });
+        var c = ctxs[i]; if (!c) return;
+        var mark = parseFloat(c.markPx); if (!isFinite(mark)) return;
+        // HL lists the small-unit memecoins at 1000x behind a lowercase k (kPEPE = 1000 PEPE).
+        // The test is case-sensitive on purpose: KAITO and friends are NOT k-prefixed aliases.
+        var name = u.name, div = 1;
+        if (name.charAt(0) === "k" && name.slice(1) === name.slice(1).toUpperCase()) { name = name.slice(1); div = 1000; }
+        map[name] = {
+          price: mark / div,
+          prev: parseFloat(c.prevDayPx) / div,
+          vol: parseFloat(c.dayNtlVlm),          // already USD notional — no k-scaling
+          funding: parseFloat(c.funding)         // per HOUR on HL
+        };
       });
-      out.sort(function (a, b) { return want[a.symbol] - want[b.symbol]; });
-      if (out.length) { _hlStrip = out; renderStrip(_lastStripMkt); }
-    }).catch(function () {});
+      _hlCtx = map; _hlCtxAt = Date.now(); _hlCtxPending = null;
+      return map;
+    }).catch(function (e) { _hlCtxPending = null; throw e; });
+  return _hlCtxPending;
+}
+function fetchHLStrip() {
+  hlPerpCtx().then(function (map) {
+    var want = ["HYPE"], out = [];   // LIT dropped — kept the CRYPTO row to one line (operator call); collision note above still applies if re-added
+    want.forEach(function (s) {
+      var m = map[s]; if (!m) return;
+      out.push({ symbol: s, price: m.price, change24hPct: (isFinite(m.prev) && m.prev) ? (m.price - m.prev) / m.prev * 100 : null });
+    });
+    if (out.length) { _hlStrip = out; renderStrip(_lastStripMkt); }
+  }).catch(function () {});
 }
 function liveStripRefresh(mkt) {
   if (mkt !== undefined) _lastStripMkt = mkt;
-  var base = _lastStripMkt;
-  fetch("https://api.binance.com/api/v3/ticker/24hr?symbols=" + encodeURIComponent('["BTCUSDT","ETHUSDT","SOLUSDT"]'))
-    .then(function (r) { return r.json(); })
-    .then(function (rows) {
-      if (!Array.isArray(rows)) return;
-      var fresh = rows.map(function (t) { return { symbol: t.symbol.replace("USDT", ""), price: parseFloat(t.lastPrice), change24hPct: parseFloat(t.priceChangePercent) }; });
-      var rest = ((base && base.prices) || []).filter(function (p) { return ["BTC", "ETH", "SOL"].indexOf(p.symbol) < 0; });
-      _lastStripMkt = { prices: fresh.concat(rest), fearGreed: base && base.fearGreed, stockFearGreed: base && base.stockFearGreed, regime: base && base.regime, equityRegime: base && base.equityRegime, macro: base && base.macro };
-      renderStrip(_lastStripMkt);
-    }).catch(function () {});
+  var base = _lastStripMkt, want = ["BTC", "ETH", "SOL"];
+  function apply(fresh) {
+    if (!fresh || !fresh.length) return;
+    var rest = ((base && base.prices) || []).filter(function (p) { return want.indexOf(p.symbol) < 0; });
+    _lastStripMkt = { prices: fresh.concat(rest), fearGreed: base && base.fearGreed, stockFearGreed: base && base.stockFearGreed, regime: base && base.regime, equityRegime: base && base.equityRegime, macro: base && base.macro };
+    renderStrip(_lastStripMkt);
+  }
+  hlPerpCtx().then(function (map) {
+    var fresh = [];
+    want.forEach(function (s) {
+      var m = map[s]; if (!m || !isFinite(m.price)) return;
+      fresh.push({ symbol: s, price: m.price, change24hPct: (isFinite(m.prev) && m.prev) ? (m.price - m.prev) / m.prev * 100 : null });
+    });
+    if (!fresh.length) throw new Error("no HL rows");
+    apply(fresh);
+  }).catch(function () {
+    // Last resort for a visitor who can reach Binance but not HL. 451s in the US — harmless,
+    // because the strip still has the feed's own prices underneath it.
+    fetch("https://api.binance.com/api/v3/ticker/24hr?symbols=" + encodeURIComponent('["BTCUSDT","ETHUSDT","SOLUSDT"]'))
+      .then(function (r) { return r.json(); })
+      .then(function (rows) {
+        if (!Array.isArray(rows)) return;
+        apply(rows.map(function (t) { return { symbol: t.symbol.replace("USDT", ""), price: parseFloat(t.lastPrice), change24hPct: parseFloat(t.priceChangePercent) }; }));
+      }).catch(function () {});
+  });
 }
 function fetchMacroStrip() {
   fetch("https://api.hyperliquid.xyz/info", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "metaAndAssetCtxs", dex: "xyz" }) })
@@ -1672,32 +1718,47 @@ function renderRisk(d) {
     (L.intradayDrawdownPct || 10) + "% mark-to-market) in a day stops trading until the next session.</div>";
   $("risk-body").innerHTML = h;
 }
-// ── live markets board (client-side, straight from Binance — works even when the bot host is off) ──
+// ── live markets board (client-side, straight from Hyperliquid — works even when the bot host is off) ──
+// Source swapped Binance → HL: see the hlPerpCtx() note above for why (US 451 on public tickers).
+// HL carries no 24h high/low, so the old "24h range" column is now FUNDING (APR) — natively in the
+// same payload, and a sharper read on a perps board anyway: it prices which side is crowded.
 var LM_SYMBOLS = ["BTC","ETH","SOL","BNB","XRP","DOGE","ADA","AVAX","LINK","TRX","DOT","LTC","BCH","NEAR","APT","ARB","OP","SUI","UNI","AAVE","PEPE","WLD","FIL","ATOM"];
 var lmExpanded = false;
 function renderLiveMarkets() {
-  var syms = JSON.stringify(LM_SYMBOLS.map(function (s) { return s + "USDT"; }));
-  fetch("https://api.binance.com/api/v3/ticker/24hr?symbols=" + encodeURIComponent(syms))
-    .then(function (r) { return r.json(); })
-    .then(function (rows) {
-      if (!rows || !rows.length) return;
-      rows.sort(function (a, b) { return parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume); });
-      var shown = lmExpanded ? rows : rows.slice(0, 16);
-      var h = "<tr><th>Coin</th><th class='rt'>Price</th><th class='rt'>24h</th><th class='rt'>24h range</th><th class='rt'>Volume</th></tr>";
-      shown.forEach(function (t) {
-        var sym = t.symbol.replace("USDT", ""), p = parseFloat(t.lastPrice), c = parseFloat(t.priceChangePercent);
-        var lo = parseFloat(t.lowPrice), hi = parseFloat(t.highPrice), vol = parseFloat(t.quoteVolume);
-        var dp = p >= 1000 ? 0 : p >= 10 ? 2 : p >= 0.1 ? 4 : 6;
-        h += "<tr><td><b>" + esc(sym) + "</b></td><td class='rt num'>" + money(p, dp) + "</td>" +
-          "<td class='rt " + cls(c) + "'>" + pct(c, 2) + "</td>" +
-          "<td class='rt num' style='color:var(--ink3)'>" + money(lo, dp) + " – " + money(hi, dp) + "</td>" +
-          "<td class='rt num'>$" + (vol >= 1e9 ? (vol / 1e9).toFixed(2) + "B" : (vol / 1e6).toFixed(0) + "M") + "</td></tr>";
-      });
-      h += "<tr><td colspan='5'><button class='morelink' id='lm-more'>" +
-        (lmExpanded ? "Show top 16" : "Show all " + rows.length + " coins") + "</button></td></tr>";
-      $("live-markets").innerHTML = h;
-      $("lm-more").onclick = function () { lmExpanded = !lmExpanded; renderLiveMarkets(); };
-    }).catch(function () {});
+  hlPerpCtx().then(function (map) {
+    var rows = [];
+    LM_SYMBOLS.forEach(function (s) {
+      var m = map[s];
+      if (!m || !isFinite(m.price)) return;      // not listed on HL perps — skip the row, never guess a price
+      rows.push({ sym: s, price: m.price, chg: (isFinite(m.prev) && m.prev) ? (m.price - m.prev) / m.prev * 100 : null, vol: m.vol, funding: m.funding });
+    });
+    if (!rows.length) throw new Error("no HL rows");
+    rows.sort(function (a, b) { return (b.vol || 0) - (a.vol || 0); });
+    var shown = lmExpanded ? rows : rows.slice(0, 16);
+    var h = "<tr><th>Coin</th><th class='rt'>Price</th><th class='rt'>24h</th><th class='rt'>Funding (APR)</th><th class='rt'>Volume</th></tr>";
+    shown.forEach(function (t) {
+      // sub-thousandth coins need more than 6dp or they all collapse to "$0.000003" (PEPE).
+      var dp = t.price >= 1000 ? 0 : t.price >= 10 ? 2 : t.price >= 0.1 ? 4 : t.price >= 0.001 ? 6 : 8;
+      // HL funding is per hour; annualise for a number people can compare against a yield.
+      var apr = isFinite(t.funding) ? t.funding * 24 * 365 * 100 : null;
+      h += "<tr><td><b>" + esc(t.sym) + "</b></td><td class='rt num'>" + money(t.price, dp) + "</td>" +
+        "<td class='rt " + cls(t.chg) + "'>" + pct(t.chg, 2) + "</td>" +
+        // deliberately NOT colour-coded up/down: positive funding means longs are paying, which is
+        // crowding (squeeze fuel), not "good" — colouring it green would read as a buy signal.
+        "<td class='rt num' style='color:var(--ink3)'>" + pct(apr, 1) + "</td>" +
+        "<td class='rt num'>$" + (t.vol >= 1e9 ? (t.vol / 1e9).toFixed(2) + "B" : (t.vol / 1e6).toFixed(0) + "M") + "</td></tr>";
+    });
+    h += "<tr><td colspan='5'><button class='morelink' id='lm-more'>" +
+      (lmExpanded ? "Show top 16" : "Show all " + rows.length + " coins") + "</button></td></tr>";
+    $("live-markets").innerHTML = h;
+    $("lm-more").onclick = function () { lmExpanded = !lmExpanded; renderLiveMarkets(); };
+  }).catch(function () {
+    // A swallowed error is indistinguishable from "no data" — the silent-fallback anti-pattern.
+    // Say it out loud, but never wipe a good table that is already on screen.
+    if (!$("live-markets").querySelector("th")) {
+      $("live-markets").innerHTML = "<tr><td class='src'>Live prices unavailable — this board reads Hyperliquid's public API straight from your browser, and your network appears to be blocking it. Everything else on the page is served from our own feed and is unaffected.</td></tr>";
+    }
+  });
 }
 // ── the wire: scraped headlines + curated X posts ──
 function renderWire(d) {
