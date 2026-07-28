@@ -1308,7 +1308,10 @@ function renderDesk(d) {
     cr.chains.slice(0, 10).forEach(function (c) {
       var vol = c.vol24h >= 1e9 ? "$" + (c.vol24h / 1e9).toFixed(2) + "B" : "$" + Math.round(c.vol24h / 1e6) + "M";
       var d7 = (c.d7 == null || !isFinite(c.d7)) ? "—" : (c.d7 >= 0 ? "+" : "−") + Math.abs(c.d7).toFixed(1) + "%/7d";
-      h += "<tr><td>" + esc(c.name) + (c.token ? " <span class='src'>$" + esc(c.token) + "</span>" : "") + "</td><td class='rt'>" + vol + "</td><td class='rt " + cls(c.d7) + "'>" + d7 + "</td></tr>";
+      // cls==='equity' (Robinhood Chain -> $HOOD) is a US stock, not an L1/L2 coin — say so, or
+      // the badge reads as one more crypto ticker sitting in a crypto table.
+      var tok = c.token ? " <span class='src'>$" + esc(c.token) + (c.cls === "equity" ? " · US equity" : "") + "</span>" : "";
+      h += "<tr><td>" + esc(c.name) + tok + "</td><td class='rt'>" + vol + "</td><td class='rt " + cls(c.d7) + "'>" + d7 + "</td></tr>";
     });
     h += "</table>";
   }
