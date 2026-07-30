@@ -1129,7 +1129,12 @@ function renderFloor(d) {
   waits.forEach(function (t) {
     h += "<div class='titem'><div class='l1'><span class='asset'>" + esc(t.asset) + "</span>" +
       "<span class='dirpill " + (t.direction === "SHORT" ? "s" : "l") + "'>" + esc(t.direction) + "</span>" +
-      actorTag(String(t.brain || "").toLowerCase()) + "<span class='outc' style='color:var(--watch)'>WATCHING</span></div>" +
+      actorTag(String(t.brain || "").toLowerCase()) +
+      // The feed has carried `conviction` on watch-list items all along and this rendered only
+      // the WATCHING badge. Conviction is what separates "idly noted" from "one condition away
+      // from a real position", and it is the same 1-10 scale shown on open trades.
+      "<span class='outc'>" + (t.conviction != null ? "<span class='num'>conv " + esc(t.conviction) + "/10</span> " : "") +
+      "<span style='color:var(--watch)'>WATCHING</span></span></div>" +
       (t.trigger ? "<div class='trig'><b>Trigger:</b> " + esc(smartTrim(String(t.trigger), 200)) + "</div>" : "") +
       "<div class='why'>Anticipatory entries are the fleet's #1 loss cause — agents wait for the trigger to print.</div></div>";
   });
@@ -1492,6 +1497,31 @@ function renderTopTraders(d) {
 // concPct (bot #153) is the honesty half: the largest single book's share of a coin's
 // whale total. Without it a "NET SHORT $13.9M" built from ONE account reads as the
 // consensus of 30 top traders. Threshold mirrors the report's #136 render (>=40%).
+// Shared per-coin LONG/SHORT board. The bot builds Lighter's `coins` in EXACTLY the HL
+// `whales` shape on purpose — index.js: "mirroring the HL whales feed shape exactly
+// (coin/l/s/netM/concPct) so the site can reuse the HL component unchanged" — and that reuse
+// had never happened, so the Lighter aggregate was published and rendered nowhere while only
+// the per-account list showed. That matters beyond tidiness: the [#125L] side bug (every
+// Lighter whale position publishing as LONG) was invisible in the per-account list and obvious
+// the instant it was aggregated. The aggregate IS the defect detector.
+// `fmtNet` differs per venue only in units — HL books are $M, Lighter's are 2-3 orders
+// smaller and publish netK.
+function whaleCoinBoard(rows, fmtNet) {
+  var h = "", flagged = 0;
+  rows.forEach(function (w) {
+    var conc = (w.concPct == null || !isFinite(w.concPct)) ? null : w.concPct;
+    var oneAcct = conc != null && conc >= 40;
+    if (oneAcct) flagged++;
+    var net = fmtNet(w);
+    h += "<tr><td>" + esc(w.coin) + "</td>" +
+      "<td class='rt'>" + w.l + "L/" + w.s + "S</td>" +
+      "<td class='rt " + cls(net.v) + "'>" + net.txt + "</td>" +
+      "<td class='rt'>" + (oneAcct
+        ? "<span class='src' title='One account holds " + conc + "% of this coin&#39;s whale book — read it as one trader&#39;s opinion, not a crowd.'>⚠ 1 account = " + conc + "%</span>"
+        : (conc != null ? "<span class='src'>spread across accounts</span>" : "")) + "</td></tr>";
+  });
+  return { h: h, flagged: flagged };
+}
 function renderHLWhales(d) {
   var md = d.marketsDesk;
   if (!md || !md.whales || !md.whales.length) return;
@@ -1501,18 +1531,11 @@ function renderHLWhales(d) {
     "<b>3L/1S</b> means three of them are long and one is short; the dollar figure is their combined long minus short. " +
     "Their positions are public on-chain, so this is what they hold — not a survey or a guess.</p>" +
     "<table class='data'><caption>Net positioning · top 30 accounts by weekly P&amp;L</caption>";
-  var flagged = 0;
-  md.whales.forEach(function (w) {
-    var conc = (w.concPct == null || !isFinite(w.concPct)) ? null : w.concPct;
-    var oneAcct = conc != null && conc >= 40;
-    if (oneAcct) flagged++;
-    h += "<tr><td>" + esc(w.coin) + "</td>" +
-      "<td class='rt'>" + w.l + "L/" + w.s + "S</td>" +
-      "<td class='rt " + cls(w.netM) + "'>" + (w.netM >= 0 ? "net long +" : "net short −") + "$" + Math.abs(w.netM) + "M</td>" +
-      "<td class='rt'>" + (oneAcct
-        ? "<span class='src' title='One account holds " + conc + "% of this coin&#39;s whale book — read it as one trader&#39;s opinion, not a crowd.'>⚠ 1 account = " + conc + "%</span>"
-        : (conc != null ? "<span class='src'>spread across accounts</span>" : "")) + "</td></tr>";
+  var board = whaleCoinBoard(md.whales, function (w) {
+    return { v: w.netM, txt: (w.netM >= 0 ? "net long +" : "net short −") + "$" + Math.abs(w.netM) + "M" };
   });
+  var flagged = board.flagged;
+  h += board.h;
   h += "</table>";
   if (flagged) {
     h += "<div class='src' style='margin-top:6px'>⚠ = one account holds 40%+ of that coin's whale book. " +
@@ -1533,6 +1556,25 @@ function renderLighterWhales(d) {
   var h = "<div class='kicker' style='margin-top:26px'>Lens 2 — the tape</div>" +
     "<h2 class='sec'>Big money on Lighter</h2>" +
     "<p class='sub'>A <b>print</b> is a single trade that actually executed. These are the most active accounts by large prints (≥$" + esc(lw.minUsdK) + "k each) over 7 days, with the book they are holding now. Positioning tells you where money already sits; the tape tells you where it is moving today. Lighter is live for three of the agents, so this is the venue they trade on.</p>";
+  // Per-coin aggregate FIRST, then the per-account detail. The order is the point: this board
+  // is published in the same shape as the Hyperliquid one and had never been rendered, so the
+  // only Lighter view on the site was the account list — and an aggregate is what makes a
+  // whole class of defect visible (the [#125L] every-position-reads-LONG bug was invisible
+  // per-account and obvious the moment the coins were summed).
+  if (lw.coins && lw.coins.length) {
+    var lb = whaleCoinBoard(lw.coins, function (w) {
+      return { v: w.netK, txt: (w.netK >= 0 ? "net long +" : "net short −") + kfmt(Math.abs(w.netK)) };
+    });
+    h += "<table class='data'><caption>Net positioning per coin" +
+      (lw.booksSeen ? " · " + esc(lw.booksSeen) + " books sampled" : "") + "</caption>" + lb.h + "</table>";
+    // Lighter's whale books are FEW, so concentration runs far higher than on Hyperliquid —
+    // several coins are literally one account. Saying so is the difference between publishing
+    // a crowd read and publishing one trader's position with a crowd's label on it.
+    if (lb.flagged) {
+      h += "<div class='src' style='margin-top:6px'>⚠ = one account holds 40%+ of that coin's book here. " +
+        lb.flagged + " of " + lw.coins.length + " are concentrated that way right now — Lighter's whale books are far fewer than Hyperliquid's, so treat these as individual positions rather than consensus.</div>";
+    }
+  }
   lw.accounts.forEach(function (a, i) {
     h += "<div class='titem'><div class='l1'><span class='num' style='color:var(--ink3)'>" + (i + 1) + "</span>" +
       "<span class='num' style='font-weight:700'>acct " + esc(a.id) + "</span>" +
