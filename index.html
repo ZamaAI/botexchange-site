@@ -1280,9 +1280,70 @@ function renderTape(d) {
 }
 
 // ── markets desk ──
+// marketsDesk is REPORT-STASHED (00:00 / 06:00 / 12:00 / 18:00 SAST), not live like the
+// ticker strip. Stamping the macro tables with the cycle they came from keeps a five-hour-old
+// print from reading as a live quote — the same honesty the whale desk caption carries.
+function macroAsOf(md) {
+  if (!md || !md.at) return "";
+  var t = new Date(md.at);
+  if (isNaN(t)) return "";
+  return " · as of " + t.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Africa/Johannesburg" });
+}
+function bps(v) { return v == null || !isFinite(v) ? "—" : (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(1) + "bps"; }
+
 function renderDesk(d) {
   var md = d.marketsDesk, mkt = d.market || {};
   var h = "";
+
+  // ── Macro board (feed marketsDesk.macro; bot-side #159 curve/WTI, #163 SPX/KOSPI) ──
+  // Published since #159 and rendered by NOTHING until now: the whole US curve, WTI, SPX
+  // and KOSPI sat in the feed while the site's live strip carried only S&P/Nasdaq/gold/
+  // DXY/VIX. Every trading brain reads these in MACRO OVERLAY each cycle; the site was the
+  // only surface where they were invisible.
+  var mac = md && md.macro;
+  if (mac) {
+    // Yields quote in BASIS POINTS, not percent-of-yield — "+3.8%" on a 4.6% 10Y is really
+    // +17bps, and bps is what every desk says out loud.
+    // Deliberately NOT painted up/down green/red: on a crypto desk a RISING yield is risk-OFF,
+    // so the site's direction colouring would invert the meaning the number actually carries.
+    var curve = [["2Y", mac.UST2Y], ["5Y", mac.UST5Y], ["10Y", mac.US10Y], ["30Y", mac.UST30Y]]
+      .filter(function (r) { return r[1] && isFinite(Number(r[1].price)); });
+    if (curve.length) {
+      h += "<table class='data'><caption>US Treasury curve" + macroAsOf(md) + "</caption>";
+      curve.forEach(function (r) {
+        h += "<tr><td>US " + r[0] + "</td><td class='rt'>" + Number(r[1].price).toFixed(3) + "%</td>" +
+          "<td class='rt'>" + bps(r[1].dBps) + "</td></tr>";
+      });
+      if (mac.UST2Y && mac.UST30Y) {
+        var sp = Math.round((Number(mac.UST30Y.price) - Number(mac.UST2Y.price)) * 100);
+        h += "<tr><td>2s30s spread</td><td class='rt'>" + sp + "bps</td><td class='rt'><span class='src'>" +
+          (sp > 0 ? "positively sloped" : sp < 0 ? "inverted" : "flat") + "</span></td></tr>";
+      }
+      h += "</table>";
+    }
+    // WTI and KOSPI have no live-strip row at all, so without this they appear nowhere on
+    // the site. KOSPI is the desk's AI-hardware canary (it leads the US semis complex and
+    // is the regime dial for the Korean memory perps), which is exactly why it earns a row.
+    var board = [["WTI crude", mac.WTI, 2], ["S&P 500", mac.SPX, 2], ["Nasdaq", mac.NASDAQ, 1], ["KOSPI (Korea)", mac.KOSPI, 2]]
+      .filter(function (r) { return r[1] && isFinite(Number(r[1].price)); });
+    if (board.length) {
+      h += "<table class='data'><caption>Macro board" + macroAsOf(md) + "</caption>";
+      board.forEach(function (r) {
+        h += "<tr><td>" + esc(r[0]) + "</td>" +
+          "<td class='rt'>" + Number(r[1].price).toLocaleString("en-US", { maximumFractionDigits: r[2] }) + "</td>" +
+          "<td class='rt " + cls(r[1].d) + "'>" + pct(r[1].d, 1) + "</td>" +
+          "<td class='rt'><span class='src'>" + pct(r[1].m, 1) + " M · " + pct(r[1].ytd, 1) + " YTD</span></td></tr>";
+      });
+      var bn = mac.btcNqCorr;
+      if (bn && bn.corr != null && isFinite(bn.corr)) {
+        h += "<tr><td>BTC ↔ Nasdaq</td><td class='rt'>" + Number(bn.corr).toFixed(2) + "</td>" +
+          "<td class='rt'><span class='src'>" + (bn.n ? bn.n + "d" : "") + "</span></td>" +
+          "<td class='rt'><span class='src'>" +
+          (bn.corr >= 0.6 ? "coupled" : bn.corr <= 0.25 ? "decoupled" : "partially coupled") + "</span></td></tr>";
+      }
+      h += "</table>";
+    }
+  }
   if (md && md.etf && (md.etf.BTC || md.etf.ETH || md.etf.SOL)) {
     h += "<table class='data'><caption>ETF flows" + (md.etf.BTC && md.etf.BTC.date ? " (" + esc(md.etf.BTC.date) + ")" : "") + "</caption>";
     ["BTC", "ETH", "SOL"].forEach(function (k) {
