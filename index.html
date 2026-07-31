@@ -171,9 +171,9 @@
   /* ── Charts page: one card per open position, HL candles + the desk's own levels ── */
   .ch-bar { display: flex; align-items: center; gap: 6px; margin: 14px 0 4px; }
   .ch-lab { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--ink3); margin-right: 4px; }
-  .ch-int { font: 600 12px var(--sans); color: var(--ink2); background: transparent; border: 1px solid var(--line); padding: 4px 11px; cursor: pointer; }
-  .ch-int:hover { border-color: var(--accent); color: var(--accent); }
-  .ch-int.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .ch-int, .ch-pill { font: 600 12px var(--sans); color: var(--ink2); background: transparent; border: 1px solid var(--line); padding: 4px 11px; cursor: pointer; }
+  .ch-int:hover, .ch-pill:hover { border-color: var(--accent); color: var(--accent); }
+  .ch-int.active, .ch-pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
   .ch-card { border: 1px solid var(--line); margin-bottom: 18px; }
   .ch-head { background: var(--bg2); border-bottom: 1px solid var(--line); padding: 8px 12px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
   .ch-sym { font: 700 14px var(--mono); letter-spacing: .02em; }
@@ -387,6 +387,15 @@
     <button class="ch-int" data-int="4h">4h</button>
   </div>
   <div id="trade-charts"><p class="src">Loading positions…</p></div>
+
+  <div class="kicker" style="margin-top:30px">The levels the desks argue from</div>
+  <h2 class="sec" id="levels">Support &amp; resistance</h2>
+  <p class="sub">Classic daily pivots and the 20/50-day moving averages — the same level pack every agent is handed before it decides, now drawn instead of listed.
+  <b>R1/R2</b> are resistance above, <b>S1/S2</b> support below, and the <b>pivot</b> is the day&rsquo;s reference price; all four derive from yesterday&rsquo;s high, low and close.
+  A level is not a prediction — it is where the market has previously turned, and the interesting question is always whether it holds.
+  These are computed from <b>spot daily candles</b> and drawn over <b>perpetual</b> price, so a level sits near, not exactly on, the wick that made it.</p>
+  <div class="ch-bar" id="lvl-picker"></div>
+  <div id="level-chart"></div>
 </div>
 <div class="page" data-page="news">
 
@@ -2263,6 +2272,7 @@ var _chFeed = null, _chInterval = "1h", _chLive = [], _chSeries = [], _chPollTim
 function chDestroy() {
   _chLive.forEach(function (c) { try { c.remove(); } catch (e) {} });
   _chLive = []; _chSeries = [];
+  if (_lvlChart) { try { _lvlChart.remove(); } catch (e) {} _lvlChart = null; _lvlSeries = null; }
 }
 // Poll path: repaint the bars on the series we already built. A full teardown every 30s
 // would flash the whole page and throw away the reader's zoom/pan for no reason — the
@@ -2275,6 +2285,14 @@ function chRefresh() {
       }).sort(function (a, b) { return a.time - b.time; }));
     }).catch(function () { /* transient — the next tick retries, existing bars stay */ });
   });
+  if (_lvlSeries) {
+    var L = _lvlSeries;
+    hlCandles(L.coin, _chInterval, L.start).then(function (raw) {
+      L.series.setData(raw.map(function (c) {
+        return { time: Math.floor(c.t / 1000), open: +c.o / L.div, high: +c.h / L.div, low: +c.l / L.div, close: +c.c / L.div };
+      }).sort(function (a, b) { return a.time - b.time; }));
+    }).catch(function () {});
+  }
 }
 // Mount only while the page is on screen: an inactive .page is display:none, so a chart
 // created there measures zero width and renders blank until a resize that may never come.
@@ -2434,6 +2452,111 @@ function renderTradeCharts(d) {
     host.innerHTML = '<p class="ch-none">Could not reach Hyperliquid’s public API from this network, so the charts can’t draw. ' +
       'Everything else on the site is served from our own feed and is unaffected.</p>';
   });
+  renderLevelChart();
+}
+// ── Support & resistance: the level pack the agents read, drawn ───────────────
+// Levels come from the feed (marketsDesk.sr), computed bot-side once per report cycle
+// from SPOT DAILY candles; the candles under them are HL PERPS. Spot/perp basis means a
+// level sits near, not on, the wick that formed it — the page says so rather than
+// pretending to a precision the two sources don't share.
+var _lvlAsset = null, _lvlSeries = null, _lvlChart = null;
+function srPack() {
+  var md = _chFeed && _chFeed.marketsDesk;
+  return (md && md.sr && Object.keys(md.sr).length) ? md.sr : null;
+}
+function renderLevelChart() {
+  if (!chartsVisible() || !_chFeed || typeof LightweightCharts === "undefined") return;
+  var host = $("level-chart"), pick = $("lvl-picker");
+  if (!host || !pick) return;
+  if (_lvlChart) { try { _lvlChart.remove(); } catch (e) {} _lvlChart = null; _lvlSeries = null; }
+  var sr = srPack();
+  if (!sr) {
+    pick.innerHTML = "";
+    host.innerHTML = '<p class="ch-none">The level pack publishes with each desk cycle (00:00 / 06:00 / 12:00 / 18:00 SAST) — nothing stashed yet.</p>';
+    return;
+  }
+  var assets = Object.keys(sr);
+  if (!_lvlAsset || assets.indexOf(_lvlAsset) < 0) _lvlAsset = assets.indexOf("BTC") >= 0 ? "BTC" : assets[0];
+  pick.innerHTML = '<span class="ch-lab">Asset</span>' + assets.map(function (a) {
+    return '<button class="ch-pill lvl-pick' + (a === _lvlAsset ? " active" : "") + '" data-a="' + esc(a) + '">' + esc(a) + "</button>";
+  }).join("");
+
+  var css = getComputedStyle(document.documentElement), tok = function (n, f) { return (css.getPropertyValue(n) || "").trim() || f; };
+  var UP = tok("--up", "#0a8043"), DOWN = tok("--down", "#c5221f"), ACC = tok("--accent", "#114e3c"),
+      INK3 = tok("--ink3", "#7d897f"), LINE = tok("--line2", "#eef0ec");
+  var d = sr[_lvlAsset] || {};
+
+  host.innerHTML = "";
+  var card = document.createElement("div"); card.className = "ch-card";
+  var plot = document.createElement("div"); plot.className = "ch-plot"; card.appendChild(plot);
+  var foot = document.createElement("div"); foot.className = "ch-foot"; card.appendChild(foot);
+  host.appendChild(card);
+
+  hlUniverse().then(function (univ) {
+    var r = hlResolve(_lvlAsset, univ);
+    if (!r) { plot.remove(); foot.textContent = "No public candle feed prices " + _lvlAsset + "."; return; }
+    // Lookback is deliberately SHORTER here than instinct suggests. Daily pivots derive
+    // from a single prior session, so the whole pack spans a percent or two; stretch the
+    // chart to 90 days and the levels compress into one unreadable stack of overlapping
+    // axis labels while the candles own the range (SOL: seven levels inside $4 on a
+    // $60-$110 chart). These levels describe this week, so show about that much — long
+    // enough for MA20/MA50 to mean something, short enough for the pack to separate.
+    var back = { "15m": 3, "1h": 10, "4h": 30 }[_chInterval] || 10;
+    return hlCandles(r.coin, _chInterval, Date.now() - back * 864e5).then(function (raw) {
+      var bars = raw.map(function (c) {
+        return { time: Math.floor(c.t / 1000), open: +c.o / r.div, high: +c.h / r.div, low: +c.l / r.div, close: +c.c / r.div };
+      }).sort(function (a, b) { return a.time - b.time; });
+      var ref = bars.length ? bars[bars.length - 1].close : 1;
+      var prec = ref >= 100 ? 2 : ref >= 1 ? 4 : ref >= 0.01 ? 6 : 8;
+      var chart = LightweightCharts.createChart(plot, {
+        autoSize: true,
+        layout: { background: { color: "transparent" }, textColor: INK3, attributionLogo: false, fontFamily: tok("--sans", "sans-serif") },
+        grid: { vertLines: { color: LINE }, horzLines: { color: LINE } },
+        rightPriceScale: { borderColor: LINE }, timeScale: { borderColor: LINE, timeVisible: true, secondsVisible: false },
+        crosshair: { mode: 1 }
+      });
+      _lvlChart = chart;
+      var series = chart.addSeries(LightweightCharts.CandlestickSeries, {
+        upColor: UP, downColor: DOWN, wickUpColor: UP, wickDownColor: DOWN, borderVisible: false,
+        priceFormat: { type: "price", precision: prec, minMove: Math.pow(10, -prec) }
+      });
+      series.setData(bars);
+      _lvlSeries = { series: series, coin: r.coin, div: r.div, start: Date.now() - back * 864e5 };
+
+      var DOT = LightweightCharts.LineStyle.Dotted, DASH = LightweightCharts.LineStyle.Dashed, SOLID = LightweightCharts.LineStyle.Solid;
+      var rows = [
+        ["r2", "R2", DOWN, DOT], ["r1", "R1", DOWN, DASH], ["pivot", "pivot", INK3, SOLID],
+        ["s1", "S1", UP, DASH], ["s2", "S2", UP, DOT],
+        ["ma20", "MA20", ACC, DOT], ["ma50", "MA50", ACC, DASH]
+      ];
+      var vals = [];
+      rows.forEach(function (row) {
+        var v = d[row[0]];
+        if (v == null || !isFinite(v)) return;
+        vals.push(v);
+        series.createPriceLine({ price: v, color: row[2], lineWidth: 1, lineStyle: row[3], axisLabelVisible: true, title: row[1] });
+      });
+      // Hold every level in view — a resistance you can't see is the one that matters.
+      var lo = Infinity, hi = -Infinity;
+      bars.forEach(function (b) { if (b.low < lo) lo = b.low; if (b.high > hi) hi = b.high; });
+      vals.forEach(function (v) { lo = Math.min(lo, v); hi = Math.max(hi, v); });
+      var pad = (hi - lo) * 0.05;
+      series.applyOptions({ autoscaleInfoProvider: function () { return { priceRange: { minValue: lo - pad, maxValue: hi + pad } }; } });
+      chart.timeScale().fitContent();
+
+      var key = function (c, st, t) { return '<span class="ch-key" style="border-color:' + c + ';border-top-style:' + st + '"></span>' + t; };
+      foot.innerHTML =
+        key(DOWN, "dotted", "R2 ") + esc(fmtLvl(d.r2)) + " &nbsp; " + key(DOWN, "dashed", "R1 ") + esc(fmtLvl(d.r1)) +
+        " &nbsp; " + key(INK3, "solid", "pivot ") + esc(fmtLvl(d.pivot)) +
+        " &nbsp; " + key(UP, "dashed", "S1 ") + esc(fmtLvl(d.s1)) + " &nbsp; " + key(UP, "dotted", "S2 ") + esc(fmtLvl(d.s2)) +
+        " &nbsp; " + key(ACC, "dotted", "MA20 ") + esc(fmtLvl(d.ma20)) + " &nbsp; " + key(ACC, "dashed", "MA50 ") + esc(fmtLvl(d.ma50)) +
+        "<br>30-day swing " + esc(fmtLvl(d.swingLow)) + " to " + esc(fmtLvl(d.swingHigh)) +
+        ". Levels from spot daily candles, recomputed each desk cycle; candles are Hyperliquid perps, refreshed every 30s.";
+    });
+  }).catch(function (e) {
+    plot.remove();
+    foot.textContent = "Could not draw levels for " + _lvlAsset + " right now (" + (e && e.message ? e.message : "unavailable") + ").";
+  });
 }
 function fmtLvl(v) {
   var n = +v;
@@ -2453,6 +2576,13 @@ function chStartPoll() {
     [].slice.call(document.querySelectorAll(".ch-int")).forEach(function (x) { x.classList.toggle("active", x === b); });
     _chInterval = b.getAttribute("data-int") || "1h";
     renderTradeCharts(null);
+  });
+  document.addEventListener("click", function (ev) {
+    var b = ev.target.closest ? ev.target.closest(".lvl-pick") : null;
+    if (!b) return;
+    [].slice.call(document.querySelectorAll(".lvl-pick")).forEach(function (x) { x.classList.toggle("active", x === b); });
+    _lvlAsset = b.getAttribute("data-a");
+    renderLevelChart();
   });
 })();
 
