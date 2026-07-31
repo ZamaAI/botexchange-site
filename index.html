@@ -169,7 +169,7 @@
   table.data .rt { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
 
   /* ── Charts page: one card per open position, HL candles + the desk's own levels ── */
-  .ch-bar { display: flex; align-items: center; gap: 6px; margin: 14px 0 4px; }
+  .ch-bar { display: flex; align-items: center; gap: 6px; margin: 14px 0 4px; flex-wrap: wrap; row-gap: 7px; }
   .ch-lab { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--ink3); margin-right: 4px; }
   .ch-int, .ch-pill { font: 600 12px var(--sans); color: var(--ink2); background: transparent; border: 1px solid var(--line); padding: 4px 11px; cursor: pointer; }
   .ch-int:hover, .ch-pill:hover { border-color: var(--accent); color: var(--accent); }
@@ -180,11 +180,14 @@
   .ch-dir { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
   .ch-dir.long { color: var(--up); } .ch-dir.short { color: var(--down); }
   .ch-meta { font-size: 11.5px; color: var(--ink3); margin-left: auto; text-align: right; }
+  .ch-live { font: 600 13px var(--mono); margin-left: 12px; white-space: nowrap; }
+  .ch-prog { font: 500 11px var(--sans); color: var(--ink3); margin-left: 7px; }
   .ch-plot { height: 300px; width: 100%; }
   .ch-foot { border-top: 1px solid var(--line2); padding: 7px 12px; font-size: 11.5px; color: var(--ink3); line-height: 1.5; }
   .ch-key { display: inline-block; width: 22px; border-top: 2px solid; margin: 0 4px -3px 0; }
   .ch-none { padding: 22px 12px; font-size: 12.5px; color: var(--ink3); }
-  @media (max-width: 700px) { .ch-plot { height: 240px; } .ch-meta { margin-left: 0; text-align: left; width: 100%; } }
+  @media (max-width: 700px) { .ch-plot { height: 240px; } .ch-meta { margin-left: 0; text-align: left; width: 100%; }
+    .ch-live { margin-left: 0; width: 100%; } }
   .box { border: 1px solid var(--line); margin-bottom: 20px; }
   .box-h { background: var(--bg2); border-bottom: 1px solid var(--line); padding: 8px 12px; font-size: 12px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
   .box-b { padding: 10px 12px; }
@@ -382,6 +385,7 @@
 
   <div class="ch-bar">
     <span class="ch-lab">Interval</span>
+    <button class="ch-int" data-int="5m">5m</button>
     <button class="ch-int" data-int="15m">15m</button>
     <button class="ch-int active" data-int="1h">1h</button>
     <button class="ch-int" data-int="4h">4h</button>
@@ -2106,6 +2110,16 @@ function initSpy() {
 function startLiveLayers() {
   // Client-side layers — Binance + Hyperliquid direct; they run with or without the bot feed.
   fetchMacroStrip(); fetchHLStrip(); renderLiveMarkets(); initSpy();
+  // [charts] Re-read the feed on the bot's own 5-min publish cadence. Everything below
+  // this line polls an exchange; nothing re-read latest.json, so a Charts page left open
+  // held a position list frozen at page load while its candles kept moving. Failure is a
+  // silent no-op — the page simply keeps the data it already has.
+  setInterval(function () {
+    fetch(DATA_URL, { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) { if (d && d.generatedAt) renderAll(d); })
+      .catch(function () {});
+  }, 300000);
   setInterval(function () { liveStripRefresh(undefined); }, 60000);
   setInterval(fetchMacroStrip, 60000);
   setInterval(fetchHLStrip, 60000);
@@ -2267,7 +2281,7 @@ function hlCandles(coin, interval, startMs) {
     return raw;
   });
 }
-var CH_INTERVAL_MS = { "15m": 9e5, "1h": 36e5, "4h": 144e5 };
+var CH_INTERVAL_MS = { "5m": 3e5, "15m": 9e5, "1h": 36e5, "4h": 144e5 };
 var _chFeed = null, _chInterval = "1h", _chLive = [], _chSeries = [], _chPollTimer = null;
 function chDestroy() {
   _chLive.forEach(function (c) { try { c.remove(); } catch (e) {} });
@@ -2280,9 +2294,11 @@ function chDestroy() {
 function chRefresh() {
   _chSeries.forEach(function (h) {
     hlCandles(h.coin, _chInterval, h.start).then(function (raw) {
-      h.series.setData(raw.map(function (c) {
+      var bars = raw.map(function (c) {
         return { time: Math.floor(c.t / 1000), open: +c.o / h.div, high: +c.h / h.div, low: +c.l / h.div, close: +c.c / h.div };
-      }).sort(function (a, b) { return a.time - b.time; }));
+      }).sort(function (a, b) { return a.time - b.time; });
+      h.series.setData(bars);
+      if (h.t && bars.length) paintLive(h.liveEl, h.t, bars[bars.length - 1].close);
     }).catch(function () { /* transient — the next tick retries, existing bars stay */ });
   });
   if (_lvlSeries) {
@@ -2336,7 +2352,8 @@ function renderTradeCharts(d) {
         '<span class="ch-dir ' + (isLong ? "long" : "short") + '">' + esc(dir) + '</span>' +
         '<span class="ch-meta">' + esc(t.actor || "") + ' · ' + esc(venueTxt) +
         (t.conviction != null ? ' · conviction ' + esc(String(t.conviction)) + '/10' : "") +
-        (t.rr != null ? ' · R:R ' + esc(String(t.rr)) : "") + '</span></div>';
+        (t.rr != null ? ' · R:R ' + esc(String(t.rr)) : "") + '</span>' +
+        '<span class="ch-live" data-live></span></div>';
       var plot = document.createElement("div");
       plot.className = "ch-plot";
       card.appendChild(plot);
@@ -2405,7 +2422,9 @@ function renderTradeCharts(d) {
         series.applyOptions({
           autoscaleInfoProvider: function () { return { priceRange: { minValue: lo - pad, maxValue: hi + pad } }; }
         });
-        _chSeries.push({ series: series, coin: r.coin, div: r.div, start: start });
+        var liveEl = card.querySelector("[data-live]");
+        if (bars.length) paintLive(liveEl, t, bars[bars.length - 1].close);
+        _chSeries.push({ series: series, coin: r.coin, div: r.div, start: start, t: t, liveEl: liveEl });
 
         var line = function (price, color, style, title) {
           if (price == null || !isFinite(price)) return;
@@ -2475,11 +2494,22 @@ function renderLevelChart() {
     host.innerHTML = '<p class="ch-none">The level pack publishes with each desk cycle (00:00 / 06:00 / 12:00 / 18:00 SAST) — nothing stashed yet.</p>';
     return;
   }
-  var assets = Object.keys(sr);
-  if (!_lvlAsset || assets.indexOf(_lvlAsset) < 0) _lvlAsset = assets.indexOf("BTC") >= 0 ? "BTC" : assets[0];
-  pick.innerHTML = '<span class="ch-lab">Asset</span>' + assets.map(function (a) {
+  // The pack is 5 majors + open positions + whatever the coin scanner surfaced THIS cycle,
+  // so the tail rotates every 6h (PUMP/SHIB one cycle, something else the next). That is
+  // real signal — it is what the desks are actually looking at — but next to BTC it reads
+  // as random unless it is grouped and labelled. Majors are pinned first in a fixed order
+  // so the control never reshuffles under the reader; the rest are sorted and captioned.
+  var MAJORS = ["BTC", "ETH", "SOL", "BNB", "XRP"];
+  var all = Object.keys(sr);
+  var majors = MAJORS.filter(function (a) { return all.indexOf(a) >= 0; });
+  var extras = all.filter(function (a) { return MAJORS.indexOf(a) < 0; }).sort();
+  var assets = majors.concat(extras);
+  if (!_lvlAsset || assets.indexOf(_lvlAsset) < 0) _lvlAsset = majors[0] || assets[0];
+  var btn = function (a) {
     return '<button class="ch-pill lvl-pick' + (a === _lvlAsset ? " active" : "") + '" data-a="' + esc(a) + '">' + esc(a) + "</button>";
-  }).join("");
+  };
+  pick.innerHTML = '<span class="ch-lab">Majors</span>' + majors.map(btn).join("") +
+    (extras.length ? '<span class="ch-lab" style="margin-left:10px" title="Surfaced by the coin scanner or currently held — this list rotates each desk cycle">On watch</span>' + extras.map(btn).join("") : "");
 
   var css = getComputedStyle(document.documentElement), tok = function (n, f) { return (css.getPropertyValue(n) || "").trim() || f; };
   var UP = tok("--up", "#0a8043"), DOWN = tok("--down", "#c5221f"), ACC = tok("--accent", "#114e3c"),
@@ -2501,7 +2531,9 @@ function renderLevelChart() {
     // axis labels while the candles own the range (SOL: seven levels inside $4 on a
     // $60-$110 chart). These levels describe this week, so show about that much — long
     // enough for MA20/MA50 to mean something, short enough for the pack to separate.
-    var back = { "15m": 3, "1h": 10, "4h": 30 }[_chInterval] || 10;
+    // 5m gets 2 days: daily pivots describe today and yesterday, which is exactly what
+    // two days of 5m shows. Anything shorter and the pack sits off the top and bottom.
+    var back = { "5m": 2, "15m": 3, "1h": 10, "4h": 30 }[_chInterval] || 10;
     return hlCandles(r.coin, _chInterval, Date.now() - back * 864e5).then(function (raw) {
       var bars = raw.map(function (c) {
         return { time: Math.floor(c.t / 1000), open: +c.o / r.div, high: +c.h / r.div, low: +c.l / r.div, close: +c.c / r.div };
@@ -2557,6 +2589,22 @@ function renderLevelChart() {
     plot.remove();
     foot.textContent = "Could not draw levels for " + _lvlAsset + " right now (" + (e && e.message ? e.message : "unavailable") + ").";
   });
+}
+// Where price actually IS relative to the levels. The card published entry/target/stop but
+// nothing said whether the trade is winning, which is the first thing anyone looks for.
+// Free: the last candle close is already fetched for the chart, so it costs no extra call.
+// Direction-aware — a SHORT is up when price falls.
+function paintLive(el, t, px) {
+  if (!el || !isFinite(px)) return;
+  var entry = +t.entry, tgt = +t.target;
+  var isLong = String(t.direction || "").toUpperCase() === "LONG";
+  var pct = entry ? ((isLong ? px - entry : entry - px) / entry) * 100 : NaN;
+  var prog = (isFinite(tgt) && tgt !== entry) ? ((px - entry) / (tgt - entry)) * 100 : NaN;
+  var up = pct >= 0;
+  el.innerHTML = '<b>' + esc(fmtLvl(px)) + '</b> <span style="color:' + (up ? "var(--up)" : "var(--down)") + '">' +
+    (up ? "+" : "") + (isFinite(pct) ? pct.toFixed(2) : "–") + "%</span>" +
+    (isFinite(prog) ? '<span class="ch-prog">' + Math.max(-99, Math.min(999, Math.round(prog))) + "% to target</span>" : "");
+  el.title = "Live Hyperliquid mark vs entry " + fmtLvl(entry) + ". Unrealised, before fees.";
 }
 function fmtLvl(v) {
   var n = +v;
