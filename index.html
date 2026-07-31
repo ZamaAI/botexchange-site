@@ -168,6 +168,23 @@
   table.data td { padding: 6px 4px; border-bottom: 1px solid var(--line2); }
   table.data .rt { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
 
+  /* ── Charts page: one card per open position, HL candles + the desk's own levels ── */
+  .ch-bar { display: flex; align-items: center; gap: 6px; margin: 14px 0 4px; }
+  .ch-lab { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--ink3); margin-right: 4px; }
+  .ch-int { font: 600 12px var(--sans); color: var(--ink2); background: transparent; border: 1px solid var(--line); padding: 4px 11px; cursor: pointer; }
+  .ch-int:hover { border-color: var(--accent); color: var(--accent); }
+  .ch-int.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .ch-card { border: 1px solid var(--line); margin-bottom: 18px; }
+  .ch-head { background: var(--bg2); border-bottom: 1px solid var(--line); padding: 8px 12px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+  .ch-sym { font: 700 14px var(--mono); letter-spacing: .02em; }
+  .ch-dir { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+  .ch-dir.long { color: var(--up); } .ch-dir.short { color: var(--down); }
+  .ch-meta { font-size: 11.5px; color: var(--ink3); margin-left: auto; text-align: right; }
+  .ch-plot { height: 300px; width: 100%; }
+  .ch-foot { border-top: 1px solid var(--line2); padding: 7px 12px; font-size: 11.5px; color: var(--ink3); line-height: 1.5; }
+  .ch-key { display: inline-block; width: 22px; border-top: 2px solid; margin: 0 4px -3px 0; }
+  .ch-none { padding: 22px 12px; font-size: 12.5px; color: var(--ink3); }
+  @media (max-width: 700px) { .ch-plot { height: 240px; } .ch-meta { margin-left: 0; text-align: left; width: 100%; } }
   .box { border: 1px solid var(--line); margin-bottom: 20px; }
   .box-h { background: var(--bg2); border-bottom: 1px solid var(--line); padding: 8px 12px; font-size: 12px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
   .box-b { padding: 10px 12px; }
@@ -288,6 +305,7 @@
 <nav class="sections pagesnav"><div class="wrap">
   <a href="#/home" data-page="home" class="active">Home</a>
   <a href="#/markets" data-page="markets">Markets</a>
+  <a href="#/charts" data-page="charts">Charts</a>
   <a href="#/news" data-page="news">News &amp; Intel</a>
   <a href="#/calendar" data-page="calendar">Calendar</a>
   <a href="#/bots" data-page="bots">The Bots</a>
@@ -354,8 +372,24 @@
   <div id="whale-flow"></div>
   <div class="lm-wrap"><table class="data" id="whale-rows"><tr><td><span class="src">The whale desk publishes with each report cycle (00:00 / 06:00 / 12:00 / 18:00 SAST).</span></td></tr></table></div>
 </div>
+<div class="page" data-page="charts">
+
+  <div class="kicker">Every open position, drawn</div>
+  <h2 class="sec" id="charts">Charts</h2>
+  <p class="sub">Each position the desks are holding right now, plotted on live price with the levels they committed to at entry — where they got in, where they get out, and where the trade dies.
+  Price streams from <b>Hyperliquid</b>, which is a reference feed: it is the venue for some of these trades and the nearest public mark for the rest, so a fill on Lighter or Extended will sit close to these candles without landing exactly on them.
+  Stops on live money are drawn as a <b>band, not a line</b> — publishing an exact resting stop would hand it to anyone who wanted to hunt it. Paper trades show exact levels; there is no order to hunt.</p>
+
+  <div class="ch-bar">
+    <span class="ch-lab">Interval</span>
+    <button class="ch-int" data-int="15m">15m</button>
+    <button class="ch-int active" data-int="1h">1h</button>
+    <button class="ch-int" data-int="4h">4h</button>
+  </div>
+  <div id="trade-charts"><p class="src">Loading positions…</p></div>
+</div>
 <div class="page" data-page="news">
-  
+
   <div class="kicker">News &amp; social — what the desk is reading</div>
   <h2 class="sec" id="wire">The wire</h2>
   <p class="sub" id="wire-sub">Headlines and high-signal posts from public crypto sources and a curated X watchlist — the exact information the agents use to form their views. Refreshed with each report cycle.</p>
@@ -576,6 +610,10 @@
 </div></footer>
 
 <div class="tt" id="tt"></div>
+<!-- TradingView Lightweight Charts v5.0.9, Apache-2.0. VENDORED on purpose: the site has no
+     build step, and a CDN would add a third-party runtime dependency to a page that otherwise
+     talks only to our own feed and to api.hyperliquid.xyz. Exposes window.LightweightCharts. -->
+<script src="vendor/lightweight-charts.standalone.production.js" defer></script>
 <script src="config.js"></script>
 <script>
 "use strict";
@@ -2133,6 +2171,273 @@ function renderHome(d) {
   });
   if (rcH) { rcH += "<a class='more' href='#/bots'>Every close, with its post-mortem →</a>"; $("hw-closes-body").innerHTML = rcH; }
 }
+// ── Charts page ───────────────────────────────────────────────────────────────
+// Open positions drawn on live Hyperliquid candles, with the levels the desk
+// committed to at entry. Three things here are load-bearing rather than cosmetic:
+//
+//  1. HL is a REFERENCE feed, not the venue of record. Lighter has no public candle
+//     endpoint (/api/v1/candlesticks answers 403 at the CloudFront edge on every
+//     parameter shape, while /orderBooks and /exchangeStats serve 200), and Extended
+//     has none either. So a Lighter/Extended fill will sit near these candles, not on
+//     them, and every card says which venue it actually traded on.
+//  2. Live stops are published BUCKETED (#117 H1): the bot rounds them to a grid of
+//     0.5%-of-entry, so the true stop is within half a band. We draw that band. A
+//     single line would imply a precision we deliberately do not publish.
+//  3. Two clocks. Candles are seconds-fresh; the position came from the feed and is as
+//     stale as the last cycle. Both are stamped, always.
+//
+// Polling, not the websocket: HL's candle socket works (verified — channel:"candle",
+// ~1 msg/s), but at 15m/1h/4h resolution a 30s poll is visually identical and costs no
+// reconnect/ping/backoff surface, and the interval switcher comes free.
+var HL_INFO_URL = "https://api.hyperliquid.xyz/info";
+var CH_POLL_MS = 30000;
+// Bare feed ticker -> HL coin. Our assets are named by OUR convention; HL has three:
+// core perps, k-prefixed 1000x memecoins, and the `xyz` HIP-3 dex (equities, metals,
+// energy, indices) whose coins MUST be requested wire-named — bare "NVDA" returns null.
+var HL_ALIAS = { XAU: "GOLD", XAG: "SILVER", US500: "SP500", US100: "XYZ100", NAS100: "XYZ100", WTI: "CL", GOOG: "GOOGL" };
+var _hlUnivPromise = null;
+function hlUniverse() {
+  if (_hlUnivPromise) return _hlUnivPromise;
+  var one = function (body) {
+    return fetch(HL_INFO_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+      .then(function (r) { return r.json(); })
+      .then(function (m) { return (m && m.universe ? m.universe : []).map(function (u) { return u.name; }); });
+  };
+  _hlUnivPromise = Promise.all([one({ type: "meta" }), one({ type: "meta", dex: "xyz" })])
+    .then(function (res) {
+      var core = {}, xyz = {};
+      res[0].forEach(function (n) { core[n] = 1; });
+      res[1].forEach(function (n) { xyz[n.split(":").pop()] = 1; });
+      return { core: core, xyz: xyz };
+    })
+    .catch(function (e) { _hlUnivPromise = null; throw e; });
+  return _hlUnivPromise;
+}
+// -> { coin, div } or null when nothing on HL prices this instrument.
+function hlResolve(asset, univ) {
+  var base = String(asset || "").split("_")[0].toUpperCase();   // GOOG_24_5 -> GOOG (Extended naming)
+  if (!base) return null;
+  var tries = [base];
+  if (HL_ALIAS[base] && HL_ALIAS[base] !== base) tries.push(HL_ALIAS[base]);
+  for (var i = 0; i < tries.length; i++) {
+    var c = tries[i];
+    if (univ.core[c]) return { coin: c, div: 1 };
+    if (univ.core["k" + c]) return { coin: "k" + c, div: 1000 };   // kPEPE quotes 1000 PEPE
+    if (univ.xyz[c]) return { coin: "xyz:" + c, div: 1 };
+  }
+  return null;
+}
+function hlCandles(coin, interval, startMs) {
+  var end = Date.now();
+  return fetch(HL_INFO_URL, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type: "candleSnapshot", req: { coin: coin, interval: interval, startTime: startMs, endTime: end } })
+  }).then(function (r) {
+    if (!r.ok) throw new Error("candles " + r.status);
+    return r.json();
+  }).then(function (raw) {
+    if (!raw || !raw.length) throw new Error("no candles");
+    return raw;
+  });
+}
+var CH_INTERVAL_MS = { "15m": 9e5, "1h": 36e5, "4h": 144e5 };
+var _chFeed = null, _chInterval = "1h", _chLive = [], _chSeries = [], _chPollTimer = null;
+function chDestroy() {
+  _chLive.forEach(function (c) { try { c.remove(); } catch (e) {} });
+  _chLive = []; _chSeries = [];
+}
+// Poll path: repaint the bars on the series we already built. A full teardown every 30s
+// would flash the whole page and throw away the reader's zoom/pan for no reason — the
+// levels and markers are feed-derived and only change when the feed does.
+function chRefresh() {
+  _chSeries.forEach(function (h) {
+    hlCandles(h.coin, _chInterval, h.start).then(function (raw) {
+      h.series.setData(raw.map(function (c) {
+        return { time: Math.floor(c.t / 1000), open: +c.o / h.div, high: +c.h / h.div, low: +c.l / h.div, close: +c.c / h.div };
+      }).sort(function (a, b) { return a.time - b.time; }));
+    }).catch(function () { /* transient — the next tick retries, existing bars stay */ });
+  });
+}
+// Mount only while the page is on screen: an inactive .page is display:none, so a chart
+// created there measures zero width and renders blank until a resize that may never come.
+function chartsVisible() {
+  var p = document.querySelector('.page[data-page="charts"]');
+  return !!p && p.classList.contains("active");
+}
+function renderTradeCharts(d) {
+  if (d) _chFeed = d;
+  if (!chartsVisible() || !_chFeed) return;
+  if (typeof LightweightCharts === "undefined") {   // vendored lib still parsing
+    return void setTimeout(function () { renderTradeCharts(null); }, 200);
+  }
+  var host = $("trade-charts");
+  if (!host) return;
+  chDestroy();
+
+  var open = (_chFeed.openTrades || []);
+  if (!open.length) {
+    host.innerHTML = '<p class="ch-none">No open positions right now — every desk is flat. ' +
+      'Closed trades and their post-mortems are on <a href="#/bots">The Bots</a>.</p>';
+    return;
+  }
+
+  var css = getComputedStyle(document.documentElement);
+  var tok = function (n, f) { return (css.getPropertyValue(n) || "").trim() || f; };
+  var UP = tok("--up", "#0a8043"), DOWN = tok("--down", "#c5221f"),
+      ACC = tok("--accent", "#114e3c"), INK3 = tok("--ink3", "#7d897f"), LINE = tok("--line2", "#eef0ec");
+  var feedAt = new Date(_chFeed.generatedAt).getTime();
+  var stamp = new Date(feedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Africa/Johannesburg" });
+
+  host.innerHTML = "";
+  hlUniverse().then(function (univ) {
+    open.forEach(function (t) {
+      var card = document.createElement("div");
+      card.className = "ch-card";
+      var dir = String(t.direction || "").toUpperCase(), isLong = dir === "LONG";
+      var venueTxt = t.venue === "PAPER" ? "paper" : t.venue;
+      card.innerHTML =
+        '<div class="ch-head"><span class="ch-sym">' + esc(t.asset) + '</span>' +
+        '<span class="ch-dir ' + (isLong ? "long" : "short") + '">' + esc(dir) + '</span>' +
+        '<span class="ch-meta">' + esc(t.actor || "") + ' · ' + esc(venueTxt) +
+        (t.conviction != null ? ' · conviction ' + esc(String(t.conviction)) + '/10' : "") +
+        (t.rr != null ? ' · R:R ' + esc(String(t.rr)) : "") + '</span></div>';
+      var plot = document.createElement("div");
+      plot.className = "ch-plot";
+      card.appendChild(plot);
+      var foot = document.createElement("div");
+      foot.className = "ch-foot";
+      card.appendChild(foot);
+      host.appendChild(card);
+
+      var r = hlResolve(t.asset, univ);
+      if (!r) {
+        plot.remove();
+        foot.innerHTML = "No public candle feed prices " + esc(t.asset) +
+          " — it trades on a venue without an open price API, so there is no honest chart to draw. " +
+          "The position itself is live and tracked; see <a href='#/bots'>The Bots</a>.";
+        return;
+      }
+
+      // Reach back far enough to include the entry, so the marker is never off-screen.
+      var iv = CH_INTERVAL_MS[_chInterval] || 36e5;
+      var entryMs = Date.parse(t.openedAt);
+      var span = Math.max(120 * iv, isFinite(entryMs) ? (Date.now() - entryMs) * 1.25 + 20 * iv : 0);
+      var start = Date.now() - Math.min(span, 1200 * iv);
+
+      hlCandles(r.coin, _chInterval, start).then(function (raw) {
+        var bars = raw.map(function (c) {
+          return { time: Math.floor(c.t / 1000), open: +c.o / r.div, high: +c.h / r.div, low: +c.l / r.div, close: +c.c / r.div };
+        }).sort(function (a, b) { return a.time - b.time; });
+
+        var chart = LightweightCharts.createChart(plot, {
+          autoSize: true,
+          layout: { background: { color: "transparent" }, textColor: INK3, attributionLogo: false, fontFamily: tok("--sans", "sans-serif") },
+          grid: { vertLines: { color: LINE }, horzLines: { color: LINE } },
+          rightPriceScale: { borderColor: LINE },
+          timeScale: { borderColor: LINE, timeVisible: true, secondsVisible: false },
+          crosshair: { mode: 1 }
+        });
+        _chLive.push(chart);
+        // Price precision by magnitude — the default 2dp turns a $0.0000027 kPEPE mark into "0.00".
+        var ref = bars.length ? bars[bars.length - 1].close : 1;
+        var prec = ref >= 100 ? 2 : ref >= 1 ? 4 : ref >= 0.01 ? 6 : 8;
+        var series = chart.addSeries(LightweightCharts.CandlestickSeries, {
+          upColor: UP, downColor: DOWN, wickUpColor: UP, wickDownColor: DOWN, borderVisible: false,
+          priceFormat: { type: "price", precision: prec, minMove: Math.pow(10, -prec) }
+        });
+        series.setData(bars);
+
+        // The price scale autoscales to the CANDLES, so a target the price hasn't approached
+        // yet falls off the bottom of the chart — the one level the trade is aiming at, invisible.
+        // Extend the range to hold the levels, but refuse to squash the candles into a sliver for
+        // a very distant target (R:R 12 happens): past 3x the bar range we drop the target from
+        // the scale and say so in the footer rather than render an unreadable chart.
+        var half = t.levelsApprox ? Math.abs(+t.entry) * 0.0025 : 0;
+        var barLo = Infinity, barHi = -Infinity;
+        bars.forEach(function (b) { if (b.low < barLo) barLo = b.low; if (b.high > barHi) barHi = b.high; });
+        var span = (barHi - barLo) || Math.abs(barHi) * 0.01 || 1;
+        var lo = barLo, hi = barHi;
+        [+t.entry, +t.stop + half, +t.stop - half].forEach(function (v) {
+          if (isFinite(v)) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
+        });
+        var tgt = +t.target, targetOffScale = false;
+        if (isFinite(tgt)) {
+          var wLo = Math.min(lo, tgt), wHi = Math.max(hi, tgt);
+          if ((wHi - wLo) <= span * 3) { lo = wLo; hi = wHi; } else targetOffScale = true;
+        }
+        var pad = (hi - lo) * 0.06;
+        series.applyOptions({
+          autoscaleInfoProvider: function () { return { priceRange: { minValue: lo - pad, maxValue: hi + pad } }; }
+        });
+        _chSeries.push({ series: series, coin: r.coin, div: r.div, start: start });
+
+        var line = function (price, color, style, title) {
+          if (price == null || !isFinite(price)) return;
+          series.createPriceLine({ price: price, color: color, lineWidth: 1, lineStyle: style, axisLabelVisible: true, title: title });
+        };
+        var SOLID = LightweightCharts.LineStyle.Solid, DASH = LightweightCharts.LineStyle.Dashed, DOT = LightweightCharts.LineStyle.Dotted;
+        line(+t.entry, ACC, SOLID, "entry");
+        line(+t.target, UP, DASH, "target");
+        if (t.levelsApprox) {
+          // Bucketed to a 0.5%-of-entry grid (`half`, above), so the resting stop is within
+          // half a band of the published figure. Draw that band; never a single line.
+          line(+t.stop + half, DOWN, DOT, "stop band");
+          line(+t.stop - half, DOWN, DOT, "");
+        } else {
+          line(+t.stop, DOWN, DOT, "stop");
+        }
+        if (isFinite(entryMs) && bars.length && Math.floor(entryMs / 1000) >= bars[0].time) {
+          LightweightCharts.createSeriesMarkers(series, [{
+            time: Math.floor(entryMs / 1000),
+            position: isLong ? "belowBar" : "aboveBar",
+            shape: isLong ? "arrowUp" : "arrowDown",
+            color: ACC,
+            text: (t.actor || "") + " " + dir.toLowerCase()
+          }]);
+        }
+        chart.timeScale().fitContent();
+
+        foot.innerHTML =
+          '<span class="ch-key" style="border-color:' + ACC + '"></span>entry ' + esc(fmtLvl(t.entry)) +
+          ' &nbsp; <span class="ch-key" style="border-color:' + UP + ';border-top-style:dashed"></span>target ' + esc(fmtLvl(t.target)) +
+          (targetOffScale ? " (below the visible range — too far out to plot without flattening the candles)" : "") +
+          ' &nbsp; <span class="ch-key" style="border-color:' + DOWN + ';border-top-style:dotted"></span>' +
+          (t.levelsApprox ? "stop band ≈" : "stop ") + esc(fmtLvl(t.stop)) +
+          (t.trailed ? " (trailed)" : "") + "<br>" +
+          "Price live from Hyperliquid" + (t.venue === "HL" ? "" : " (reference feed — this trade is on " + esc(venueTxt) + ")") +
+          ", refreshed every 30s. Position as of " + esc(stamp) + " SAST." +
+          (t.levelsApprox ? " Stop shown as a band — exact resting levels are not published." : "");
+      }).catch(function (e) {
+        plot.remove();
+        foot.textContent = "Price feed unavailable for " + t.asset + " right now (" + e.message + "). The position data is unaffected.";
+      });
+    });
+  }).catch(function () {
+    host.innerHTML = '<p class="ch-none">Could not reach Hyperliquid’s public API from this network, so the charts can’t draw. ' +
+      'Everything else on the site is served from our own feed and is unaffected.</p>';
+  });
+}
+function fmtLvl(v) {
+  var n = +v;
+  if (!isFinite(n)) return String(v);
+  return "$" + n.toLocaleString("en-US", { maximumFractionDigits: n < 1 ? 8 : n < 100 ? 4 : 2 });
+}
+function chStartPoll() {
+  if (_chPollTimer) return;
+  _chPollTimer = setInterval(function () {
+    if (chartsVisible() && !document.hidden) chRefresh();
+  }, CH_POLL_MS);
+}
+(function () {
+  document.addEventListener("click", function (ev) {
+    var b = ev.target.closest ? ev.target.closest(".ch-int") : null;
+    if (!b) return;
+    [].slice.call(document.querySelectorAll(".ch-int")).forEach(function (x) { x.classList.toggle("active", x === b); });
+    _chInterval = b.getAttribute("data-int") || "1h";
+    renderTradeCharts(null);
+  });
+})();
+
 function renderAll(d) {
   _feedForReveal = d;
   renderStamps(d); renderStrip(d.market); renderHeadline(d); renderStandings(d);
@@ -2141,6 +2446,7 @@ function renderAll(d) {
   renderNotes(d); renderTape(d); renderArchive(d); renderRisk(d);
   renderWire(d); renderWhaleFeed(d); renderColumn(d); renderPredictions(d); try { renderHome(d); } catch (e) {}
   liveStripRefresh(d.market); startLiveLayers();
+  try { renderTradeCharts(d); } catch (e) {}   // no-ops unless the Charts page is on screen
   if (_pendingTrade != null) { var pt = _pendingTrade; _pendingTrade = null; try { revealTrade(pt); } catch (e) {} }
 }
 function boot() {
@@ -2185,7 +2491,7 @@ boot();
 // ── Site pages: hash router (#/markets), legacy-anchor map, per-page nav state ──
 (function () {
   document.body.classList.add("paged");   // no-JS renders all pages stacked
-  var PAGES = { home: 1, markets: 1, news: 1, calendar: 1, bots: 1, about: 1 };
+  var PAGES = { home: 1, markets: 1, charts: 1, news: 1, calendar: 1, bots: 1, about: 1 };
   // old deep links (#race, #wire, #rules…) land on the right page, scrolled to the element
   var LEGACY = { race: "bots", players: "bots", floor: "bots", desknotes: "bots", tape: "bots",
     archive: "bots", markets: "markets", whales: "markets", wire: "news", intel: "news",
@@ -2198,6 +2504,8 @@ boot();
                 d: "Live crypto market intelligence and one human trading against six AI agents with real money — standings, positions and post-mortems, all published." },
     markets:  { t: "Markets — The Bot Exchange",
                 d: "Live crypto prices, funding, long/short positioning, whale flows and prediction-market odds — the same data the AI trading desks read." },
+    charts:   { t: "Charts — The Bot Exchange",
+                d: "Every open AI-desk position drawn on live Hyperliquid price, with the entry, target and stop band each agent committed to." },
     news:     { t: "News & Intel — The Bot Exchange",
                 d: "Curated crypto and macro headlines, on-chain intelligence and the desk column — refreshed with every report cycle." },
     calendar: { t: "Calendar — The Bot Exchange",
@@ -2215,6 +2523,11 @@ boot();
     navLinks.forEach(function (a) { a.classList.toggle("active", a.getAttribute("data-page") === name); });
     var pm = PAGE_META[name];
     if (pm) { document.title = pm.t; if (metaDesc) metaDesc.setAttribute("content", pm.d); }
+    // Charts can only mount once their page is visible — an inactive .page is display:none,
+    // so a chart built there measures zero width. Draw on arrival, then poll while here.
+    // Repaint if charts already exist; otherwise (first visit, empty book, failed build)
+    // a full render is cheap and is the only thing that can recover the page.
+    if (name === "charts") { try { (_chSeries.length ? chRefresh : renderTradeCharts)(null); chStartPoll(); } catch (e) {} }
     if (anchorId) {
       var el = document.getElementById(anchorId);
       // offsetParent guard: a duplicate/hidden id (e.g. an element on an inactive page) must
