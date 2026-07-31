@@ -1240,8 +1240,26 @@ function paintOpenLive(t, i, px) {
 }
 function refreshOpenLive() {
   if (!_openTrades.length) return;
-  fetch("https://api.hyperliquid.xyz/info", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "allMids" }) })
-    .then(function (r) { return r.json(); }).catch(function () { return null; })
+  // allMids' default list is CORE perps only — none of the HIP-3 `xyz` dex, which is where
+  // every equity, metal, energy and index we trade lives. Without the second call an open
+  // NVDA/GOLD/SP500 row found no HL mid and fell through to Binance as "<TICKER>USDT",
+  // which is either a 400 for a stock or, worse, a same-ticker crypto. Ask for both.
+  var midCall = function (body) {
+    return fetch("https://api.hyperliquid.xyz/info", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+      .then(function (r) { return r.json(); }).catch(function () { return null; });
+  };
+  Promise.all([midCall({ type: "allMids" }), midCall({ type: "allMids", dex: "xyz" })])
+    .then(function (res) {
+      var mids = null;
+      if (res[0] || res[1]) {
+        mids = {};
+        if (res[0]) for (var k in res[0]) mids[k] = res[0][k];
+        // xyz quotes wire-named ("xyz:NVDA"); our rows are bare. Core wins any collision —
+        // a bare ticker is far more likely the crypto perp than the stock.
+        if (res[1]) for (var k2 in res[1]) { var b = k2.split(":").pop(); if (!(b in mids)) mids[b] = res[1][k2]; }
+      }
+      return mids;
+    })
     .then(function (mids) {
       _openTrades.forEach(function (t, i) {
         var vpx = mids ? parseFloat(mids[t.asset.toUpperCase()]) : NaN;
