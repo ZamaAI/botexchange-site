@@ -2382,8 +2382,9 @@ function renderClosedCharts() {
       var dir = String(t.direction || "").toUpperCase(), isLong = dir === "LONG";
       var win = t.outcome === "WIN", be = t.outcome === "BREAKEVEN";
       var pctTxt = t.pct != null ? ((t.pct >= 0 ? "+" : "") + t.pct + "%") : "";
+      var symTxt = String(t.asset || "").split("_")[0];   // GOOG_24_5 → GOOG (Extended wire naming)
       card.innerHTML =
-        '<div class="ch-head"><span class="ch-sym">' + esc(t.asset) + '</span>' +
+        '<div class="ch-head"><span class="ch-sym">' + esc(symTxt) + '</span>' +
         '<span class="ch-dir ' + (isLong ? "long" : "short") + '">' + esc(dir) + '</span>' +
         '<span class="ch-meta">' + esc(t.actor || "") + ' · ' + esc(t.venue === "PAPER" ? "paper" : t.venue) + '</span>' +
         '<span class="ch-live"><span class="' + (win ? "pos" : be ? "" : "neg") + '">' + esc(t.outcome || "") + (pctTxt ? " " + esc(pctTxt) : "") + '</span></span></div>';
