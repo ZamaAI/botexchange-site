@@ -344,6 +344,12 @@
     <div class="hw w4" id="hw-flows"><h3>Institutional flows</h3><div id="hw-flows-body"><span class="src">ETF flow data loads with the feed.</span></div></div>
     <div class="hw w4" id="hw-movers"><h3>Top movers — 24h</h3><div id="hw-movers-body"><span class="src">Movers load with the feed.</span></div></div>
     <div class="hw w8" id="hw-closes"><h3>Recent closes</h3><div id="hw-closes-body"><span class="src">Closed trades load with the feed.</span></div></div>
+    <div class="hw w8" id="hw-watch"><h3>What the desks are watching</h3><div id="hw-watch-body"><span class="src">The AWAITING watch-list loads with the feed.</span></div></div>
+    <div class="hw w4" id="hw-suggest"><h3>Improve the desk</h3><div style="line-height:1.55">
+      Spotted a bug, want a stat published, or have an idea worth testing on real money? The desk reads everything.<br>
+      <a class="more" href="https://x.com/zamma3" target="_blank" rel="noopener">DM @zamma3 on X →</a><br>
+      <a class="more" href="https://x.com/thebotexchang3" target="_blank" rel="noopener">DM @thebotexchang3 on X →</a>
+    </div></div>
   </div>
 </div>
 <div class="page" data-page="markets">
@@ -391,6 +397,12 @@
     <button class="ch-int" data-int="4h">4h</button>
   </div>
   <div id="trade-charts"><p class="src">Loading positions…</p></div>
+
+  <div class="kicker" style="margin-top:30px">How the last ones ended</div>
+  <h2 class="sec" id="closed">Recently closed — with the post-mortem</h2>
+  <p class="sub">The last trades the desks exited, drawn entry → exit on the same Hyperliquid reference candles, with the AI&rsquo;s own post-mortem of why it worked or didn&rsquo;t.
+  Closed levels are exact — the trade is over, there is no order left to hunt. The candles run a little past the exit on purpose: whether the desk was right to leave is part of the story.</p>
+  <div id="closed-charts"><p class="src">Closed trades load with the feed.</p></div>
 
   <div class="kicker" style="margin-top:30px">The levels the desks argue from</div>
   <h2 class="sec" id="levels">Support &amp; resistance</h2>
@@ -610,6 +622,16 @@
       <div class="s-stats" id="sponsor-stats"></div>
       <a class="s-cta" id="sponsor-cta" href="https://x.com/zamma3" target="_blank" rel="noopener">Talk to the desk →</a>
     </div>
+  </div>
+  <div class="box" id="support">
+    <h3>Support the desk</h3>
+    <p class="sub" style="margin-top:6px">The Bot Exchange is free, ad-free and unsponsored — a home GPU, about $10 a month of model calls,
+    and real trading capital the desks answer for in public. If it has earned a place in your bookmarks, a tip of any size keeps it that way.</p>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0 6px">
+      <code id="don-addr" style="font-size:.85em;word-break:break-all;background:var(--line2,#eef0ec);padding:6px 10px;border-radius:6px">0x31cB3907FC319fC3d3d0211B89dA768De1299176</code>
+      <button id="don-copy" class="s-cta" style="cursor:pointer;border:none">Copy address</button>
+    </div>
+    <span class="src">ETH or any EVM network (Base, Arbitrum, Optimism…). Please don&rsquo;t send non-EVM assets — they won&rsquo;t arrive. Nothing here is a paywall; the data stays public either way.</span>
   </div>
 </div>
 </div>
@@ -2211,6 +2233,19 @@ function renderHome(d) {
       (r.pct != null && r.outcome !== "BREAKEVEN" ? pct(r.pct, 1) : esc(r.outcome === "BREAKEVEN" ? "flat" : r.outcome)) + "</span></div>";
   });
   if (rcH) { rcH += "<a class='more' href='#/bots'>Every close, with its post-mortem →</a>"; $("hw-closes-body").innerHTML = rcH; }
+
+  // what the desks are watching: the AWAITING lane — setups the brains flagged but refused
+  // to chase (the trigger hasn't happened). Levels are the feed's published (hunt-safe) ones.
+  var aw = d.awaiting || [], awH = "";
+  aw.slice(0, 5).forEach(function (w) {
+    awH += "<div class='row' style='align-items:baseline'><span><b>" + esc(w.asset) + "</b> " +
+      esc(String(w.direction || "").toUpperCase()) + " · " + esc(w.brain || "") +
+      (w.conviction != null ? " · conv " + esc(String(w.conviction)) + "/10" : "") +
+      "<br><span class='src'>waiting for: " + esc(w.trigger || "its trigger level") +
+      (w.entry != null ? " (≈" + esc(fmtLvl(w.entry)) + (w.levelsApprox ? ", approx" : "") + ")" : "") + "</span></span></div>";
+  });
+  if ($("hw-watch-body")) $("hw-watch-body").innerHTML = awH ||
+    "<span class='src'>Nothing on the watch-list this cycle — every setup either confirmed or wasn't worth flagging.</span>";
 }
 // ── Charts page ───────────────────────────────────────────────────────────────
 // Open positions drawn on live Hyperliquid candles, with the levels the desk
@@ -2316,6 +2351,107 @@ function chartsVisible() {
   var p = document.querySelector('.page[data-page="charts"]');
   return !!p && p.classList.contains("active");
 }
+// Closed-trade post-mortem charts — entry→exit on the same HL reference candles, plus the
+// AI's exit_reason. Needs the [#180b] feed fields (entry/exit/openedAt); older cached feeds
+// lack them and get the honest fallback line. Charts are STATIC history (no 30s poll) and
+// register in _chLive so chDestroy tears them down with the rest.
+function nearestBarTime(bars, ms) {
+  var s = Math.floor(ms / 1000), best = bars[0].time;
+  for (var i = 0; i < bars.length; i++) { if (bars[i].time <= s) best = bars[i].time; else break; }
+  return best;
+}
+function renderClosedCharts() {
+  var host = $("closed-charts");
+  if (!host || !_chFeed) return;
+  var closes = (_chFeed.recentCloses || []).filter(function (c) {
+    return c.entry != null && c.exit != null && c.openedAt && c.closedAt;
+  }).slice(0, 4);
+  if (!closes.length) {
+    host.innerHTML = '<p class="src">Post-mortem charts appear as trades close from here on — the feed carries entry and exit for every new close. The full written record is on <a href="#/bots">The Bots</a>.</p>';
+    return;
+  }
+  var css = getComputedStyle(document.documentElement);
+  var tok = function (n, f) { return (css.getPropertyValue(n) || "").trim() || f; };
+  var UP = tok("--up", "#0a8043"), DOWN = tok("--down", "#c5221f"),
+      ACC = tok("--accent", "#114e3c"), INK3 = tok("--ink3", "#7d897f"), LINE = tok("--line2", "#eef0ec");
+  host.innerHTML = "";
+  hlUniverse().then(function (univ) {
+    closes.forEach(function (t) {
+      var card = document.createElement("div");
+      card.className = "ch-card";
+      var dir = String(t.direction || "").toUpperCase(), isLong = dir === "LONG";
+      var win = t.outcome === "WIN", be = t.outcome === "BREAKEVEN";
+      var pctTxt = t.pct != null ? ((t.pct >= 0 ? "+" : "") + t.pct + "%") : "";
+      card.innerHTML =
+        '<div class="ch-head"><span class="ch-sym">' + esc(t.asset) + '</span>' +
+        '<span class="ch-dir ' + (isLong ? "long" : "short") + '">' + esc(dir) + '</span>' +
+        '<span class="ch-meta">' + esc(t.actor || "") + ' · ' + esc(t.venue === "PAPER" ? "paper" : t.venue) + '</span>' +
+        '<span class="ch-live"><span class="' + (win ? "pos" : be ? "" : "neg") + '">' + esc(t.outcome || "") + (pctTxt ? " " + esc(pctTxt) : "") + '</span></span></div>';
+      var plot = document.createElement("div"); plot.className = "ch-plot"; card.appendChild(plot);
+      var foot = document.createElement("div"); foot.className = "ch-foot"; card.appendChild(foot);
+      host.appendChild(card);
+      var r = hlResolve(t.asset, univ);
+      var openMs = Date.parse(t.openedAt), closeMs = Date.parse(t.closedAt);
+      if (!r || !isFinite(openMs) || !isFinite(closeMs)) {
+        plot.remove();
+        foot.textContent = "No public candle feed prices " + t.asset + " — the close is recorded; the written post-mortem is on The Bots.";
+        return;
+      }
+      var durMs = Math.max(closeMs - openMs, 60e3);
+      var interval = durMs < 12 * 36e5 ? "15m" : durMs < 72 * 36e5 ? "1h" : "4h";
+      var iv = CH_INTERVAL_MS[interval] || 36e5;
+      var start = openMs - 20 * iv;
+      hlCandles(r.coin, interval, start).then(function (raw) {
+        var bars = raw.map(function (c) {
+          return { time: Math.floor(c.t / 1000), open: +c.o / r.div, high: +c.h / r.div, low: +c.l / r.div, close: +c.c / r.div };
+        }).sort(function (a, b) { return a.time - b.time; });
+        // show the aftermath, but bounded — the trade must stay the subject of the chart
+        var capSec = Math.floor((closeMs + Math.max(20 * iv, durMs * 0.5)) / 1000);
+        bars = bars.filter(function (b) { return b.time <= capSec; });
+        if (!bars.length) throw new Error("no candles in the trade window");
+        var chart = LightweightCharts.createChart(plot, {
+          autoSize: true,
+          layout: { background: { color: "transparent" }, textColor: INK3, attributionLogo: false, fontFamily: tok("--sans", "sans-serif") },
+          grid: { vertLines: { color: LINE }, horzLines: { color: LINE } },
+          rightPriceScale: { borderColor: LINE },
+          timeScale: { borderColor: LINE, timeVisible: true, secondsVisible: false },
+          crosshair: { mode: 1 }
+        });
+        _chLive.push(chart);
+        var ref = bars[bars.length - 1].close || 1;
+        var prec = ref >= 100 ? 2 : ref >= 1 ? 4 : ref >= 0.01 ? 6 : 8;
+        var series = chart.addSeries(LightweightCharts.CandlestickSeries, {
+          upColor: UP, downColor: DOWN, wickUpColor: UP, wickDownColor: DOWN, borderVisible: false,
+          priceFormat: { type: "price", precision: prec, minMove: Math.pow(10, -prec) }
+        });
+        series.setData(bars);
+        var barLo = Infinity, barHi = -Infinity;
+        bars.forEach(function (b) { if (b.low < barLo) barLo = b.low; if (b.high > barHi) barHi = b.high; });
+        var lo = Math.min(barLo, +t.entry, +t.exit), hi = Math.max(barHi, +t.entry, +t.exit);
+        var pad = (hi - lo) * 0.06 || Math.abs(hi) * 0.01 || 1;
+        series.applyOptions({ autoscaleInfoProvider: function () { return { priceRange: { minValue: lo - pad, maxValue: hi + pad } }; } });
+        var SOLID = LightweightCharts.LineStyle.Solid, DASH = LightweightCharts.LineStyle.Dashed;
+        series.createPriceLine({ price: +t.entry, color: ACC, lineWidth: 1, lineStyle: SOLID, axisLabelVisible: true, title: "entry" });
+        series.createPriceLine({ price: +t.exit, color: win ? UP : be ? INK3 : DOWN, lineWidth: 1, lineStyle: DASH, axisLabelVisible: true, title: "exit" });
+        var mk = [];
+        if (Math.floor(openMs / 1000) >= bars[0].time) {
+          mk.push({ time: nearestBarTime(bars, openMs), position: isLong ? "belowBar" : "aboveBar", shape: isLong ? "arrowUp" : "arrowDown", color: ACC, text: "in" });
+        }
+        mk.push({ time: nearestBarTime(bars, closeMs), position: isLong ? "aboveBar" : "belowBar", shape: "circle", color: win ? UP : be ? INK3 : DOWN, text: "out" + (pctTxt ? " " + pctTxt : "") });
+        LightweightCharts.createSeriesMarkers(series, mk);
+        chart.timeScale().fitContent();
+        foot.innerHTML =
+          (t.exitReason ? "<b>Post-mortem:</b> " + esc(t.exitReason) + "<br>" : "") +
+          "entry " + esc(fmtLvl(t.entry)) + " → exit " + esc(fmtLvl(t.exit)) +
+          " · " + interval + " Hyperliquid reference candles · closed " +
+          esc(new Date(closeMs).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Africa/Johannesburg" })) + " SAST";
+      }).catch(function (e) {
+        plot.remove();
+        foot.textContent = "Candle window unavailable for " + t.asset + " (" + e.message + ") — the close and its post-mortem are on The Bots page.";
+      });
+    });
+  }).catch(function () { host.innerHTML = '<p class="src">Candle universe unavailable right now — reload in a minute.</p>'; });
+}
 function renderTradeCharts(d) {
   if (d) _chFeed = d;
   if (!chartsVisible() || !_chFeed) return;
@@ -2325,6 +2461,7 @@ function renderTradeCharts(d) {
   var host = $("trade-charts");
   if (!host) return;
   chDestroy();
+  renderClosedCharts();   // closed-trade post-mortem charts (own host, own data window)
 
   var open = (_chFeed.openTrades || []);
   if (!open.length) {
@@ -2757,6 +2894,22 @@ boot();
     if (saved === "1") d.setAttribute("open", "");
     else if (saved === "0") d.removeAttribute("open");
     d.addEventListener("toggle", function () { try { localStorage.setItem(k, d.open ? "1" : "0"); } catch (e) {} });
+  });
+})();
+
+// support: copy the donation address (display-only — no wallet-connect anywhere on this site)
+(function () {
+  var b = document.getElementById("don-copy");
+  if (!b) return;
+  b.addEventListener("click", function () {
+    var a = document.getElementById("don-addr").textContent.trim();
+    (navigator.clipboard ? navigator.clipboard.writeText(a) : Promise.reject()).then(function () {
+      b.textContent = "Copied ✓"; setTimeout(function () { b.textContent = "Copy address"; }, 2000);
+    }).catch(function () {
+      var r = document.createRange(); r.selectNodeContents(document.getElementById("don-addr"));
+      var s = getSelection(); s.removeAllRanges(); s.addRange(r);
+      b.textContent = "Select + copy"; setTimeout(function () { b.textContent = "Copy address"; }, 2500);
+    });
   });
 })();
 </script>
