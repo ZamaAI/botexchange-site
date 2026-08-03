@@ -92,6 +92,27 @@
   .pm-delta { font-family: var(--mono); font-size: 11px; font-weight: 700; }
   .pm-spark { margin-left: auto; flex-shrink: 0; }
   .pm-meta { margin-top: 7px; }
+  /* [#184] This-week lane — day-grouped earnings (est → beat/miss) + high-impact macro */
+  .tw { border: 1px solid var(--line); background: #fff; margin-top: 16px; }
+  .tw-h { padding: 9px 14px; background: var(--bg2); border-bottom: 1px solid var(--line); font: 700 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink3); }
+  .tw-days { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  @media (max-width: 980px) { .tw-days { grid-template-columns: minmax(0, 1fr); } }
+  .tw-day { border-right: 1px solid var(--line2); padding: 8px 10px 10px; min-width: 0; }
+  .tw-day:last-child { border-right: none; }
+  @media (max-width: 980px) { .tw-day { border-right: none; border-bottom: 1px solid var(--line2); } }
+  .tw-day.today { box-shadow: inset 0 3px 0 var(--accent); background: #fffdf7; }
+  .tw-dh { font: 700 11px var(--mono); color: var(--ink3); margin-bottom: 5px; }
+  .tw-dh .tw-today { color: var(--accent); }
+  .tw-row { padding: 4px 0; border-bottom: 1px dotted var(--line2); font-size: 12px; line-height: 1.45; }
+  .tw-row:last-child { border-bottom: none; }
+  .tw-sym { font: 700 12px var(--mono); }
+  .tw-meta { color: var(--ink3); font-size: 11px; }
+  .tw-est { color: var(--ink2); font-size: 11.5px; }
+  .tw-res { display: inline-block; font: 700 10.5px var(--mono); padding: 1px 6px; border-radius: 2px; margin-top: 2px; }
+  .tw-res.beat { color: #1a7f37; background: #e8f5ec; }
+  .tw-res.miss { color: var(--down); background: #fbeae9; }
+  .tw-mac { color: var(--ink2); font-size: 11.5px; }
+  .tw-mac .cc { font: 700 10px var(--mono); color: var(--ink3); margin-right: 4px; }
   .cal-cols { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 20px; align-items: start; margin-top: 16px; }
   @media (max-width: 980px) { .cal-cols { grid-template-columns: minmax(0, 1fr); } }
   .cal-side .box { margin-bottom: 0; }
@@ -459,6 +480,11 @@
   <div class="kicker">Forward calendar</div>
   <h2 class="sec">What could swing markets</h2>
   <p class="sub">Macro prints from FRED release dates, the FOMC schedule, universe earnings and token unlocks — the same event risk the trading desks are fed.</p>
+  <div class="tw hidden" id="thisweek">
+    <div class="tw-h" id="tw-h">This week</div>
+    <div class="tw-days" id="tw-days"></div>
+    <div class="src" style="padding:8px 14px 10px">Earnings names and consensus estimates from the Nasdaq calendar — the fleet&rsquo;s tradeable universe plus the week&rsquo;s largest reporters. ✅ / ❌ fills in against consensus as each print lands. High-impact macro via the ForexFactory weekly calendar. Times shown in your timezone.</div>
+  </div>
   <div class="cal-cols">
   <div class="calplan" id="cal-month"><div style="padding:14px" class="src">The month planner draws with the feed.</div></div>
   <div class="cal-side">
@@ -1688,6 +1714,53 @@ function impBadge(e) {
   var c = e.impact === "HIGH" ? "h" : e.impact === "MED" ? "m" : "l";
   return "<span class='imp " + c + "'>" + esc(e.impact) + "</span>";
 }
+// [#184] This week — the week's headline earnings (consensus estimate up front, ✅/❌ vs
+// consensus once each print lands) + ForexFactory high-impact macro, grouped Mon→Fri.
+// Hidden entirely when the feed carries no weekAhead block (older feed / dark sources).
+function renderThisWeek(d) {
+  var host = $("thisweek"); if (!host) return;
+  var w = d.weekAhead;
+  if (!w || (!(w.earnings || []).length && !(w.macro || []).length)) { host.classList.add("hidden"); return; }
+  host.classList.remove("hidden");
+  var eps = function (v) { return v == null || !isFinite(v) ? "—" : (v < 0 ? "−$" : "$") + Math.abs(v).toFixed(2); };
+  var cap = function (v) { return !v ? "" : v >= 1e12 ? "$" + (v / 1e12).toFixed(1) + "T" : v >= 1e9 ? "$" + Math.round(v / 1e9) + "B" : ""; };
+  var todayKey = new Date().toLocaleDateString("en-CA");
+  var mondayMs = /^\d{4}-\d{2}-\d{2}$/.test(w.weekOf || "") ? new Date(w.weekOf + "T12:00:00Z").getTime() : null;
+  if (mondayMs == null) return host.classList.add("hidden");
+  var h = "";
+  for (var i = 0; i < 5; i++) {
+    var key = new Date(mondayMs + i * 86400000).toISOString().slice(0, 10);
+    var dh = new Date(key + "T12:00:00Z").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+    var mac = (w.macro || []).filter(function (e) { return e.date === key; });
+    var earn = (w.earnings || []).filter(function (e) { return e.date === key; })
+      .sort(function (a, b) { return (b.universe - a.universe) || (b.mcap - a.mcap); });
+    var rows = "";
+    mac.forEach(function (e) {
+      var t = e.iso ? new Date(e.iso) : null;
+      var tm = t && !isNaN(t) ? t.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+      rows += "<div class='tw-row tw-mac'><span class='cc'>" + esc(e.country) + "</span>" + esc(e.title) +
+        "<br><span class='tw-meta'>" + tm + (e.forecast ? " · f'cast " + esc(e.forecast) : "") + (e.previous ? " · prev " + esc(e.previous) : "") + "</span></div>";
+    });
+    var shown = earn.slice(0, 9);
+    shown.forEach(function (e) {
+      var res = "";
+      if (e.result) {
+        var sp = isFinite(e.surprisePct) ? " (" + (e.surprisePct >= 0 ? "+" : "") + Number(e.surprisePct).toFixed(1) + "%)" : "";
+        res = "<br><span class='tw-res " + (e.result === "BEAT" ? "beat'>✅ BEAT " : "miss'>❌ MISS ") +
+          esc(eps(e.epsActual)) + " vs " + esc(eps(e.epsConsensus != null ? e.epsConsensus : e.epsEst)) + " est" + sp + "</span>";
+      }
+      rows += "<div class='tw-row' title='" + esc(e.name || e.symbol) + (e.universe ? " — in the fleet’s tradeable universe" : "") + "'>" +
+        "<span class='tw-sym'>" + esc(e.symbol) + "</span> <span class='tw-meta'>" + esc(e.when || "") +
+        (e.universe ? " · <span title='Tradeable by the fleet'>◆</span>" : "") + (cap(e.mcap) ? " · " + cap(e.mcap) : "") + "</span>" +
+        "<br><span class='tw-est'>est " + eps(e.epsEst) + (e.epsPrior != null ? " · yr-ago " + eps(e.epsPrior) : "") + "</span>" + res + "</div>";
+    });
+    if (earn.length > shown.length) rows += "<div class='tw-row tw-meta'>+" + (earn.length - shown.length) + " more</div>";
+    if (!rows) rows = "<div class='tw-row tw-meta'>Quiet day.</div>";
+    h += "<div class='tw-day" + (key === todayKey ? " today" : "") + "'><div class='tw-dh'>" + esc(dh) +
+      (key === todayKey ? " <span class='tw-today'>· today</span>" : "") + "</div>" + rows + "</div>";
+  }
+  $("tw-days").innerHTML = h;
+}
 function renderCalendar(d) {
   var items = d.calendar || [];
   if (!items.length) { $("cal-body").innerHTML = "<span class='src'>No high-impact events on the radar.</span>"; return; }
@@ -2799,7 +2872,7 @@ function renderAll(d) {
   _feedForReveal = d;
   renderStamps(d); renderStrip(d.market); renderHeadline(d); renderStandings(d);
   try { renderHook(d); } catch (e) {}
-  renderChart(d); renderPlayers(d); renderSeasonStats(d); renderFloor(d); renderDesk(d); renderHLWhales(d); renderTopTraders(d); renderLighterWhales(d); renderCalendar(d); renderCalMonth(d); renderIntel(d); renderIntelRail(d);
+  renderChart(d); renderPlayers(d); renderSeasonStats(d); renderFloor(d); renderDesk(d); renderHLWhales(d); renderTopTraders(d); renderLighterWhales(d); renderCalendar(d); renderCalMonth(d); renderThisWeek(d); renderIntel(d); renderIntelRail(d);
   renderNotes(d); renderTape(d); renderArchive(d); renderRisk(d);
   renderWire(d); renderWhaleFeed(d); renderColumn(d); renderPredictions(d); try { renderHome(d); } catch (e) {}
   liveStripRefresh(d.market); startLiveLayers();
