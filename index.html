@@ -1921,6 +1921,30 @@ function renderRisk(d) {
 // same payload, and a sharper read on a perps board anyway: it prices which side is crowded.
 var LM_SYMBOLS = ["BTC","ETH","SOL","BNB","XRP","DOGE","ADA","AVAX","LINK","TRX","DOT","LTC","BCH","NEAR","APT","ARB","OP","SUI","UNI","AAVE","PEPE","WLD","FIL","ATOM"];
 var lmExpanded = false;
+// Shared row renderer for both sources. `note` (fallback path) renders as a footer line
+// so a Binance-sourced table is labeled, never passed off as the HL board.
+function lmRender(rows, note) {
+  rows.sort(function (a, b) { return (b.vol || 0) - (a.vol || 0); });
+  var shown = lmExpanded ? rows : rows.slice(0, 16);
+  var h = "<tr><th>Coin</th><th class='rt'>Price</th><th class='rt'>24h</th><th class='rt'>Funding (APR)</th><th class='rt'>Volume</th></tr>";
+  shown.forEach(function (t) {
+    // sub-thousandth coins need more than 6dp or they all collapse to "$0.000003" (PEPE).
+    var dp = t.price >= 1000 ? 0 : t.price >= 10 ? 2 : t.price >= 0.1 ? 4 : t.price >= 0.001 ? 6 : 8;
+    // HL funding is per hour; annualise for a number people can compare against a yield.
+    var apr = isFinite(t.funding) ? t.funding * 24 * 365 * 100 : null;
+    h += "<tr><td><b>" + esc(t.sym) + "</b></td><td class='rt num'>" + money(t.price, dp) + "</td>" +
+      "<td class='rt " + cls(t.chg) + "'>" + pct(t.chg, 2) + "</td>" +
+      // deliberately NOT colour-coded up/down: positive funding means longs are paying, which is
+      // crowding (squeeze fuel), not "good" — colouring it green would read as a buy signal.
+      "<td class='rt num' style='color:var(--ink3)'>" + pct(apr, 1) + "</td>" +
+      "<td class='rt num'>$" + (t.vol >= 1e9 ? (t.vol / 1e9).toFixed(2) + "B" : (t.vol / 1e6).toFixed(0) + "M") + "</td></tr>";
+  });
+  h += "<tr><td colspan='5'><button class='morelink' id='lm-more'>" +
+    (lmExpanded ? "Show top 16" : "Show all " + rows.length + " coins") + "</button></td></tr>";
+  if (note) h += "<tr><td colspan='5' class='src'>" + esc(note) + "</td></tr>";
+  $("live-markets").innerHTML = h;
+  $("lm-more").onclick = function () { lmExpanded = !lmExpanded; renderLiveMarkets(); };
+}
 function renderLiveMarkets() {
   hlPerpCtx().then(function (map) {
     var rows = [];
@@ -1930,31 +1954,30 @@ function renderLiveMarkets() {
       rows.push({ sym: s, price: m.price, chg: (isFinite(m.prev) && m.prev) ? (m.price - m.prev) / m.prev * 100 : null, vol: m.vol, funding: m.funding });
     });
     if (!rows.length) throw new Error("no HL rows");
-    rows.sort(function (a, b) { return (b.vol || 0) - (a.vol || 0); });
-    var shown = lmExpanded ? rows : rows.slice(0, 16);
-    var h = "<tr><th>Coin</th><th class='rt'>Price</th><th class='rt'>24h</th><th class='rt'>Funding (APR)</th><th class='rt'>Volume</th></tr>";
-    shown.forEach(function (t) {
-      // sub-thousandth coins need more than 6dp or they all collapse to "$0.000003" (PEPE).
-      var dp = t.price >= 1000 ? 0 : t.price >= 10 ? 2 : t.price >= 0.1 ? 4 : t.price >= 0.001 ? 6 : 8;
-      // HL funding is per hour; annualise for a number people can compare against a yield.
-      var apr = isFinite(t.funding) ? t.funding * 24 * 365 * 100 : null;
-      h += "<tr><td><b>" + esc(t.sym) + "</b></td><td class='rt num'>" + money(t.price, dp) + "</td>" +
-        "<td class='rt " + cls(t.chg) + "'>" + pct(t.chg, 2) + "</td>" +
-        // deliberately NOT colour-coded up/down: positive funding means longs are paying, which is
-        // crowding (squeeze fuel), not "good" — colouring it green would read as a buy signal.
-        "<td class='rt num' style='color:var(--ink3)'>" + pct(apr, 1) + "</td>" +
-        "<td class='rt num'>$" + (t.vol >= 1e9 ? (t.vol / 1e9).toFixed(2) + "B" : (t.vol / 1e6).toFixed(0) + "M") + "</td></tr>";
-    });
-    h += "<tr><td colspan='5'><button class='morelink' id='lm-more'>" +
-      (lmExpanded ? "Show top 16" : "Show all " + rows.length + " coins") + "</button></td></tr>";
-    $("live-markets").innerHTML = h;
-    $("lm-more").onclick = function () { lmExpanded = !lmExpanded; renderLiveMarkets(); };
+    lmRender(rows, null);
   }).catch(function () {
-    // A swallowed error is indistinguishable from "no data" — the silent-fallback anti-pattern.
-    // Say it out loud, but never wipe a good table that is already on screen.
-    if (!$("live-markets").querySelector("th")) {
-      $("live-markets").innerHTML = "<tr><td class='src'>Live prices unavailable — this board reads Hyperliquid's public API straight from your browser, and your network appears to be blocking it. Everything else on the page is served from our own feed and is unaffected.</td></tr>";
-    }
+    // HL unreachable. That is not always the VISITOR's network: on 2 Aug 2026 HL's own edge
+    // served CloudFront errors for hours and this board blanked for anyone arriving mid-wobble.
+    // Mirror the ticker strip's Binance fallback (price/24h/volume; Binance has no comparable
+    // funding field — the column renders "—"). Binance 451s US IPs, in which case both sources
+    // fail and the honest notice below stands. Never wipe a good table already on screen.
+    fetch("https://api.binance.com/api/v3/ticker/24hr?symbols=" + encodeURIComponent(JSON.stringify(LM_SYMBOLS.map(function (s) { return s + "USDT"; }))))
+      .then(function (r) { if (!r.ok) throw new Error("binance " + r.status); return r.json(); })
+      .then(function (raw) {
+        if (!Array.isArray(raw)) throw new Error("bad shape");
+        var rows = raw.map(function (t) {
+          return { sym: String(t.symbol || "").replace("USDT", ""), price: parseFloat(t.lastPrice), chg: parseFloat(t.priceChangePercent), vol: parseFloat(t.quoteVolume), funding: NaN };
+        }).filter(function (t) { return t.sym && isFinite(t.price); });
+        if (!rows.length) throw new Error("no rows");
+        lmRender(rows, "Hyperliquid is unreachable right now — prices via Binance (funding is HL-only and unavailable on this source). The board retries Hyperliquid every 30 seconds.");
+      })
+      .catch(function () {
+        // A swallowed error is indistinguishable from "no data" — the silent-fallback anti-pattern.
+        // Say it out loud, but never wipe a good table that is already on screen.
+        if (!$("live-markets").querySelector("th")) {
+          $("live-markets").innerHTML = "<tr><td class='src'>Live prices unavailable — this board reads Hyperliquid (then Binance as a fallback) straight from your browser, and neither is reachable right now: either your network blocks them, or the venues are having a moment. It retries every 30 seconds; everything else on the page is served from our own feed and is unaffected.</td></tr>";
+        }
+      });
   });
 }
 // ── the wire: scraped headlines + curated X posts ──
