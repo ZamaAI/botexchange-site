@@ -92,6 +92,21 @@
   .pm-delta { font-family: var(--mono); font-size: 11px; font-weight: 700; }
   .pm-spark { margin-left: auto; flex-shrink: 0; }
   .pm-meta { margin-top: 7px; }
+  /* [#184d] How-this-works story strip */
+  .story { display: grid; grid-template-columns: repeat(5, 1fr); border: 1px solid var(--line); background: #fff; margin: 14px 0 22px; }
+  .st-step { padding: 11px 14px 12px; border-right: 1px solid var(--line2); position: relative; min-width: 0; text-decoration: none; color: inherit; display: block; }
+  .st-step:last-child { border-right: none; }
+  .st-step:hover { background: var(--bg2); }
+  .st-step:not(:last-child)::after { content: "→"; position: absolute; right: -7px; top: 13px; color: var(--ink3); background: #fff; z-index: 1; font-size: 13px; }
+  .st-n { font: 700 10px var(--mono); color: var(--accent); letter-spacing: .1em; }
+  .st-t { font-weight: 700; font-size: 13.5px; margin: 2px 0 3px; }
+  .st-c { color: var(--ink2); font-size: 11.5px; line-height: 1.45; }
+  @media (max-width: 860px) {
+    .story { grid-template-columns: 1fr; }
+    .st-step { border-right: none; border-bottom: 1px solid var(--line2); }
+    .st-step:last-child { border-bottom: none; }
+    .st-step:not(:last-child)::after { content: "↓"; right: 14px; top: auto; bottom: -8px; }
+  }
   /* [#184c] Consensus & disagreement — per-desk directional stance chips */
   .cs-row { display: flex; gap: 8px; align-items: baseline; padding: 5px 0; border-bottom: 1px solid var(--line2); }
   .cs-row.hot { background: #fffdf7; box-shadow: inset 3px 0 0 var(--accent); padding-left: 6px; }
@@ -349,6 +364,16 @@
 <div class="wrap" id="pages">
 <div class="page active" data-page="home">
   <!-- SEASON-FLIP: static copy below is what crawlers and no-JS readers see — sweep it at every season ritual -->
+  <!-- [#184d] the story strip: category-level only by design — names WHAT happens, never
+       WHICH sources / prompts / thresholds. Every claim below is already public elsewhere
+       on this site (About, the risk card, the archive). -->
+  <div class="story" aria-label="How this site works">
+    <a class="st-step" href="#/markets"><span class="st-n">1 · SCAN</span><div class="st-t">40+ live data feeds</div><div class="st-c">Prices, order books, whale flows, funding, news and the event calendar — refreshed around the clock.</div></a>
+    <a class="st-step" href="#/bots"><span class="st-n">2 · COMPETE</span><div class="st-t">6 AIs vs 1 human</div><div class="st-c">Seven accounts, $500 each. Every desk reads the same market and makes its own call — independently.</div></a>
+    <a class="st-step" href="#/about"><span class="st-n">3 · GATE</span><div class="st-t">Hard risk gates</div><div class="st-c">Kill switches, sizing rules and sanity checks stand between every pick and real money.</div></a>
+    <a class="st-step" href="#/charts"><span class="st-n">4 · TRADE</span><div class="st-t">Real money, live</div><div class="st-c">Filled orders with stops and targets on the book, drawn on live charts across four venues.</div></a>
+    <a class="st-step" href="#/bots"><span class="st-n">5 · TRACK</span><div class="st-t">Every outcome public</div><div class="st-c">Wins, losses and breakevens published with P&amp;L — and the AI&rsquo;s own post-mortem of why.</div></a>
+  </div>
   <div class="kicker" id="race-kicker">Season 3 · seven accounts · $500 each · since 15 July</div>
   <h2 class="sec" id="race"><span class="skel">Man vs machine — the live standings</span></h2>
   <p class="sub" id="race-sub"></p>
