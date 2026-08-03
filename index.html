@@ -92,6 +92,16 @@
   .pm-delta { font-family: var(--mono); font-size: 11px; font-weight: 700; }
   .pm-spark { margin-left: auto; flex-shrink: 0; }
   .pm-meta { margin-top: 7px; }
+  /* [#184c] Consensus & disagreement — per-desk directional stance chips */
+  .cs-row { display: flex; gap: 8px; align-items: baseline; padding: 5px 0; border-bottom: 1px solid var(--line2); }
+  .cs-row.hot { background: #fffdf7; box-shadow: inset 3px 0 0 var(--accent); padding-left: 6px; }
+  .cs-asset { font: 700 12px var(--mono); min-width: 46px; }
+  .cs-vs { display: block; font: 700 9px var(--mono); color: var(--accent); letter-spacing: .06em; }
+  .cs-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .cs-chip { font: 700 10.5px var(--mono); padding: 1px 6px; border-radius: 2px; border: 1px solid transparent; cursor: default; }
+  .cs-chip.l { color: #1a7f37; background: #e8f5ec; border-color: #bfe3c8; }
+  .cs-chip.s { color: var(--down); background: #fbeae9; border-color: #f0c8c5; }
+  .cs-chip.w { background: #fff; border-style: dashed; }
   /* [#184] This-week lane — day-grouped earnings (est → beat/miss) + high-impact macro */
   .tw { border: 1px solid var(--line); background: #fff; margin-top: 16px; }
   .tw-h { padding: 9px 14px; background: var(--bg2); border-bottom: 1px solid var(--line); font: 700 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink3); }
@@ -361,16 +371,17 @@
     <div class="hw w4" id="hw-pulse"><h3>Market pulse</h3><div id="hw-pulse-body"><span class="src">Sentiment dials load with the feed.</span></div></div>
     <div class="hw w4" id="hw-live"><h3>Open positions</h3><div id="hw-live-body"><span class="src">Open positions load with the feed.</span></div></div>
     <div class="hw w4" id="hw-cal"><h3>This week — event risk</h3><div id="hw-cal-body"><span class="src">Calendar loads with the feed.</span></div></div>
+    <div class="hw w4" id="hw-consensus"><h3>Consensus &amp; disagreement</h3><div id="hw-consensus-body"><span class="src">Where every desk stands, per asset — loads with the feed.</span></div></div>
     <div class="hw w8" id="hw-news"><h3>Top headlines</h3><div id="hw-news-body"><span class="src">Headlines load with the feed.</span></div></div>
     <div class="hw w4" id="hw-flows"><h3>Institutional flows</h3><div id="hw-flows-body"><span class="src">ETF flow data loads with the feed.</span></div></div>
     <div class="hw w4" id="hw-movers"><h3>Top movers — 24h</h3><div id="hw-movers-body"><span class="src">Movers load with the feed.</span></div></div>
-    <div class="hw w8" id="hw-closes"><h3>Recent closes</h3><div id="hw-closes-body"><span class="src">Closed trades load with the feed.</span></div></div>
-    <div class="hw w8" id="hw-watch"><h3>What the desks are watching</h3><div id="hw-watch-body"><span class="src">The AWAITING watch-list loads with the feed.</span></div></div>
     <div class="hw w4" id="hw-suggest"><h3>Improve the desk</h3><div style="line-height:1.55">
       Spotted a bug, want a stat published, or have an idea worth testing on real money? The desk reads everything.<br>
       <a class="more" href="https://x.com/zamma3" target="_blank" rel="noopener">DM @zamma3 on X →</a><br>
       <a class="more" href="https://x.com/thebotexchang3" target="_blank" rel="noopener">DM @thebotexchang3 on X →</a>
     </div></div>
+    <div class="hw w12" id="hw-closes"><h3>Recent closes</h3><div id="hw-closes-body"><span class="src">Closed trades load with the feed.</span></div></div>
+    <div class="hw w12" id="hw-watch"><h3>What the desks are watching</h3><div id="hw-watch-body"><span class="src">The AWAITING watch-list loads with the feed.</span></div></div>
   </div>
 </div>
 <div class="page" data-page="markets">
@@ -2269,6 +2280,35 @@ function startLiveLayers() {
   setInterval(renderLiveMarkets, 30000);
   setInterval(refreshOpenLive, 30000);
 }
+// [#184c] Consensus & disagreement — one row per asset, one chip per desk stance.
+// Green = long, red = short; solid chip = a position on (paper desks included),
+// dashed = a registered trigger watch. The feed pre-sorts biggest split first and
+// names the headline disagreement asset.
+function renderConsensus(d) {
+  var host = $("hw-consensus-body"); if (!host) return;
+  var c = d.consensus;
+  if (!c || !(c.assets || []).length) { host.innerHTML = "<span class='src'>No live stances on the floor right now.</span>"; return; }
+  var chip = function (s, dir) {
+    var meta = ACTORS[s.actor] || { label: s.actor, short: s.actor };
+    var title = meta.label + " — " + dir +
+      (s.conv != null ? ", conviction " + s.conv + "/10" : "") +
+      (s.kind === "watching" ? " (trigger watch — not filled)" : s.kind === "paper" ? " (paper position)" : " (live position)");
+    return "<span class='cs-chip " + (dir === "LONG" ? "l" : "s") + (s.kind === "watching" ? " w" : "") +
+      "' title='" + esc(title) + "'>" + esc(meta.short || s.actor) + (s.conv != null ? " " + s.conv : "") + "</span>";
+  };
+  var h = "";
+  (c.assets || []).slice(0, 6).forEach(function (a) {
+    var split = a.long.length && a.short.length;
+    h += "<div class='cs-row" + (a.asset === c.disagreement ? " hot" : "") + "'>" +
+      "<span class='cs-asset'>" + esc(a.asset) + (split ? "<span class='cs-vs'>SPLIT</span>" : "") + "</span>" +
+      "<span class='cs-chips'>" +
+      a.long.map(function (s) { return chip(s, "LONG"); }).join("") +
+      a.short.map(function (s) { return chip(s, "SHORT"); }).join("") +
+      "</span></div>";
+  });
+  h += "<div class='src' style='margin-top:6px'>Green long · red short · dashed = trigger watch, solid = position on (paper desks included) · number = conviction. Hover any chip.</div>";
+  host.innerHTML = h;
+}
 function renderHome(d) {
   // pulse: F&G + regimes + corr
   var m = d.market || {}, p = "";
@@ -2899,7 +2939,7 @@ function renderAll(d) {
   try { renderHook(d); } catch (e) {}
   renderChart(d); renderPlayers(d); renderSeasonStats(d); renderFloor(d); renderDesk(d); renderHLWhales(d); renderTopTraders(d); renderLighterWhales(d); renderCalendar(d); renderCalMonth(d); renderThisWeek(d); renderIntel(d); renderIntelRail(d);
   renderNotes(d); renderTape(d); renderArchive(d); renderRisk(d);
-  renderWire(d); renderWhaleFeed(d); renderColumn(d); renderPredictions(d); try { renderHome(d); } catch (e) {}
+  renderWire(d); renderWhaleFeed(d); renderColumn(d); renderPredictions(d); try { renderHome(d); } catch (e) {} try { renderConsensus(d); } catch (e) {}
   liveStripRefresh(d.market); startLiveLayers();
   try { renderTradeCharts(d); } catch (e) {}   // no-ops unless the Charts page is on screen
   if (_pendingTrade != null) { var pt = _pendingTrade; _pendingTrade = null; try { revealTrade(pt); } catch (e) {} }
