@@ -483,7 +483,7 @@
   <div class="tw hidden" id="thisweek">
     <div class="tw-h" id="tw-h">This week</div>
     <div class="tw-days" id="tw-days"></div>
-    <div class="src" style="padding:8px 14px 10px">Earnings names and consensus estimates from the Nasdaq calendar — the fleet&rsquo;s tradeable universe plus the week&rsquo;s largest reporters. ✅ / ❌ fills in against consensus as each print lands. High-impact macro via the ForexFactory weekly calendar. Times shown in your timezone.</div>
+    <div class="src" style="padding:8px 14px 10px">Each day: the top reporters by size (◆ = tradeable by the fleet; estimates from the Nasdaq calendar, ✅ / ❌ fills in against consensus as each print lands), high-impact macro via the ForexFactory weekly calendar, plus token unlocks and major crypto events. Times shown in your timezone. The full list is in the calendar below.</div>
   </div>
   <div class="cal-cols">
   <div class="calplan" id="cal-month"><div style="padding:14px" class="src">The month planner draws with the feed.</div></div>
@@ -1731,18 +1731,30 @@ function renderThisWeek(d) {
   for (var i = 0; i < 5; i++) {
     var key = new Date(mondayMs + i * 86400000).toISOString().slice(0, 10);
     var dh = new Date(key + "T12:00:00Z").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+    // Macro: FF high-impact, CLUSTERED by same time+country (NFP Friday is 3 separate FF
+    // rows for one print — one line reads better); f'cast/prev only when a single title.
     var mac = (w.macro || []).filter(function (e) { return e.date === key; });
-    var earn = (w.earnings || []).filter(function (e) { return e.date === key; })
-      .sort(function (a, b) { return (b.universe - a.universe) || (b.mcap - a.mcap); });
+    var clusters = {};
+    mac.forEach(function (e) { var ck = e.country + "|" + (e.iso || "").slice(11, 16); (clusters[ck] = clusters[ck] || []).push(e); });
     var rows = "";
-    mac.forEach(function (e) {
-      var t = e.iso ? new Date(e.iso) : null;
+    Object.keys(clusters).forEach(function (ck) {
+      var g = clusters[ck], e0 = g[0];
+      var t = e0.iso ? new Date(e0.iso) : null;
       var tm = t && !isNaN(t) ? t.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
-      rows += "<div class='tw-row tw-mac'><span class='cc'>" + esc(e.country) + "</span>" + esc(e.title) +
-        "<br><span class='tw-meta'>" + tm + (e.forecast ? " · f'cast " + esc(e.forecast) : "") + (e.previous ? " · prev " + esc(e.previous) : "") + "</span></div>";
+      var titles = g.map(function (e) { return e.title; }).join(" · ");
+      rows += "<div class='tw-row tw-mac'><span class='cc'>" + esc(e0.country) + "</span>" + esc(titles) +
+        "<br><span class='tw-meta'>" + tm +
+        (g.length === 1 && e0.forecast ? " · f'cast " + esc(e0.forecast) : "") +
+        (g.length === 1 && e0.previous ? " · prev " + esc(e0.previous) : "") + "</span></div>";
     });
-    var shown = earn.slice(0, 9);
-    shown.forEach(function (e) {
+    // Earnings: TOP 3–5 only — the 3 largest caps + fleet-tradeable (◆) names fill to 5;
+    // displayed largest-first. The full reporter list lives in the Nasdaq calendar, not here.
+    var earn = (w.earnings || []).filter(function (e) { return e.date === key; })
+      .sort(function (a, b) { return b.mcap - a.mcap; });
+    var pick = earn.slice(0, 3);
+    earn.forEach(function (e) { if (pick.length < 5 && e.universe && pick.indexOf(e) < 0) pick.push(e); });
+    pick.sort(function (a, b) { return b.mcap - a.mcap; });
+    pick.forEach(function (e) {
       var res = "";
       if (e.result) {
         var sp = isFinite(e.surprisePct) ? " (" + (e.surprisePct >= 0 ? "+" : "") + Number(e.surprisePct).toFixed(1) + "%)" : "";
@@ -1751,10 +1763,23 @@ function renderThisWeek(d) {
       }
       rows += "<div class='tw-row' title='" + esc(e.name || e.symbol) + (e.universe ? " — in the fleet’s tradeable universe" : "") + "'>" +
         "<span class='tw-sym'>" + esc(e.symbol) + "</span> <span class='tw-meta'>" + esc(e.when || "") +
-        (e.universe ? " · <span title='Tradeable by the fleet'>◆</span>" : "") + (cap(e.mcap) ? " · " + cap(e.mcap) : "") + "</span>" +
+        (e.universe ? " · <span title='Tradeable by the fleet'>◆</span>" : "") + "</span>" +
         "<br><span class='tw-est'>est " + eps(e.epsEst) + (e.epsPrior != null ? " · yr-ago " + eps(e.epsPrior) : "") + "</span>" + res + "</div>";
     });
-    if (earn.length > shown.length) rows += "<div class='tw-row tw-meta'>+" + (earn.length - shown.length) + " more</div>";
+    // The day's OTHER events from the main calendar feed: token unlocks (all), crypto events
+    // (market-wide HIGH only — asset-scoped MED demos/AMAs are noise here), FOMC (skipped when
+    // FF already carries the same-day FOMC print).
+    var ffFomc = mac.some(function (e) { return /FOMC|Federal Funds/i.test(e.title); });
+    (d.calendar || []).filter(function (e) { return e.date === key; }).forEach(function (e) {
+      if (e.type === "UNLOCK") {
+        rows += "<div class='tw-row tw-mac'><span class='cc'>UNLOCK</span>" + esc(String(e.event).split(" — ")[0]) +
+          "<br><span class='tw-meta'>" + esc(String(e.event).split(" — ").slice(1).join(" — ").slice(0, 48)) + "</span></div>";
+      } else if (e.type === "CRYPTO" && e.impact === "HIGH") {
+        rows += "<div class='tw-row tw-mac'><span class='cc'>CRYPTO</span>" + esc(String(e.event).slice(0, 60)) + "</div>";
+      } else if ((e.type === "Fed" || /FOMC/i.test(String(e.event))) && !ffFomc) {
+        rows += "<div class='tw-row tw-mac'><span class='cc'>FOMC</span>" + esc(String(e.event).slice(0, 60)) + "</div>";
+      }
+    });
     if (!rows) rows = "<div class='tw-row tw-meta'>Quiet day.</div>";
     h += "<div class='tw-day" + (key === todayKey ? " today" : "") + "'><div class='tw-dh'>" + esc(dh) +
       (key === todayKey ? " <span class='tw-today'>· today</span>" : "") + "</div>" + rows + "</div>";
