@@ -2433,7 +2433,41 @@ function renderHome(d) {
       "<br><span class='src'>waiting for: " + esc(w.trigger || "its trigger level") +
       (w.entry != null ? " (≈" + esc(fmtLvl(w.entry)) + (w.levelsApprox ? ", approx" : "") + ")" : "") + "</span></span></div>";
   });
-  if ($("hw-watch-body")) $("hw-watch-body").innerHTML = awH ||
+  // [#192] ...and how often those watches actually WORK. The lane has been published since
+  // [#174] — asset, brain, conviction, trigger — with no way for a reader to know whether any
+  // of it is any good. Showing setups without their hit-rate implies they are good calls.
+  //
+  // The number is a counterfactual, computed bot-side by walking each registration forward
+  // against real candles: did price reach the trigger, and then hit the target or the stop
+  // first? No capital is ever deployed and no rows are created. `decided` counts only the
+  // watches that BOTH triggered and resolved a level — a watch whose trigger never arrived
+  // is not evidence either way, and roughly half of them never arrive.
+  //
+  // Published next to the fleet's own record on trades it actually TOOK, because that is the
+  // only comparison that answers anything: a watch-list is worth unblocking if it beats what
+  // the desks already trade, not if it clears some absolute bar. Right now it does not beat
+  // it — which is the honest and more interesting answer, and it is why this renders at all.
+  // Null until the sample is thick enough to mean something; the panel then looks as it did.
+  var aws = d.awaitingScore, awScoreH = "";
+  if (aws && aws.decided) {
+    var verdictTxt = (aws.liveWR == null)
+      ? " No trades closed in the same window, so there is nothing to compare it against yet."
+      : (aws.laneWR - aws.liveWR > 10
+          ? " That is <b>better</b> than what the desks actually traded (" + aws.liveWR + "%) — this caution is costing us."
+          : (aws.liveWR - aws.laneWR > 10
+              ? " That is <b>worse</b> than what the desks actually traded (" + aws.liveWR + "%) — the caution is earning its keep."
+              : " That is about the same as what the desks actually traded (" + aws.liveWR + "%) — waiting changes the volume, not the odds."));
+    awScoreH =
+      "<div class='src' style='margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08)'>" +
+      "<b>Do these work?</b> Over the last " + esc(String(aws.windowDays)) + " days, " +
+      esc(String(aws.scorable)) + " watches were scoreable and " + esc(String(aws.noTouch)) +
+      " never reached their trigger at all. Of the " + esc(String(aws.decided)) +
+      " that triggered and then hit a level, <b>" + esc(String(aws.wouldWin)) + "</b> would have won — <b>" +
+      esc(String(aws.laneWR)) + "%</b>." + verdictTxt +
+      "<br>Walked forward against real candles. No money was placed on any of them." +
+      "</div>";
+  }
+  if ($("hw-watch-body")) $("hw-watch-body").innerHTML = (awH + awScoreH) ||
     "<span class='src'>Nothing on the watch-list this cycle — every setup either confirmed or wasn't worth flagging.</span>";
 }
 // ── Charts page ───────────────────────────────────────────────────────────────
