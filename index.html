@@ -434,7 +434,7 @@
 
   <div class="kicker" style="margin-top:26px">Lens 3 — wallet flow</div>
   <h2 class="sec">What the tracked wallets are doing</h2>
-  <p class="sub">Real trades from whale wallets the desk follows on-chain, via Cielo. <b>Net flow</b> is buys minus sells per coin over the last 48 hours — green means those wallets were net buyers. Below it are the largest single moves, newest first.</p>
+  <p class="sub">Real trades from whale wallets the desk follows on-chain, via Cielo. <b>Net flow</b> is buys minus sells over the last 48 hours — green means those wallets were net buyers. These wallets also trade Hyperliquid&rsquo;s <b>tokenized stock</b> markets, which move on company news rather than crypto, so the two are listed separately. Below them are the largest single moves, newest first.</p>
   <div id="whale-flow"></div>
   <div class="lm-wrap"><table class="data" id="whale-rows"><tr><td><span class="src">The whale desk publishes with each report cycle (00:00 / 06:00 / 12:00 / 18:00 SAST).</span></td></tr></table></div>
 </div>
@@ -1711,7 +1711,22 @@ function renderLighterWhales(d) {
   };
   var h = "<div class='kicker' style='margin-top:26px'>Lens 2 — the tape</div>" +
     "<h2 class='sec'>Big money on Lighter</h2>" +
-    "<p class='sub'>A <b>print</b> is a single trade that actually executed. These are the most active accounts by large prints (≥$" + esc(lw.minUsdK) + "k each) over 7 days, with the book they are holding now. Positioning tells you where money already sits; the tape tells you where it is moving today. Lighter is live for three of the agents, so this is the venue they trade on.</p>";
+    "<p class='sub'>A <b>print</b> is a single trade that actually executed — every trade below is one that really happened, not an estimate. Three views, zooming in: <b>where the money flowed</b> across all large prints (≥$" + esc(lw.minUsdK) + "k each) over 7 days, then <b>what the biggest books hold</b> right now, then the <b>individual accounts</b> behind it. Lighter is live for three of the agents, so this is the venue they trade on.</p>";
+  // [#196] coinFlow has been computed and shipped in the feed since the Lighter desk landed
+  // and rendered NOWHERE — zero references in this file. It is the only CROWD-sized whale
+  // measure on the page (hundreds of prints per coin) while both positioning boards run on
+  // 1–4 accounts, so the strongest evidence in the section was the one thing a reader could
+  // not see. Flow first, then positioning, then accounts: crowd → book → trader.
+  if (lw.coinFlow && lw.coinFlow.length) {
+    h += "<table class='data'><caption>Where the money flowed · net buy/sell per coin" +
+      (lw.totalPrints7d ? " · " + esc(lw.totalPrints7d) + " large prints over 7 days" : "") + "</caption>";
+    lw.coinFlow.forEach(function (c) {
+      h += "<tr><td>" + esc(c.coin) + "</td>" +
+        "<td class='rt'><span class='src'>" + esc(c.n) + " prints</span></td>" +
+        "<td class='rt " + cls(c.netK) + "'>" + (c.netK >= 0 ? "net bought +" : "net sold −") + kfmt(Math.abs(c.netK)) + "</td></tr>";
+    });
+    h += "</table><div class='src' style='margin-top:6px'>Buys minus sells across every sampled print — money <b>moving</b>, not money parked. Built from hundreds of trades per coin, so unlike the two boards below this one is a crowd reading rather than one or two accounts.</div>";
+  }
   // Per-coin aggregate FIRST, then the per-account detail. The order is the point: this board
   // is published in the same shape as the Hyperliquid one and had never been rendered, so the
   // only Lighter view on the site was the account list — and an aggregate is what makes a
@@ -2154,20 +2169,45 @@ function renderWhaleFeed(d) {
     return (n < 0 ? "−" : "") + s;
   }
   function age(ts) { var h = (Date.now() - ts) / 36e5; return h < 1 ? Math.max(1, Math.round(h * 60)) + "m" : h < 48 ? Math.round(h) + "h" : Math.round(h / 24) + "d"; }
+  // [#196] These wallets trade Hyperliquid's HIP-3 tokenized-equity dex, whose symbols carry an
+  // `xyz:` prefix. Rendered raw and undifferentiated, a crypto whale panel was publishing rows
+  // like `xyz:CRWV` and `xyz:SNDK` — five stock tickers under a caption that said "per coin".
+  // The prices are correct (SNDK really did trade near $1,530); the LABEL was the defect.
+  // Split, prefix stripped, each group only rendered when it has members.
+  function wfSym(sym) {
+    var s = String(sym == null ? "" : sym), m = s.match(/^xyz:(.+)$/);
+    return m ? { label: m[1], stock: true } : { label: s, stock: false };
+  }
   if (wf.netFlow && wf.netFlow.length) {
-    var f = "<div class='wire-h'>net flow · last 48h · buy − sell</div><div style='margin:6px 0 14px'>";
+    var groups = { coin: [], stock: [] };
     wf.netFlow.forEach(function (e) {
-      var v = Number(e[1]) || 0;
-      f += "<span class='" + (v >= 0 ? "up" : "down") + "' style='font-family:var(--mono);font-size:12.5px;margin-right:14px;white-space:nowrap'>" + esc(e[0]) + " " + (v >= 0 ? "+" : "") + usd(v) + "</span>";
+      var t = wfSym(e[0]);
+      groups[t.stock ? "stock" : "coin"].push({ label: t.label, v: Number(e[1]) || 0 });
     });
-    $("whale-flow").innerHTML = f + "</div>";
+    var f = "";
+    [["coin", "net flow · coins · last 48h · buy − sell"],
+     ["stock", "net flow · tokenized stocks on Hyperliquid · last 48h · buy − sell"]].forEach(function (g) {
+      var list = groups[g[0]];
+      if (!list.length) return;
+      f += "<div class='wire-h'>" + g[1] + "</div><div style='margin:6px 0 14px'>";
+      list.forEach(function (e) {
+        f += "<span class='" + (e.v >= 0 ? "up" : "down") + "' style='font-family:var(--mono);font-size:12.5px;margin-right:14px;white-space:nowrap'>" + esc(e.label) + " " + (e.v >= 0 ? "+" : "") + usd(e.v) + "</span>";
+      });
+      f += "</div>";
+    });
+    if (!groups.coin.length && groups.stock.length) {
+      f += "<div class='src' style='margin:-8px 0 12px'>No tracked coin flow in this window — the followed wallets were trading stocks.</div>";
+    }
+    $("whale-flow").innerHTML = f;
   }
   var h = "<caption>Largest moves from the followed wallets</caption>";
   wf.rows.forEach(function (r) {
     var what, dir = "";
     if (r.kind === "PERP") {
       dir = (r.side === "sell") ? "down" : "up";
-      what = esc(r.action || "") + " " + (r.side === "sell" ? "SELL" : "BUY") + " " + esc(r.symbol || "") +
+      var sy = wfSym(r.symbol);
+      what = esc(r.action || "") + " " + (r.side === "sell" ? "SELL" : "BUY") + " " + esc(sy.label) +
+        (sy.stock ? " <span class='src'>stock</span>" : "") +
         (r.leverage ? " · " + Number(r.leverage) + "x" : "") + (r.liq ? " · LIQUIDATION" : "");
     } else {
       what = "SWAP " + esc(r.sold || "?") + " → " + esc(r.bought || "?") + (r.platform ? " · " + esc(r.platform) : "");
