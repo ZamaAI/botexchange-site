@@ -2194,7 +2194,12 @@ function renderWire(d) {
   if (posts.length) {
     var x = "<div class='wire-h'>from the X watch-list</div>";
     posts.slice(0, 4).forEach(function (p) {
-      x += "<div class='wire-item'>“" + esc(p.text) + "”<div class='src' style='margin-top:3px'>@" + esc(p.handle) + " · ♥ " + Number(p.likes).toLocaleString() + " · ↻ " + Number(p.reposts).toLocaleString() + "</div></div>";
+      // [#196] `at` arrives once x_monitor.py's artifact carries the post time; until then it is
+      // absent and no age renders, same contract as the headlines above.
+      var pw = p && p.at ? relAge(p.at) : "";
+      x += "<div class='wire-item'>“" + esc(p.text) + "”<div class='src' style='margin-top:3px'>@" + esc(p.handle) + " · ♥ " + Number(p.likes).toLocaleString() + " · ↻ " + Number(p.reposts).toLocaleString() +
+        (pw ? " · <span title='" + esc(new Date(p.at).toLocaleString("en-GB", Object.assign({ day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }, TZ))) + " SAST'>" + esc(pw) + "</span>" : "") +
+        "</div></div>";
     });
     $("wire-x").innerHTML = x;
   }
