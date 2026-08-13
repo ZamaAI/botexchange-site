@@ -2132,6 +2132,20 @@ function renderLiveMarkets() {
       });
   });
 }
+// [#196] Relative age computed HERE, at render, from an absolute stamp in the feed. A reader
+// asked for per-item ages and correctly predicted the trap in the same breath: a "2h ago"
+// baked in at publish time is wrong for every visitor after the commit that wrote it. The feed
+// carries ISO; this turns it into an age on every paint.
+function relAge(iso) {
+  var t = Date.parse(iso);
+  if (isNaN(t)) return "";
+  var m = (Date.now() - t) / 6e4;
+  if (m < 0) return "just now";              // clock skew between scraper host and reader
+  if (m < 1) return "just now";
+  if (m < 60) return Math.round(m) + "m ago";
+  if (m < 1440) return Math.round(m / 60) + "h ago";
+  return Math.round(m / 1440) + "d ago";
+}
 // ── the wire: scraped headlines + curated X posts ──
 function renderWire(d) {
   var w = d.newsWire, posts = (d.intel && d.intel.wirePosts) || [];
@@ -2140,7 +2154,17 @@ function renderWire(d) {
     var h = "";
     w.sources.forEach(function (s) {
       h += "<div class='wire-h'>via " + esc(s.name) + "</div>";
-      (s.headlines || []).slice(0, 5).forEach(function (t) { h += "<div class='wire-item'>" + esc(t) + "</div>"; });
+      // Prefer `items` ({text, at}); fall back to the flat `headlines` string[] both for the
+      // cached-feed rollout window and for any headline the source ships undated — in which
+      // case no age renders at all rather than a guessed one.
+      var items = (s.items && s.items.length) ? s.items
+                : (s.headlines || []).map(function (t) { return { text: t, at: null }; });
+      items.slice(0, 5).forEach(function (it) {
+        var when = it && it.at ? relAge(it.at) : "";
+        h += "<div class='wire-item'>" + esc(it.text) +
+          (when ? " <span class='src' title='" + esc(new Date(it.at).toLocaleString("en-GB", Object.assign({ day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }, TZ))) + " SAST'>· " + esc(when) + "</span>" : "") +
+          "</div>";
+      });
     });
     if (w.at) h += "<div class='src' style='margin-top:8px'>Scraped " + new Date(w.at).toLocaleString("en-GB", Object.assign({ day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }, TZ)) + " SAST · refreshed each report cycle</div>";
     $("wire-news").innerHTML = h;
