@@ -1904,13 +1904,29 @@ function renderIntel(d) {
 function renderIntelRail(d) {
   var it = d.intel;
   if (!it) return;
-  var age = it.ageH != null ? "<div class='src' style='margin-top:8px'>From the curated X + newsletter synthesis, " + it.ageH + "h old.</div>" : "";
+  var age = it.ageH != null ? "<div class='src' style='margin-top:8px'>From the curated X + newsletter synthesis, " + it.ageH + "h old. A tag on the right shows how long that story has been running in the feed.</div>" : "";
   if (it.narratives && it.narratives.length) {
     $("narr-box").classList.remove("hidden");
     $("narr-body").innerHTML = it.narratives.map(function (n) {
+      // [#196] The upstream synthesis stamps persistence tags — `(NEW)` / `(DAY 7)` — at the
+      // FRONT of each item ([#119b]). They are deliberately left in the bot's copy because the
+      // brains read them, so this strips them for DISPLAY only and re-renders them as a badge.
+      // On a twice-daily synthesis "running 7 days" is the more useful age than a publish time:
+      // it says whether a story is building or already priced in.
+      var tag = "", title = "";
+      var m = /^\s*\*?\s*\((NEW|DAY\s+(\d+))\)\s*/i.exec(n);
+      if (m) {
+        n = n.slice(m[0].length);
+        if (/^NEW$/i.test(m[1])) { tag = "new"; title = "First appeared in this synthesis — it was not in the previous one."; }
+        else { var dn = Number(m[2]); tag = dn + (dn === 1 ? " day running" : " days running"); title = "This story has persisted in the intel feed for " + dn + " days."; }
+      } else {
+        n = n.replace(/^\s*\*\s*/, "");   // bare bullet marker, no tag
+      }
       var i = n.indexOf(":");
       return "<div style='padding:5px 0;border-bottom:1px solid var(--line2);font-size:12.5px'>" +
-        (i > 0 && i < 60 ? "<b>" + esc(n.slice(0, i)) + ":</b>" + esc(n.slice(i + 1)) : esc(n)) + "</div>";
+        (i > 0 && i < 60 ? "<b>" + esc(n.slice(0, i)) + ":</b>" + esc(n.slice(i + 1)) : esc(n)) +
+        (tag ? " <span class='src' title='" + esc(title) + "' style='white-space:nowrap'>· " + esc(tag) + "</span>" : "") +
+        "</div>";
     }).join("") + age;
   }
   if (it.potentialCoins && it.potentialCoins.length) {
