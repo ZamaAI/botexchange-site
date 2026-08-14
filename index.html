@@ -255,6 +255,19 @@
   .bxr-bar { position: relative; height: 8px; border-radius: 4px; margin: 12px 2px 24px; background: linear-gradient(90deg,#3a9152,#6aa46a,#a3a35c,#c58b4a,#c5524a); }
   .bxr-c td:first-child { color: var(--ink2); }
   .bxr-na { color: var(--ink2); opacity: .6; }
+  /* [#198] BXR home card — the index is our own read on the market, so it gets weight
+     rather than sitting as one row among the desk dials. */
+  .bxr-card { border: 1px solid var(--line); border-left: 3px solid var(--accent); padding: 16px 18px 4px; margin: 0 0 26px; }
+  .bxr-head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  .bxr-score { font-family: var(--mono); font-size: 44px; line-height: 1; font-weight: 700; }
+  .bxr-of { font-family: var(--mono); font-size: 15px; color: var(--ink2); }
+  .bxr-band { font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+  .bxr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0 22px; margin-top: 6px; }
+  .bxr-item { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-bottom: 1px solid var(--line2); font-size: 12.5px; }
+  .bxr-item .l { color: var(--ink2); }
+  .bxr-item .v { font-family: var(--mono); font-weight: 700; }
+  .bxr-tick b { color: var(--accent); }
+  @media (max-width: 560px) { .bxr-score { font-size: 34px; } }
   .xpost { font-family: var(--serif); font-size: 14.5px; line-height: 1.5; border-left: 3px solid var(--accent); padding-left: 12px; overflow-wrap: anywhere; }
   .note { padding: 10px 0; border-bottom: 1px solid var(--line2); }
   .note .note-t { white-space: pre-line; font-size: 13px; color: var(--ink2); margin-top: 4px; line-height: 1.5; overflow-wrap: anywhere; }
@@ -380,6 +393,10 @@
     <a class="st-step" href="#/charts"><span class="st-n">4 · TRADE</span><div class="st-t">Real money, live</div><div class="st-c">Filled orders with stops and targets on the book, drawn on live charts across four venues.</div></a>
     <a class="st-step" href="#/bots"><span class="st-n">5 · TRACK</span><div class="st-t">Every outcome public</div><div class="st-c">Wins, losses and breakevens published with P&amp;L — and the AI&rsquo;s own post-mortem of why.</div></a>
   </div>
+  <!-- [#198] BotExchange Risk Index — our own read on how fragile the market is right now.
+       Sits high on the home page deliberately: it is the one number on this site we compute
+       ourselves rather than relay. Renders NOTHING until the feed carries it. -->
+  <div id="bxr-home"></div>
   <!-- SEASON-FLIP: Season 3 closed 14 Aug 2026. Static by design — it must render for
        crawlers and no-JS readers, and it must NOT depend on the feed, because the whole
        point is that it stays correct while the bots are between seasons and the numbers
@@ -800,6 +817,10 @@ function renderStrip(mkt) {
   });
   if (mkt && mkt.fearGreed) h += "<span>Fear &amp; Greed <b>" + esc(mkt.fearGreed.value) + " — " + esc(mkt.fearGreed.classification) + "</b></span>";
   if (mkt && mkt.regime) h += "<span>Regime <b>" + esc(String(mkt.regime).replace("_", "-")) + "</b></span>";
+  // [#198] BXR in the ticker: accent-coloured so our own number reads differently from the
+  // relayed market data around it. Absent index -> no span (never a placeholder).
+  if (mkt && mkt.riskIndex && mkt.riskIndex.score != null)
+    h += "<span class='bxr-tick'>Risk index <b>" + Math.round(Number(mkt.riskIndex.score)) + " — " + esc(String(mkt.riskIndex.band || "")) + "</b></span>";
   $("strip-crypto").innerHTML = h ? "<span class='rowlab'>CRYPTO</span>" + h : "Market data loading…";
   var m = "";
   _macroStrip.forEach(function (p) {
@@ -881,7 +902,7 @@ function liveStripRefresh(mkt) {
   function apply(fresh) {
     if (!fresh || !fresh.length) return;
     var rest = ((base && base.prices) || []).filter(function (p) { return want.indexOf(p.symbol) < 0; });
-    _lastStripMkt = { prices: fresh.concat(rest), fearGreed: base && base.fearGreed, stockFearGreed: base && base.stockFearGreed, regime: base && base.regime, equityRegime: base && base.equityRegime, macro: base && base.macro };
+    _lastStripMkt = { prices: fresh.concat(rest), fearGreed: base && base.fearGreed, stockFearGreed: base && base.stockFearGreed, regime: base && base.regime, equityRegime: base && base.equityRegime, macro: base && base.macro, riskIndex: base && base.riskIndex };
     renderStrip(_lastStripMkt);
   }
   hlPerpCtx().then(function (map) {
@@ -1465,6 +1486,47 @@ function macroAsOf(md) {
 }
 function bps(v) { return v == null || !isFinite(v) ? "—" : (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(1) + "bps"; }
 
+// [#198] BotExchange Risk Index — rendered on the HOME page, high up, with weight.
+// Deliberately NOT another Fear & Greed: F&G repackages price/vol/momentum/volume/dominance,
+// while BXR is built only from what F&G cannot see (leverage, positioning, forced flow, dry
+// powder, macro coupling, breadth) and measures FRAGILITY, not direction.
+// The component breakdown is not decoration — publishing the parts AND the equal weights is
+// what separates a transparent index from a black box. Absent components show an em-dash,
+// never a zero, and an absent index renders nothing at all rather than an empty shell.
+function renderRiskIndex(d) {
+  var el = $("bxr-home"); if (!el) return;
+  var ri = d && d.market && d.market.riskIndex;
+  if (!ri || ri.score == null) { el.innerHTML = ""; return; }
+  var v = Math.max(0, Math.min(100, Number(ri.score)));
+  var cls = v >= 60 ? "down" : v <= 30 ? "up" : "num";
+  var h = "<div class='bxr-card'>";
+  h += "<div class='kicker' style='margin:0 0 10px'>BotExchange Risk Index &middot; our own read</div>";
+  h += "<div class='bxr-head'><span class='bxr-score " + cls + "'>" + v + "</span>" +
+       "<span class='bxr-of'>/ 100</span>" +
+       "<span class='bxr-band " + cls + "'>" + esc(String(ri.band || "")) + "</span>" +
+       "<span class='src' style='margin-left:auto'>Market fragility, not direction &mdash; 0 is calm, 100 is maximum stress</span></div>";
+  h += "<div class='bxr-bar' style='margin:16px 2px 26px'><span class='fng-mark' style='left:" + v + "%'></span>" +
+       "<span class='fng-lab' style='left:" + v + "%'>" + v + " &middot; " + esc(String(ri.band || "")) + "</span></div>";
+  var comps = ri.components || [];
+  if (comps.length) {
+    h += "<div class='bxr-grid'>";
+    comps.forEach(function (c) {
+      var has = c.score !== null && c.score !== undefined;
+      var ccls = has ? (Number(c.score) >= 60 ? "down" : Number(c.score) <= 30 ? "up" : "num") : "bxr-na";
+      h += "<div class='bxr-item' title='" + esc(String(c.detail || "")) + "'>" +
+           "<span class='l'>" + esc(String(c.label || c.key || "")) + "</span>" +
+           "<span class='v " + ccls + "'>" + (has ? Math.round(Number(c.score)) : "&mdash;") + "</span></div>";
+    });
+    h += "</div>";
+  }
+  h += "<div class='src' style='margin:12px 0 12px'>" +
+       esc(String(ri.componentsLive)) + " of " + esc(String(ri.componentsTotal)) + " components contributing, <b>equal weights</b> at " +
+       esc(String(ri.weightPct)) + "% each &mdash; unfitted by design: we have far more inputs than scored outcomes, so any fitted weighting would be curve-fitting rather than evidence. " +
+       "A component with no data is excluded and shown as &mdash;, never counted as neutral. " +
+       "The index is published and tracked, but it does <b>not</b> gate a trade &mdash; the agents never see it, which is what will make &ldquo;did it predict anything?&rdquo; answerable.</div>";
+  h += "</div>";
+  el.innerHTML = h;
+}
 function renderDesk(d) {
   var md = d.marketsDesk, mkt = d.market || {};
   var h = "";
@@ -1558,39 +1620,6 @@ function renderDesk(d) {
     h += "</table>";
   }
   // (stocks & commodities live in the #stocks-slot side rail next to the crypto table now)
-  // [#198] BotExchange Risk Index — our own 0-100, and deliberately NOT another Fear & Greed.
-  // F&G repackages price/vol/momentum/volume/dominance; BXR is built only from what F&G cannot
-  // see (leverage, positioning, forced flow, dry powder, macro coupling, breadth) and measures
-  // FRAGILITY rather than direction. The component table is not decoration — publishing the
-  // parts and the equal weights is what separates a transparent index from a black box, and
-  // the weights are equal because 61 inputs against 81 scored outcomes cannot be fitted without
-  // overfitting. Absent components render an em-dash, never a zero.
-  if (mkt.riskIndex && mkt.riskIndex.score != null) {
-    var ri = mkt.riskIndex;
-    var rv = Math.max(0, Math.min(100, Number(ri.score)));
-    h += "<div><table class='data'><caption>BotExchange Risk Index</caption></table>";
-    h += "<div class='src' style='margin-top:2px'>Market fragility, not direction — 0 is calm, 100 is maximum stress</div>";
-    h += "<div class='bxr-bar'><span class='fng-mark' style='left:" + rv + "%'></span>" +
-         "<span class='fng-lab' style='left:" + rv + "%'>" + rv + " · " + esc(String(ri.band || "")) + "</span></div>";
-    var comps = ri.components || [];
-    if (comps.length) {
-      h += "<table class='data'>";
-      comps.forEach(function (c) {
-        var has = c.score !== null && c.score !== undefined;
-        h += "<tr class='bxr-c'><td>" + esc(String(c.label || c.key || "")) + "</td>" +
-             "<td class='rt " + (has ? (Number(c.score) >= 60 ? "down" : Number(c.score) <= 30 ? "up" : "num") : "bxr-na") + "'>" +
-             (has ? String(Math.round(Number(c.score))) : "&mdash;") + "</td>" +
-             "<td class='rt " + (has ? "" : "bxr-na") + "'>" + esc(String(c.detail || "")) + "</td></tr>";
-      });
-      h += "</table>";
-    }
-    h += "<div class='src' style='margin:-10px 0 16px'>" +
-         esc(String(ri.componentsLive)) + " of " + esc(String(ri.componentsTotal)) + " components contributing, " +
-         "<b>equal weights</b> at " + esc(String(ri.weightPct)) + "% each &mdash; unfitted by design: we have far more inputs than scored outcomes, " +
-         "so any fitted weighting would be curve-fitting rather than evidence. A component with no data is excluded and shown as &mdash;, never counted as neutral. " +
-         "The index is published and tracked, but it does <b>not</b> gate a trade &mdash; the agents never see it, which is what will make &ldquo;did it predict anything?&rdquo; answerable.</div>";
-    h += "</div>";
-  }
   if (mkt.fearGreed || mkt.regime || mkt.equityRegime || (mkt.longShort || []).length) {
     h += "<div><table class='data'><caption>Sentiment</caption></table>";
     var fngBar = function (label, fg) {
@@ -3142,7 +3171,7 @@ function renderAll(d) {
   _feedForReveal = d;
   renderStamps(d); renderStrip(d.market); renderHeadline(d); renderStandings(d);
   try { renderHook(d); } catch (e) {}
-  renderChart(d); renderPlayers(d); renderSeasonStats(d); renderFloor(d); renderDesk(d); renderHLWhales(d); renderTopTraders(d); renderLighterWhales(d); renderCalendar(d); renderCalMonth(d); renderThisWeek(d); renderIntel(d); renderIntelRail(d);
+  renderChart(d); renderPlayers(d); renderSeasonStats(d); renderFloor(d); renderRiskIndex(d); renderDesk(d); renderHLWhales(d); renderTopTraders(d); renderLighterWhales(d); renderCalendar(d); renderCalMonth(d); renderThisWeek(d); renderIntel(d); renderIntelRail(d);
   renderNotes(d); renderTape(d); renderArchive(d); renderRisk(d);
   renderWire(d); renderWhaleFeed(d); renderColumn(d); renderPredictions(d); try { renderHome(d); } catch (e) {} try { renderConsensus(d); } catch (e) {}
   liveStripRefresh(d.market); startLiveLayers();
