@@ -267,6 +267,15 @@
   .bxr-item .l { color: var(--ink2); }
   .bxr-item .v { font-family: var(--mono); font-weight: 700; }
   .bxr-tick b { color: var(--accent); }
+  .bxr-item { display: block; padding: 7px 0; border-bottom: 1px solid var(--line2); }
+  .bxr-top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+  .bxr-d { font-size: 11.5px; color: var(--ink2); margin-top: 2px; line-height: 1.35; }
+  .bxr-scale { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--ink2); font-family: var(--mono); letter-spacing: .04em; margin: -18px 2px 18px; }
+  .bxr-warn { border-left: 3px solid var(--accent); padding: 10px 0 10px 12px; margin: 14px 0 4px; font-size: 12.5px; line-height: 1.55; color: var(--ink2); }
+  .bxr-warn b { color: var(--ink); }
+  .bxr-use { width: 100%; margin: 10px 0 2px; font-size: 12.5px; }
+  .bxr-use td { padding: 5px 10px 5px 0; border-bottom: 1px solid var(--line2); vertical-align: top; }
+  .bxr-use td:first-child { font-family: var(--mono); white-space: nowrap; color: var(--ink2); }
   @media (max-width: 560px) { .bxr-score { font-size: 34px; } }
   .xpost { font-family: var(--serif); font-size: 14.5px; line-height: 1.5; border-left: 3px solid var(--accent); padding-left: 12px; overflow-wrap: anywhere; }
   .note { padding: 10px 0; border-bottom: 1px solid var(--line2); }
@@ -1507,15 +1516,32 @@ function renderRiskIndex(d) {
        "<span class='src' style='margin-left:auto'>Market fragility, not direction &mdash; 0 is calm, 100 is maximum stress</span></div>";
   h += "<div class='bxr-bar' style='margin:16px 2px 26px'><span class='fng-mark' style='left:" + v + "%'></span>" +
        "<span class='fng-lab' style='left:" + v + "%'>" + v + " &middot; " + esc(String(ri.band || "")) + "</span></div>";
+  h += "<div class='bxr-scale'><span>0 CALM</span><span>STABLE</span><span>NORMAL</span><span>ELEVATED</span><span>STRESSED 100</span></div>";
+  // [#198] The misreading this pre-empts is the obvious one, and the operator made it on
+  // first sight: "100 means short and 0 means long?" It does not. The index is direction-free
+  // by construction (crowding uses |ln(L/S)|, so a crowded long and a crowded short score the
+  // same), and a high reading occurs at tops AND at capitulation lows. Saying so plainly, at
+  // the top of the card, is worth more than any amount of accuracy underneath it.
+  h += "<div class='bxr-warn'><b>This is not a buy or sell signal.</b> It has no direction in it: " +
+       "a high score happens at frothy tops <i>and</i> at capitulation lows. It measures how likely a move is to " +
+       "reverse violently &mdash; not which way price goes. Direction lives in the components below " +
+       "(which side is crowded, which way leverage is moving), never in the headline number.</div>";
+  h += "<table class='bxr-use'>" +
+       "<tr><td>0&ndash;30</td><td><b>Calm.</b> Positioning clean, leverage light. Trends tend to persist and tight stops are viable.</td></tr>" +
+       "<tr><td>30&ndash;60</td><td><b>No strong read.</b> Trade the setup on its own merits.</td></tr>" +
+       "<tr><td>60&ndash;80</td><td><b>Fragile.</b> Moves overshoot and reverse; tight stops get wicked out. Size down or demand a wider structural stop.</td></tr>" +
+       "<tr><td>80&ndash;100</td><td><b>Stressed.</b> Forced flow, crowded positioning, thin liquidity. Stand aside or trade small.</td></tr>" +
+       "</table>";
   var comps = ri.components || [];
   if (comps.length) {
     h += "<div class='bxr-grid'>";
     comps.forEach(function (c) {
       var has = c.score !== null && c.score !== undefined;
       var ccls = has ? (Number(c.score) >= 60 ? "down" : Number(c.score) <= 30 ? "up" : "num") : "bxr-na";
-      h += "<div class='bxr-item' title='" + esc(String(c.detail || "")) + "'>" +
+      h += "<div class='bxr-item'><div class='bxr-top'>" +
            "<span class='l'>" + esc(String(c.label || c.key || "")) + "</span>" +
-           "<span class='v " + ccls + "'>" + (has ? Math.round(Number(c.score)) : "&mdash;") + "</span></div>";
+           "<span class='v " + ccls + "'>" + (has ? Math.round(Number(c.score)) : "&mdash;") + "</span></div>" +
+           "<div class='bxr-d'>" + esc(String(c.detail || "")) + "</div></div>";
     });
     h += "</div>";
   }
@@ -1523,7 +1549,7 @@ function renderRiskIndex(d) {
        esc(String(ri.componentsLive)) + " of " + esc(String(ri.componentsTotal)) + " components contributing, <b>equal weights</b> at " +
        esc(String(ri.weightPct)) + "% each &mdash; unfitted by design: we have far more inputs than scored outcomes, so any fitted weighting would be curve-fitting rather than evidence. " +
        "A component with no data is excluded and shown as &mdash;, never counted as neutral. " +
-       "The index is published and tracked, but it does <b>not</b> gate a trade &mdash; the agents never see it, which is what will make &ldquo;did it predict anything?&rdquo; answerable.</div>";
+       "The index is published and tracked, but it does <b>not</b> gate a trade &mdash; the agents never see it, which is what will make &ldquo;did it predict anything?&rdquo; answerable. <b>It has no forward track record yet</b> &mdash; it went live on 14 August 2026, and every threshold in it is a reasoned judgement rather than a fitted parameter. Watch it before you lean on it.</div>";
   h += "</div>";
   el.innerHTML = h;
 }
