@@ -1582,9 +1582,21 @@ function renderDesk(d) {
       return "<tr><td>" + label + " regime</td><td class='rt " + (r === "RISK_ON" ? "up" : r === "NEUTRAL" ? "num" : "down") + "'>" + esc(String(r).replace("_", "-")) + "</td></tr>";
     };
     if (mkt.regime) dials += regimeRow("Crypto", mkt.regime);
+    // [#197] Dollar liquidity — the macro axis behind the crypto regime badge above it.
+    // Fed balance sheet minus the Treasury account minus reverse repo: the dollars actually
+    // loose in markets. Sits directly under the crypto regime because that is what it
+    // explains — the regime label itself is still computed from price alone.
+    if (mkt.netLiquidity && mkt.netLiquidity.trend) {
+      var nl = mkt.netLiquidity;
+      var nlCls = nl.trend === "ADDING" ? "up" : nl.trend === "FLAT" ? "num" : "down";
+      var nlD = Number(nl.deltaB);
+      dials += "<tr><td>Dollar liquidity</td><td class='rt " + nlCls + "'>" + esc(nl.trend) +
+        " · <span class='num'>" + (nlD >= 0 ? "+" : "-") + "$" + Math.abs(nlD).toFixed(0) + "B</span> over " +
+        esc(String(nl.weeks)) + "w · $" + (Number(nl.usdB) / 1000).toFixed(2) + "T" + "</td></tr>";
+    }
     if (mkt.equityRegime) dials += regimeRow("Stocks", mkt.equityRegime);
     if (dials) h += "<table class='data'>" + dials + "</table>";
-    h += "<div class='src' style='margin:-10px 0 16px'>Positioning, funding and crowding are the same reads the agents get — a crowded side is fuel for the move against it, not confirmation.</div>";
+    h += "<div class='src' style='margin:-10px 0 16px'>Positioning, funding and crowding are the same reads the agents get — a crowded side is fuel for the move against it, not confirmation. Dollar liquidity is the Fed's balance sheet minus the Treasury's cash account and reverse repo — the money actually loose in markets; draining is a headwind for risk assets, adding is a tailwind. It is context the agents read, not a rule that blocks a trade.</div>";
     h += "</div>";
   }
   $("desk").innerHTML = h;
