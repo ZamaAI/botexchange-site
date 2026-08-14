@@ -249,6 +249,12 @@
   .fng-bar { position: relative; height: 8px; border-radius: 4px; margin: 12px 2px 24px; background: linear-gradient(90deg,#c5524a,#c58b4a,#a3a35c,#6aa46a,#3a9152); }
   .fng-mark { position: absolute; top: -5px; width: 3px; height: 18px; background: var(--ink); }
   .fng-lab { position: absolute; top: 18px; transform: translateX(-50%); font-size: 11px; color: var(--ink2); font-family: var(--mono); white-space: nowrap; }
+  /* [#198] BXR bar. Gradient is DELIBERATELY THE REVERSE of .fng-bar: Fear & Greed reads
+     low=fear=red, but the risk index reads low=CALM. Reusing .fng-bar would paint a calm
+     market red and a stressed one green — an inverted-semantics bar is worse than no bar. */
+  .bxr-bar { position: relative; height: 8px; border-radius: 4px; margin: 12px 2px 24px; background: linear-gradient(90deg,#3a9152,#6aa46a,#a3a35c,#c58b4a,#c5524a); }
+  .bxr-c td:first-child { color: var(--ink2); }
+  .bxr-na { color: var(--ink2); opacity: .6; }
   .xpost { font-family: var(--serif); font-size: 14.5px; line-height: 1.5; border-left: 3px solid var(--accent); padding-left: 12px; overflow-wrap: anywhere; }
   .note { padding: 10px 0; border-bottom: 1px solid var(--line2); }
   .note .note-t { white-space: pre-line; font-size: 13px; color: var(--ink2); margin-top: 4px; line-height: 1.5; overflow-wrap: anywhere; }
@@ -1552,6 +1558,39 @@ function renderDesk(d) {
     h += "</table>";
   }
   // (stocks & commodities live in the #stocks-slot side rail next to the crypto table now)
+  // [#198] BotExchange Risk Index — our own 0-100, and deliberately NOT another Fear & Greed.
+  // F&G repackages price/vol/momentum/volume/dominance; BXR is built only from what F&G cannot
+  // see (leverage, positioning, forced flow, dry powder, macro coupling, breadth) and measures
+  // FRAGILITY rather than direction. The component table is not decoration — publishing the
+  // parts and the equal weights is what separates a transparent index from a black box, and
+  // the weights are equal because 61 inputs against 81 scored outcomes cannot be fitted without
+  // overfitting. Absent components render an em-dash, never a zero.
+  if (mkt.riskIndex && mkt.riskIndex.score != null) {
+    var ri = mkt.riskIndex;
+    var rv = Math.max(0, Math.min(100, Number(ri.score)));
+    h += "<div><table class='data'><caption>BotExchange Risk Index</caption></table>";
+    h += "<div class='src' style='margin-top:2px'>Market fragility, not direction — 0 is calm, 100 is maximum stress</div>";
+    h += "<div class='bxr-bar'><span class='fng-mark' style='left:" + rv + "%'></span>" +
+         "<span class='fng-lab' style='left:" + rv + "%'>" + rv + " · " + esc(String(ri.band || "")) + "</span></div>";
+    var comps = ri.components || [];
+    if (comps.length) {
+      h += "<table class='data'>";
+      comps.forEach(function (c) {
+        var has = c.score !== null && c.score !== undefined;
+        h += "<tr class='bxr-c'><td>" + esc(String(c.label || c.key || "")) + "</td>" +
+             "<td class='rt " + (has ? (Number(c.score) >= 60 ? "down" : Number(c.score) <= 30 ? "up" : "num") : "bxr-na") + "'>" +
+             (has ? String(Math.round(Number(c.score))) : "&mdash;") + "</td>" +
+             "<td class='rt " + (has ? "" : "bxr-na") + "'>" + esc(String(c.detail || "")) + "</td></tr>";
+      });
+      h += "</table>";
+    }
+    h += "<div class='src' style='margin:-10px 0 16px'>" +
+         esc(String(ri.componentsLive)) + " of " + esc(String(ri.componentsTotal)) + " components contributing, " +
+         "<b>equal weights</b> at " + esc(String(ri.weightPct)) + "% each &mdash; unfitted by design: we have far more inputs than scored outcomes, " +
+         "so any fitted weighting would be curve-fitting rather than evidence. A component with no data is excluded and shown as &mdash;, never counted as neutral. " +
+         "The index is published and tracked, but it does <b>not</b> gate a trade &mdash; the agents never see it, which is what will make &ldquo;did it predict anything?&rdquo; answerable.</div>";
+    h += "</div>";
+  }
   if (mkt.fearGreed || mkt.regime || mkt.equityRegime || (mkt.longShort || []).length) {
     h += "<div><table class='data'><caption>Sentiment</caption></table>";
     var fngBar = function (label, fg) {
