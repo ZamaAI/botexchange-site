@@ -1499,7 +1499,8 @@ function macroAsOf(md) {
 }
 function bps(v) { return v == null || !isFinite(v) ? "—" : (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(1) + "bps"; }
 
-// [#198] BotExchange Risk Index — rendered on the HOME page, high up, with weight.
+// [#198] BotExchange Risk Index — rendered on the HOME page with weight, [#199] directly
+// under the equity curves rather than above the standings.
 // Deliberately NOT another Fear & Greed: F&G repackages price/vol/momentum/volume/dominance,
 // while BXR is built only from what F&G cannot see (leverage, positioning, forced flow, dry
 // powder, macro coupling, breadth) and measures FRAGILITY, not direction.
