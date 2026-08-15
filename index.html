@@ -402,10 +402,6 @@
     <a class="st-step" href="#/charts"><span class="st-n">4 · TRADE</span><div class="st-t">Real money, live</div><div class="st-c">Filled orders with stops and targets on the book, drawn on live charts across four venues.</div></a>
     <a class="st-step" href="#/bots"><span class="st-n">5 · TRACK</span><div class="st-t">Every outcome public</div><div class="st-c">Wins, losses and breakevens published with P&amp;L — and the AI&rsquo;s own post-mortem of why.</div></a>
   </div>
-  <!-- [#198] BotExchange Risk Index — our own read on how fragile the market is right now.
-       Sits high on the home page deliberately: it is the one number on this site we compute
-       ourselves rather than relay. Renders NOTHING until the feed carries it. -->
-  <div id="bxr-home"></div>
   <!-- SEASON-FLIP: Season 3 closed 14 Aug 2026. Static by design — it must render for
        crawlers and no-JS readers, and it must NOT depend on the feed, because the whole
        point is that it stays correct while the bots are between seasons and the numbers
@@ -427,6 +423,14 @@
   </div>
   <div class="kicker stats-kicker">The season in numbers</div>
   <div class="tape-grid" id="season-stats" style="margin-top:8px"></div>
+
+  <!-- [#198] BotExchange Risk Index — how fragile the market is right now, the one number on
+       this site we compute ourselves rather than relay. [#199] MOVED here from above the
+       standings, on the operator's call: it is a long card, and sitting between the story
+       strip and the competition it pushed the actual scoreboard — the reason people come —
+       below the fold. Directly under the equity curves it still reads as ours and as
+       important, without displacing the race. Renders NOTHING until the feed carries it. -->
+  <div id="bxr-home" style="margin-top:26px"></div>
 
   <hr class="rule">
   <div class="kicker">The daily check-in</div>
@@ -1509,13 +1513,19 @@ function renderRiskIndex(d) {
   var v = Math.max(0, Math.min(100, Number(ri.score)));
   var cls = v >= 60 ? "down" : v <= 30 ? "up" : "num";
   var h = "<div class='bxr-card'>";
-  h += "<div class='kicker' style='margin:0 0 10px'>BotExchange Risk Index &middot; our own read</div>";
+  h += "<div class='kicker' style='margin:0 0 10px'>BotExchange Risk Index</div>";
   h += "<div class='bxr-head'><span class='bxr-score " + cls + "'>" + v + "</span>" +
        "<span class='bxr-of'>/ 100</span>" +
        "<span class='bxr-band " + cls + "'>" + esc(String(ri.band || "")) + "</span>" +
        "<span class='src' style='margin-left:auto'>Market fragility, not direction &mdash; 0 is calm, 100 is maximum stress</span></div>";
-  h += "<div class='bxr-bar' style='margin:16px 2px 26px'><span class='fng-mark' style='left:" + v + "%'></span>" +
-       "<span class='fng-lab' style='left:" + v + "%'>" + v + " &middot; " + esc(String(ri.band || "")) + "</span></div>";
+  // [#199] The floating "42 · NORMAL" label under the tick is GONE. It sat on the same line as
+  // the fixed scale labels below (0 CALM / STABLE / NORMAL / ELEVATED / STRESSED 100), so at
+  // any score near a label's x-position the two texts overlapped and both became unreadable —
+  // observed live at 42 and again at 45, i.e. across most of the NORMAL band, which is where
+  // the index will sit most of the time. It was also pure duplication: the same number is
+  // already the 44px headline and the band is already the word beside it. The tick alone marks
+  // the position; the scale underneath supplies the reading.
+  h += "<div class='bxr-bar' style='margin:16px 2px 26px'><span class='fng-mark' style='left:" + v + "%'></span></div>";
   h += "<div class='bxr-scale'><span>0 CALM</span><span>STABLE</span><span>NORMAL</span><span>ELEVATED</span><span>STRESSED 100</span></div>";
   // [#198] The misreading this pre-empts is the obvious one, and the operator made it on
   // first sight: "100 means short and 0 means long?" It does not. The index is direction-free
