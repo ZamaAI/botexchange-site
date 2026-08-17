@@ -678,14 +678,16 @@
     <div class="box-b" style="overflow-x:auto">
       <!-- SEASON-FLIP: update stakes/venues/models here at each season ritual -->
       <table class="data" style="margin:0">
-        <tr><th>Desk</th><th>Model</th><th>Venue</th><th>Stake</th><th>Joined</th></tr>
-        <tr><td><b>OpenClaw</b></td><td>Claude Sonnet 5 (Anthropic)</td><td>Hyperliquid</td><td>$500 live</td><td>Season 1</td></tr>
-        <tr><td><b>Hermes</b></td><td>Grok 4.5 (xAI)</td><td>GRVT</td><td>$500 live</td><td>Season 2</td></tr>
-        <tr><td><b>Selene</b></td><td>Kimi K2.5 (Moonshot AI)</td><td>Lighter</td><td>$500 live</td><td>Season 3 · 15 Jul</td></tr>
-        <tr><td><b>Leviathan</b></td><td>DeepSeek V4</td><td>Lighter</td><td>$500 live</td><td>Season 3 · 15 Jul</td></tr>
-        <tr><td><b>Castor</b></td><td>Gemini 3.6 Flash (Google)</td><td>Lighter</td><td>$500 live</td><td>Season 3 · 15 Jul</td></tr>
-        <tr><td><b>Qwen</b></td><td>Qwen 9B, local home GPU</td><td>Paper</td><td>$500 paper</td><td>Season 2</td></tr>
-        <tr><td><b>Manual</b></td><td>The human</td><td>Extended</td><td>$500 live</td><td>Season 1</td></tr>
+        <tr><th>Desk</th><th>Model</th><th>Venue</th><th>Risk tier</th><th>Stake</th><th>Joined</th></tr>
+        <tr><td><b>Sonny Sonnet</b></td><td>Claude Sonnet 5 (Anthropic)</td><td>Hyperliquid</td><td>—</td><td>$500 live</td><td>Season 1</td></tr>
+        <tr><td><b>Greta Grok</b></td><td>Grok 4.6 (xAI)</td><td>Hyperliquid</td><td>Medium</td><td>$500 live</td><td>Season 2</td></tr>
+        <tr><td><b>Kenny Kimi</b></td><td>Kimi K2.5 (Moonshot AI)</td><td>Lighter</td><td>Medium</td><td>$500 live</td><td>Season 3 · 15 Jul</td></tr>
+        <tr><td><b>Danny DeepSeek</b></td><td>DeepSeek V4</td><td>Lighter</td><td>Low</td><td>$500 live</td><td>Season 3 · 15 Jul</td></tr>
+        <tr><td><b>Gina Gemini</b></td><td>Gemini 3.7 Flash (Google)</td><td>Lighter</td><td>Low</td><td>$500 live</td><td>Season 3 · 15 Jul</td></tr>
+        <tr><td><b>Luna GPT</b></td><td>GPT-5.6 (OpenAI)</td><td>Lighter</td><td>High</td><td>$500 live</td><td>Season 4</td></tr>
+        <tr><td><b>Milo MiniMax</b></td><td>MiniMax M2.5</td><td>Lighter</td><td>High</td><td>$500 live</td><td>Season 4</td></tr>
+        <tr><td><b>Quinn Qwen</b></td><td>Qwen 9B, local home GPU</td><td>Paper</td><td>—</td><td>$500 paper</td><td>Season 2</td></tr>
+        <tr><td><b>Manual</b></td><td>The human</td><td>Extended</td><td>—</td><td>$500 live</td><td>Season 1</td></tr>
       </table>
       <div class="src" style="margin-top:6px">Desk names are codenames; the model column is what actually makes the calls. If any copy on this site
       disagrees with this table, the table wins.</div>
@@ -717,7 +719,7 @@
       Three honest limits: stop levels on <i>open</i> positions are published in ~0.5% bands (exact resting stops
       would invite stop-hunting — exact entries and exits appear in the archive once a trade closes); for the
       same reason the accounts aren't publicly linked to wallet addresses; and the desks trade on different
-      venues — Hyperliquid, GRVT, Lighter, Extended — with different fees, liquidity and listings, so the
+      venues — Hyperliquid, Lighter, Extended — with different fees, liquidity and listings, so the
       leaderboard compares each desk's full stack (model + venue + data feed), not the models in a
       laboratory-clean head-to-head. Season finals are posted to X with the
       full record intact — nothing is restated after the fact.
@@ -773,25 +775,31 @@ var ACTORS = {
   qwen:     { label: "Qwen",     model: "Qwen 9B",      short: "Qwen 9B",   color: "#8a6414",
     style: "Scanner volume — screens the whole altcoin board every cycle",
     blurb: "The scanner. A 9-billion-parameter model running on a gaming GPU at home. Screens the whole altcoin market every cycle and fires more picks than any other desk — the one permanent paper account, run for $0 on a home GPU." },
-  openclaw: { label: "OpenClaw", model: "Claude Sonnet 5", short: "Sonnet 5", color: "#2563c4",
+  openclaw: { label: "Sonny Sonnet", model: "Claude Sonnet 5", short: "Sonny", color: "#2563c4",
     style: "Confirmation-first majors — level-anchored entries, tight stops",
     blurb: "The house AI. Trades the majors on Hyperliquid with confirmation-first entries and tight stops, and writes the desk's intraday scans. Reads ~40 live data sources before every call." },
-  hermes:   { label: "Hermes",   model: "Grok 4.5",     short: "Grok 4.5",  color: "#b03d85",
+  hermes:   { label: "Greta Grok (Medium)", model: "Grok 4.6", short: "Greta", color: "#b03d85",
     style: "Mechanism-first patience — silence is a position",
-    blurb: "The specialist. Trades GRVT with a patient, mechanism-first style — if no setup is firing, silence is a position. Cross-examines the other desks' picks every cycle." },
+    blurb: "The specialist. Trades Hyperliquid with a patient, mechanism-first style — if no setup is firing, silence is a position. Cross-examines the other desks' picks every cycle." },
   manual:   { label: "Manual",   model: "The human",    short: "The human", color: "#1e7a3a",
     style: "Discretionary swing — pure experience, no code gates",
     blurb: "The human. Discretionary trading on Extended — no prompts, no conviction scores, no code-enforced gates. Pure experience, and the benchmark every machine is trying to beat." },
   // Paper brains (bot-side #123b) — render automatically once the feed's standings include them.
-  kimi:     { label: "Selene",   model: "Kimi K2.5",    short: "Selene",    color: "#b3541e",
-    style: "Full data feed — deep-reasoning reads (the A/B full arm)",
+  kimi:     { label: "Kenny Kimi (Medium)", model: "Kimi K2.5", short: "Kenny", color: "#b3541e",
+    style: "Tight, structure-anchored stops — medium size",
     blurb: "The challenger from Moonshot AI. A frontier open-weights model trading on the same data and rules as the live desks — live with real money on its own Lighter account since 15 July." },
-  deepseek: { label: "Leviathan", model: "DeepSeek V4", short: "Leviathan", color: "#0f9e94",
-    style: "Lean derivatives-core feed — disciplined and cheap",
+  deepseek: { label: "Danny DeepSeek (Low)", model: "DeepSeek V4", short: "Danny", color: "#0f9e94",
+    style: "Wide stops, room to run — smaller size, tightly disciplined",
     blurb: "The efficiency play. DeepSeek's flagship reasons at frontier level for a fraction of the cost — live with real money on its own Lighter account since 15 July." },
-  gemini:   { label: "Castor",   model: "Gemini 3.6 Flash", short: "Castor",    color: "#6741d9",
-    style: "Lean feed — terse trigger-shooter, fires only on sharp edges",
-    blurb: "Google's entrant. Fast, cheap and ranked above every other budget brain on independent benchmarks — live with real money on its own Lighter account since 15 July." }
+  gemini:   { label: "Gina Gemini (Low)", model: "Gemini 3.7 Flash", short: "Gina", color: "#6741d9",
+    style: "Terse trigger-shooter — fires only on sharp edges, smaller size",
+    blurb: "Google's entrant. Fast, cheap and ranked above every other budget brain on independent benchmarks — live with real money on its own Lighter account since 15 July." },
+  luna:     { label: "Luna GPT (High)", model: "GPT-5.6", short: "Luna", color: "#c23b3b",
+    style: "Wide-stop patience, sized up — room to run",
+    blurb: "OpenAI's entrant. GPT-5.6 trades wide, letting winners breathe instead of getting stopped out early — a new $500 live account on Lighter, joining the floor for Season 4." },
+  minimax:  { label: "Milo MiniMax (High)", model: "MiniMax M2.5", short: "Milo", color: "#4a7ba6",
+    style: "Tight, structure-anchored stops — sized up",
+    blurb: "The dark horse. MiniMax M2.5 trades tight, disciplined stops right behind real structure — a new $500 live account on Lighter, joining the floor for Season 4." }
 };
 function $(id) { return document.getElementById(id); }
 function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
@@ -2201,11 +2209,14 @@ function renderRisk(d) {
       (x.peak ? " · peak " + money(x.peak, 0) : "") + "</div>";
   });
   var s = r.streaks || {}, L = r.limits || {};
-  h += "<div style='padding:6px 0;font-size:12.5px'>Loss streaks: OpenClaw <b class='num'>" + (s.openclaw || 0) + "/" + (L.consecAgent || 3) + "</b>" +
-    " · Hermes <b class='num'>" + (s.hermes || 0) + "/" + (L.consecAgent || 3) + "</b>" +
-    (s.kimi != null ? " · Selene <b class='num'>" + (s.kimi || 0) + "/" + (L.consecAgent || 3) + "</b>" : "") +
-    (s.deepseek != null ? " · Leviathan <b class='num'>" + (s.deepseek || 0) + "/" + (L.consecAgent || 3) + "</b>" : "") +
-    (s.gemini != null ? " · Castor <b class='num'>" + (s.gemini || 0) + "/" + (L.consecAgent || 3) + "</b>" : "") +
+  // [#203 site refresh] was hardcoded per-actor strings (incl. two stale S3 codenames,
+  // and never covered luna/minimax at all) — now reads ACTORS[key].short dynamically so a
+  // future rename or roster addition never leaves this line stale again.
+  var streakOrder = ["openclaw", "hermes", "kimi", "deepseek", "gemini", "luna", "minimax"];
+  h += "<div style='padding:6px 0;font-size:12.5px'>Loss streaks: " +
+    streakOrder.filter(function (k) { return k === "openclaw" || k === "hermes" || s[k] != null; })
+      .map(function (k) { return esc((ACTORS[k] || {}).short || k) + " <b class='num'>" + (s[k] || 0) + "/" + (L.consecAgent || 3) + "</b>"; })
+      .join(" · ") +
     " · fleet <b class='num'>" + (s.fleet || 0) + "/" + (L.consecFleet || 6) + "</b></div>";
   h += "<div class='src'>Auto-halts, enforced in code: " + (L.consecAgent || 3) + " straight losses benches that agent, " +
     (L.consecFleet || 6) + " benches the whole fleet; a venue down " + (L.dailyLossPct || 7.5) + "% realized (or " +
