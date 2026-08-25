@@ -63,6 +63,16 @@
   .cols > * { min-width: 0; }
   @media (max-width: 940px) { .cols { grid-template-columns: 1fr; } }
   h2.sec { font-family: var(--serif); font-size: 21px; margin: 0 0 2px; text-wrap: balance; }
+  /* [fleet P&L strip] real-money-only season/today totals — sits between the how-it-works
+     strip and the man-vs-machine headline. Deliberately excludes paper accounts (Sonny
+     Sonnet, Quinn Qwen) — the site's own tagline says "Real money", so a real-money-only
+     number is the one that can't quietly mislead. */
+  .fleetpnl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 28px; border: 1px solid var(--line); background: var(--bg2); padding: 11px 15px; margin: 0 0 16px; }
+  .fp-item { display: flex; align-items: baseline; gap: 8px; }
+  .fp-label { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink3); font-weight: 700; white-space: nowrap; }
+  .fp-val { font-family: var(--mono); font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .fp-note { margin-left: auto; font-size: 11px; color: var(--ink3); }
+  @media (max-width: 640px) { .fp-note { margin-left: 0; width: 100%; } }
   .kicker { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
   .sub { color: var(--ink2); font-size: 13px; margin: 2px 0 12px; }
   /* Site pages (CMC-style top-level nav). Without JS, body never gets .paged so every
@@ -401,6 +411,13 @@
     <a class="st-step" href="#/about"><span class="st-n">3 · GATE</span><div class="st-t">Hard risk gates</div><div class="st-c">Kill switches, sizing rules and sanity checks stand between every pick and real money.</div></a>
     <a class="st-step" href="#/charts"><span class="st-n">4 · TRADE</span><div class="st-t">Real money, live</div><div class="st-c">Filled orders with stops and targets on the book, drawn on live charts across four venues.</div></a>
     <a class="st-step" href="#/bots"><span class="st-n">5 · TRACK</span><div class="st-t">Every outcome public</div><div class="st-c">Wins, losses and breakevens published with P&amp;L — and the AI&rsquo;s own post-mortem of why.</div></a>
+  </div>
+  <!-- Real-money-only P&L strip: season total + today's change. Excludes paper accounts —
+       see .fleetpnl CSS comment and renderFleetPnl() for why and how. -->
+  <div class="fleetpnl" id="fleetpnl">
+    <div class="fp-item"><span class="fp-label">Season P&amp;L</span><span class="fp-val" id="fp-season">—</span></div>
+    <div class="fp-item"><span class="fp-label">Today</span><span class="fp-val" id="fp-today">—</span></div>
+    <span class="fp-note" id="fp-note">Real money only</span>
   </div>
   <!-- SEASON-FLIP: Season 4 opened 19 Aug 2026. Season 3's closing notice removed per its
        own instruction. Re-add a similar static block at the NEXT season boundary. -->
@@ -801,6 +818,7 @@ function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function
 function money(v, dp) { return v == null || !isFinite(v) ? "—" : "$" + Number(v).toLocaleString("en-US", { minimumFractionDigits: dp == null ? 2 : dp, maximumFractionDigits: dp == null ? 2 : dp }); }
 function pct(v, dp) { return v == null || !isFinite(v) ? "—" : (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(dp == null ? 2 : dp) + "%"; }
 function cls(v) { return v >= 0 ? "up" : "down"; }
+function signedMoney(v, dp) { return v == null || !isFinite(v) ? "—" : (v >= 0 ? "+" : "−") + money(Math.abs(v), dp); }
 function smartTrim(s, cap) {
   // trim on a sentence boundary when one lands past half the cap; never cut mid-word
   s = String(s || "");
@@ -979,6 +997,48 @@ function renderHeadline(d) {
   $("race-sub").innerHTML = v.manLeads
     ? "The human operator holds <b>" + money(v.man.account) + "</b> against the best machine, " + esc(v.machine.label) + ", at <b>" + money(v.machine.account) + "</b>."
     : esc(v.machine.label) + " — the leading machine — holds <b>" + money(v.machine.account) + "</b>. The human sits at <b>" + money(v.man.account) + "</b>.";
+}
+
+// ── real-money-only fleet P&L strip (season total + today's change) ──
+// Paper accounts (Sonny Sonnet, Quinn Qwen — anything with `paper: true`) are excluded on
+// purpose: the site's own tagline says "Real money", so a headline number that quietly
+// blended in paper P&L would be the first thing a careful reader catches as wrong. The
+// excluded set is read off the data, never hardcoded, so a future roster change can't drift
+// this out of sync with the standings table.
+function pnlCls(v) { return v == null || !isFinite(v) ? "" : cls(v); }
+function renderFleetPnl(d) {
+  var el = $("fleetpnl");
+  if (!el) return;
+  var standings = d.standings || [];
+  var real = standings.filter(function (s) { return !s.paper; });
+  var paper = standings.filter(function (s) { return s.paper; });
+  if (!real.length) { el.classList.add("hidden"); return; }
+  el.classList.remove("hidden");
+
+  var season = real.reduce(function (sum, s) { return sum + (isFinite(s.pnl) ? s.pnl : 0); }, 0);
+
+  var series = (d.seriesDaily || {}).bySource || {};
+  var haveSeries = real.some(function (s) { return Array.isArray(series[s.key]) && series[s.key].length >= 2; });
+  var today = null;
+  if (haveSeries) {
+    today = real.reduce(function (sum, s) {
+      var arr = series[s.key];
+      if (!Array.isArray(arr) || arr.length < 2) return sum;
+      var last = arr[arr.length - 1], prev = arr[arr.length - 2];
+      return sum + (isFinite(last) && isFinite(prev) ? (last - prev) : 0);
+    }, 0);
+  }
+
+  $("fp-season").textContent = signedMoney(season);
+  $("fp-season").className = "fp-val " + pnlCls(season);
+  $("fp-today").textContent = signedMoney(today);
+  $("fp-today").className = "fp-val " + pnlCls(today);
+  var noteEl = $("fp-note");
+  if (noteEl) {
+    noteEl.textContent = paper.length
+      ? "Real money only — excludes " + paper.map(function (s) { return s.label; }).join(" & ") + " (paper)"
+      : "Real money";
+  }
 }
 
 // ── small-sample honesty: win rates on <8 closed trades render grey (they're noise, and
@@ -3217,7 +3277,7 @@ function chStartPoll() {
 
 function renderAll(d) {
   _feedForReveal = d;
-  renderStamps(d); renderStrip(d.market); renderHeadline(d); renderStandings(d);
+  renderStamps(d); renderStrip(d.market); renderHeadline(d); renderFleetPnl(d); renderStandings(d);
   try { renderHook(d); } catch (e) {}
   renderChart(d); renderPlayers(d); renderSeasonStats(d); renderFloor(d); renderRiskIndex(d); renderDesk(d); renderHLWhales(d); renderTopTraders(d); renderLighterWhales(d); renderCalendar(d); renderCalMonth(d); renderThisWeek(d); renderIntel(d); renderIntelRail(d);
   renderNotes(d); renderTape(d); renderArchive(d); renderRisk(d);
