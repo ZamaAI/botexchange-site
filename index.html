@@ -63,14 +63,22 @@
   .cols > * { min-width: 0; }
   @media (max-width: 940px) { .cols { grid-template-columns: 1fr; } }
   h2.sec { font-family: var(--serif); font-size: 21px; margin: 0 0 2px; text-wrap: balance; }
-  /* [fleet P&L tiles] real-money-only season/today totals — sits between the how-it-works
-     strip and the man-vs-machine headline. Deliberately excludes paper accounts (Sonny
-     Sonnet, Quinn Qwen) — the site's own tagline says "Real money", so a real-money-only
-     number is the one that can't quietly mislead. Reuses the existing .tile card (see
-     "Reading the tape" for its other use) rather than inventing a second box style — capped
-     at 420px so two short stat cards don't stretch into two empty-looking full-width bars. */
-  .fleetpnl { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; max-width: 420px; margin: 0 0 8px; }
-  .fleetpnl-note { font-size: 11px; color: var(--ink3); margin: 0 0 16px; }
+  /* [race row] the man-vs-machine headline (left) and the real-money P&L tiles (right) sit
+     inline on the same row — the tiles read as supporting detail on the headline, not a
+     separate block above it. Stacks on narrow screens (tiles move below the headline, still
+     above the standings table) rather than squeezing two columns into a phone width. */
+  .race-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px 28px; flex-wrap: wrap; margin: 14px 0 0; }
+  .race-row-left { flex: 1 1 320px; min-width: 0; }
+  .race-row-right { flex: 0 0 auto; }
+  @media (max-width: 760px) { .race-row-right { order: 2; width: 100%; margin-top: 4px; } .race-row-left { order: 1; } }
+  /* [fleet P&L tiles] real-money-only season/today totals. Deliberately excludes paper
+     accounts (Sonny Sonnet, Quinn Qwen) — the site's own tagline says "Real money", so a
+     real-money-only number is the one that can't quietly mislead. Reuses the existing .tile
+     card (see "Reading the tape" for its other use) rather than inventing a second box style
+     — capped at 300px so two short stat cards don't stretch into empty-looking bars. */
+  .fleetpnl { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; max-width: 300px; margin: 0 0 8px; }
+  .fleetpnl-note { font-size: 11px; color: var(--ink3); margin: 0; text-align: right; }
+  @media (max-width: 760px) { .fleetpnl-note { text-align: left; } }
   .kicker { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
   .sub { color: var(--ink2); font-size: 13px; margin: 2px 0 12px; }
   /* Site pages (CMC-style top-level nav). Without JS, body never gets .paged so every
@@ -410,18 +418,26 @@
     <a class="st-step" href="#/charts"><span class="st-n">4 · TRADE</span><div class="st-t">Real money, live</div><div class="st-c">Filled orders with stops and targets on the book, drawn on live charts across four venues.</div></a>
     <a class="st-step" href="#/bots"><span class="st-n">5 · TRACK</span><div class="st-t">Every outcome public</div><div class="st-c">Wins, losses and breakevens published with P&amp;L — and the AI&rsquo;s own post-mortem of why.</div></a>
   </div>
-  <!-- Real-money-only P&L tiles: season total + today's change. Excludes paper accounts —
-       see .fleetpnl CSS comment and renderFleetPnl() for why and how. -->
-  <div class="fleetpnl" id="fleetpnl">
-    <div class="tile"><div class="t-k">Season P&amp;L</div><div class="t-v" id="fp-season">—</div><div class="t-s">real money</div></div>
-    <div class="tile"><div class="t-k">Today</div><div class="t-v" id="fp-today">—</div><div class="t-s">vs yesterday</div></div>
+  <!-- Race headline (left) + real-money P&L tiles (right), side by side so the tiles read as
+       supporting detail on the same headline instead of a separate block above it. -->
+  <div class="race-row">
+    <div class="race-row-left">
+      <!-- SEASON-FLIP: Season 4 opened 19 Aug 2026. Season 3's closing notice removed per its
+           own instruction. Re-add a similar static block at the NEXT season boundary. -->
+      <div class="kicker" id="race-kicker">Season 4 · seven accounts · $500 each · since 19 August</div>
+      <h2 class="sec" id="race"><span class="skel">Man vs machine — the race is on</span></h2>
+      <p class="sub" id="race-sub"></p>
+    </div>
+    <div class="race-row-right">
+      <!-- Real-money-only P&L tiles: season total + today's change. Excludes paper accounts —
+           see .fleetpnl CSS comment and renderFleetPnl() for why and how. -->
+      <div class="fleetpnl" id="fleetpnl">
+        <div class="tile"><div class="t-k">Season P&amp;L</div><div class="t-v" id="fp-season">—</div><div class="t-s">real money</div></div>
+        <div class="tile"><div class="t-k">Today</div><div class="t-v" id="fp-today">—</div><div class="t-s">vs yesterday</div></div>
+      </div>
+      <p class="fleetpnl-note" id="fp-note">Real money only.</p>
+    </div>
   </div>
-  <p class="fleetpnl-note" id="fp-note">Real money only.</p>
-  <!-- SEASON-FLIP: Season 4 opened 19 Aug 2026. Season 3's closing notice removed per its
-       own instruction. Re-add a similar static block at the NEXT season boundary. -->
-  <div class="kicker" id="race-kicker">Season 4 · seven accounts · $500 each · since 19 August</div>
-  <h2 class="sec" id="race"><span class="skel">Man vs machine — the race is on</span></h2>
-  <p class="sub" id="race-sub"></p>
   <p class="hook hidden" id="hook"></p>
   <div style="overflow-x:auto"><table class="std" id="standings" aria-label="Competition standings"><tr><td><span class="skel">Seven competitors — one human, six AI models — ranked by live account value.</span></td></tr></table></div>
   <div class="src hidden" id="std-note" style="margin-top:4px">Grey win rates rest on fewer than 8 closed trades — too small a sample to mean much yet. Trade counts are in the Record column.</div>
