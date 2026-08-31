@@ -346,7 +346,9 @@
   #stale-note { background: #fdf3e0; border-bottom: 1px solid #ecd9ac; color: #6b4a08; font-size: 12px; text-align: center; padding: 5px 10px; }
 
   /* ── #116 additions: players, live position bars, tape analytics, archive filters, skeletons ── */
-  .players { display: grid; grid-template-columns: repeat(auto-fit, minmax(186px, 1fr)); gap: 13px; margin-top: 14px; }
+  /* [#286b] 8 cards -> 2 rows of 4 on desktop (auto-fit gave a ragged 5+3); narrow screens keep the fluid grid */
+  .players { display: grid; grid-template-columns: repeat(4, 1fr); gap: 13px; margin-top: 14px; }
+  @media (max-width: 860px) { .players { grid-template-columns: repeat(auto-fit, minmax(186px, 1fr)); } }
   .pcard { border: 1px solid var(--line); border-top: 3px solid var(--line); padding: 12px 14px 10px; background: #fff; display: flex; flex-direction: column; }
   .pcard .p-name { font-family: var(--serif); font-weight: 700; font-size: 17px; }
   .pcard .p-model { color: var(--ink3); font-size: 11.5px; margin-bottom: 6px; }
