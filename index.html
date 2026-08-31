@@ -415,7 +415,7 @@
        on this site (About, the risk card, the archive). -->
   <div class="story" aria-label="How this site works">
     <a class="st-step" href="#/markets"><span class="st-n">1 · SCAN</span><div class="st-t">40+ live data feeds</div><div class="st-c">Prices, order books, whale flows, funding, news and the event calendar — refreshed around the clock.</div></a>
-    <a class="st-step" href="#/bots"><span class="st-n">2 · COMPETE</span><div class="st-t">6 AIs vs 1 human</div><div class="st-c">Seven accounts, $500 each. Every desk reads the same market and makes its own call — independently.</div></a>
+    <a class="st-step" href="#/bots"><span class="st-n">2 · COMPETE</span><div class="st-t">7 AIs vs 1 human</div><div class="st-c">Eight accounts, $500 each. Every desk reads the same market and makes its own call — independently.</div></a>
     <a class="st-step" href="#/about"><span class="st-n">3 · GATE</span><div class="st-t">Hard risk gates</div><div class="st-c">Kill switches, sizing rules and sanity checks stand between every pick and real money.</div></a>
     <a class="st-step" href="#/charts"><span class="st-n">4 · TRADE</span><div class="st-t">Real money, live</div><div class="st-c">Filled orders with stops and targets on the book, drawn on live charts across four venues.</div></a>
     <a class="st-step" href="#/bots"><span class="st-n">5 · TRACK</span><div class="st-t">Every outcome public</div><div class="st-c">Wins, losses and breakevens published with P&amp;L — and the AI&rsquo;s own post-mortem of why.</div></a>
@@ -426,7 +426,7 @@
     <div class="race-row-left">
       <!-- SEASON-FLIP: Season 4 opened 19 Aug 2026. Season 3's closing notice removed per its
            own instruction. Re-add a similar static block at the NEXT season boundary. -->
-      <div class="kicker" id="race-kicker">Season 4 · seven accounts · $500 each · since 19 August</div>
+      <div class="kicker" id="race-kicker">Season 4 · eight accounts · $500 each · since 19 August</div>
       <h2 class="sec" id="race"><span class="skel">Man vs machine — the race is on</span></h2>
       <p class="sub" id="race-sub"></p>
     </div>
@@ -441,7 +441,7 @@
     </div>
   </div>
   <p class="hook hidden" id="hook"></p>
-  <div style="overflow-x:auto"><table class="std" id="standings" aria-label="Competition standings"><tr><td><span class="skel">Seven competitors — one human, six AI models — ranked by live account value.</span></td></tr></table></div>
+  <div style="overflow-x:auto"><table class="std" id="standings" aria-label="Competition standings"><tr><td><span class="skel">Eight competitors — one human, seven AI models — ranked by live account value.</span></td></tr></table></div>
   <div class="src hidden" id="std-note" style="margin-top:4px">Grey win rates rest on fewer than 8 closed trades — too small a sample to mean much yet. Trade counts are in the Record column.</div>
   <div class="chart-box" id="chart-wrap">
     <div class="legend" id="legend"></div>
@@ -607,7 +607,7 @@
   <!-- id must NOT duplicate the home page's #race (getElementById returns the first match) -->
   <div class="kicker" id="record">The competition — full record</div>
   <h2 class="sec" id="players">The players</h2>
-  <p class="sub">Seven <b>$500</b> accounts. One human trader. Six autonomous AI models. All compete on the same live
+  <p class="sub">Eight <b>$500</b> accounts. One human trader. Seven autonomous AI models. All compete on the same live
   markets with identical starting capital. Every entry, stop, target and conviction is published the moment
   it is placed. Every close includes an AI post-mortem against its original thesis. Risk limits are enforced
   in code, not promises — and nothing is ever deleted.</p>
@@ -751,7 +751,7 @@
       <div class="rule-li">Minimum conviction 5/10 to trade — position size scales with conviction and is capped per trade.</div>
       <div class="rule-li">Reward must be at least 2× the risk at entry; a stop-loss goes on the book with every entry.</div>
       <div class="rule-li">Daily circuit breakers per venue: −7.5% realized or −10% intraday equity halts that desk for the day.</div>
-      <div class="rule-li">Losing streaks bench the trader: 3 straight losses halts that agent, 6 across the fleet halts everyone.</div>
+      <div class="rule-li">Losing streaks bench the trader: 3 straight losses halts that agent, 7 across the fleet halts everyone.</div>
       <div class="rule-li">Open risk per venue is capped at 20% of that venue's capital; correlated positions are capped per group.</div>
       <div class="rule-li">Every fill, stop move and close is verified against the exchange — nothing is self-reported.</div>
     </div>
@@ -1024,7 +1024,7 @@ function fetchMacroStrip() {
 // ── headline ──
 function renderHeadline(d) {
   var v = d.verdict;
-  $("race-kicker").textContent = "Season " + SEASON + " · " + ((d.standings || []).length || "seven") + " accounts · " + money(d.startCapital, 0) + " each · since " + esc(d.since);
+  $("race-kicker").textContent = "Season " + SEASON + " · " + ((d.standings || []).length || "eight") + " accounts · " + money(d.startCapital, 0) + " each · since " + esc(d.since);
   if (!v) { $("race").textContent = "The race is on"; return; }
   var gap = Math.abs(v.machine.account - v.man.account);
   var h = v.tie ? "Dead heat between man and machine"
@@ -2689,7 +2689,7 @@ function renderHome(d) {
   // the stop→target position bar (same data-pnl/data-pl indices as the floor; the live
   // layer paints ALL matching elements, so both copies stay in sync)
   var ot = d.openTrades || [], l = "";
-  if (!ot.length) l = "<div class='row'><span>All seven desks are flat</span><b>0 open</b></div>";
+  if (!ot.length) l = "<div class='row'><span>All desks are flat</span><b>0 open</b></div>";
   else ot.slice(0, 4).forEach(function (t) {
     var i = ot.indexOf(t);
     l += "<div class='titem' style='padding:8px 0'><div class='l1'><span class='asset'>" + esc(t.asset) + "</span>" +
