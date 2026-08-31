@@ -750,8 +750,8 @@
     <div class="box-b" style="font-size:12.3px;color:var(--ink2)">
       <div class="rule-li">Minimum conviction 5/10 to trade — position size scales with conviction and is capped per trade.</div>
       <div class="rule-li">Reward must be at least 2× the risk at entry; a stop-loss goes on the book with every entry.</div>
-      <div class="rule-li">Daily circuit breakers per venue: −7.5% realized or −10% intraday equity halts that desk for the day.</div>
-      <div class="rule-li">Losing streaks bench the trader: 3 straight losses halts that agent, 7 across the fleet halts everyone.</div>
+      <div class="rule-li" id="rule-daily">Daily circuit breakers per venue: −7.5% realized or −10% intraday equity halts that desk for the day.</div>
+      <div class="rule-li" id="rule-streak">Losing streaks bench the trader: 3 straight losses halts that agent, 7 across the fleet halts everyone.</div>
       <div class="rule-li">Open risk per venue is capped at 20% of that venue's capital; correlated positions are capped per group.</div>
       <div class="rule-li">Every fill, stop move and close is verified against the exchange — nothing is self-reported.</div>
     </div>
@@ -1413,7 +1413,27 @@ function renderFloor(d) {
   var open = d.openTrades || [], waits = d.awaiting || [];
   _openTrades = open;
   var liveOpen = open.filter(function (t) { return t.venue !== "PAPER"; });
-  var h = "<div class='wire-h'>Open positions</div>";
+  var h = "";
+  // [#290] cross-desk disagreement strip — when desks hold or watch OPPOSITE directions on
+  // the same asset (deepseek short vs gemini long ZEC), that is the floor's best story and
+  // it was invisible. Computed from what the feed already publishes; independence is by
+  // design (#85), so this is a spotlight, not a warning.
+  var sides = {};
+  open.forEach(function (t) { (sides[t.asset] = sides[t.asset] || []).push({ dir: String(t.direction).toUpperCase(), who: (ACTORS[t.actor] || {}).short || t.actor, state: t.venue !== "PAPER" ? "live" : "paper" }); });
+  waits.forEach(function (t) { (sides[t.asset] = sides[t.asset] || []).push({ dir: String(t.direction).toUpperCase(), who: String(t.brain || "").split(" ")[0], state: "watching" }); });
+  var disputes = Object.keys(sides).filter(function (a2) {
+    var ds = {}; sides[a2].forEach(function (x) { ds[x.dir] = 1; }); return ds.LONG && ds.SHORT;
+  });
+  if (disputes.length) {
+    h += "<div class='wire-h'>Desks disagree</div>";
+    disputes.forEach(function (a2) {
+      var Ls = sides[a2].filter(function (x) { return x.dir === "LONG"; }).map(function (x) { return x.who + " (" + x.state + ")"; }).join(", ");
+      var Ss = sides[a2].filter(function (x) { return x.dir === "SHORT"; }).map(function (x) { return x.who + " (" + x.state + ")"; }).join(", ");
+      h += "<div class='flatnote' style='margin-bottom:8px'><b>" + esc(a2) + "</b> — LONG: " + esc(Ls) +
+        " · SHORT: " + esc(Ss) + ". Each desk decides alone; only one side can be right, and both are published.</div>";
+    });
+  }
+  h += "<div class='wire-h'>Open positions</div>";
   if (!liveOpen.length) { var fnr = nextReport(); h += "<div class='flatnote'><b>Live venues are flat.</b> No open real-money risk — the agents are waiting for an edge. Next decision cycle " + fnr.label + " (in " + fnr.inStr + ").</div>"; }
   open.forEach(function (t, i) {
     var e = t.entry, s = t.stop, tg = t.target;
@@ -3339,6 +3359,16 @@ function renderAll(d) {
   renderStamps(d); renderStrip(d.market); renderHeadline(d); renderFleetPnl(d); renderSeasonHistory(d); renderStandings(d);
   try { renderHook(d); } catch (e) {}
   renderChart(d); renderPlayers(d); renderSeasonStats(d); renderFloor(d); renderRiskIndex(d); renderDesk(d); renderHLWhales(d); renderTopTraders(d); renderLighterWhales(d); renderCalendar(d); renderCalMonth(d); renderThisWeek(d); renderIntel(d); renderIntelRail(d);
+  // [#289] the risk-rules card reads the FEED's enforced limits — the static prose went
+  // stale once already (fleet breaker 6->7 at #214, wrong on this page for a week).
+  // Static text above stays as the no-JS/old-feed fallback.
+  try {
+    var RL = ((d.risk || {}).limits) || {};
+    if (RL.dailyLossPct != null && $("rule-daily")) $("rule-daily").textContent =
+      "Daily circuit breakers per venue: \u2212" + RL.dailyLossPct + "% realized or \u2212" + RL.intradayDrawdownPct + "% intraday equity halts that desk for the day.";
+    if (RL.consecAgent != null && $("rule-streak")) $("rule-streak").textContent =
+      "Losing streaks bench the trader: " + RL.consecAgent + " straight losses halts that agent, " + RL.consecFleet + " across the fleet halts everyone.";
+  } catch (e) {}
   renderNotes(d); renderTape(d); renderArchive(d); renderRisk(d);
   renderWire(d); renderWhaleFeed(d); renderColumn(d); renderPredictions(d); try { renderHome(d); } catch (e) {} try { renderConsensus(d); } catch (e) {}
   liveStripRefresh(d.market); startLiveLayers();
