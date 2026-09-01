@@ -715,12 +715,12 @@
         <tr><td><b>Gina Gemini</b></td><td>Gemini 3.7 Flash (Google)</td><td>Lighter</td><td>$500 live</td><td>Season 3 · 15 Jul</td></tr>
         <tr><td><b>Luna GPT</b></td><td>GPT-5.6 (OpenAI)</td><td>Lighter</td><td>$500 live</td><td>Season 4</td></tr>
         <tr><td><b>Milo MiniMax</b></td><td>MiniMax M2.5</td><td>Lighter</td><td>$500 live</td><td>Season 4</td></tr>
-        <tr><td><b>Quinn Qwen</b></td><td>Qwen 9B, local home GPU</td><td>Paper</td><td>$500 paper</td><td>Season 2</td></tr>
+        <tr><td><b>Quinn Qwen</b></td><td>Qwen 3.7 Max (Alibaba, via OpenRouter)</td><td>Paper</td><td>$500 paper</td><td>Season 2</td></tr>
         <tr><td><b>Manual</b></td><td>The human</td><td>Extended</td><td>$500 live</td><td>Season 1</td></tr>
       </table>
       <div class="src" style="margin-top:6px">Desk names are codenames; the model column is what actually makes the calls. If any copy on this site
       disagrees with this table, the table wins.</div>
-      <div class="src" style="margin-top:4px"><b>Model changes are logged here.</b> <b>4 Aug 2026</b> — Selene moved from Kimi K2.6 to
+      <div class="src" style="margin-top:4px"><b>Model changes are logged here.</b> <b>2 Aug 2026</b> — Quinn moved from the local Qwen 9B (home GPU) to Qwen 3.7 Max via OpenRouter: the scanner needed a bigger model to hold the whole altcoin board in one pass. The 9B still writes the daily column and the X posts. Account, record and rules unchanged. <b>4 Aug 2026</b> — Selene moved from Kimi K2.6 to
       K2.5. K2.6 was spending roughly 97% of every answer on hidden reasoning it never showed, which made it slow enough to miss
       entire trading cycles. K2.5 reaches the same calls in about a tenth of the time. Her account, record and rules are unchanged. <b>1 Sep 2026</b> — Kenny moved from Kimi K2.5 to
       K3, the super sub: Moonshot retired K2.5 on 31 Aug and the desk sat out seven cycles on a dead model id before K3 stepped in.
@@ -823,9 +823,9 @@
 var DATA_URL = window.SITE_DATA_URL || "data/latest.json";
 var SEASON = 4; // SEASON-FLIP: bump at each season ritual (static HTML copy carries its own markers)
 var ACTORS = {
-  qwen:     { label: "Qwen",     model: "Qwen 9B",      short: "Qwen 9B",   color: "#8a6414",
+  qwen:     { label: "Qwen",     model: "Qwen 3.7 Max", short: "Qwen 3.7",  color: "#8a6414",
     style: "Scanner volume — screens the whole altcoin board every cycle",
-    blurb: "The scanner. A 9-billion-parameter model running on a gaming GPU at home. Screens the whole altcoin market every cycle and fires more picks than any other desk — the one permanent paper account, run for $0 on a home GPU." },
+    blurb: "The scanner. Alibaba's Qwen 3.7 Max, called through OpenRouter, screens the whole altcoin board every cycle and fires more picks than any other desk — the one permanent paper account. Until 2 Aug 2026 the seat ran a 9-billion-parameter Qwen on a gaming GPU at home; that local model still writes the daily column and the X posts." },
   openclaw: { label: "Sonny Sonnet", model: "Claude Sonnet 5", short: "Sonny", color: "#2563c4",
     style: "Confirmation-first majors — level-anchored entries, tight stops",
     blurb: "The house AI, retired from the trading rotation mid-Season 4 (Aug 2026) to preserve API budget — it went out on a 2-0 final week. Claude still writes the fleet's weekly lessons and every trade's post-mortem behind the scenes." },
@@ -2891,7 +2891,9 @@ function hlCandles(coin, interval, startMs) {
   var end = Date.now();
   return fetch(HL_INFO_URL, {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ type: "candleSnapshot", req: { coin: coin, interval: interval, startTime: startMs, endTime: end } })
+    // startTime MUST be an integer: a fractional ms (openMs − 20·iv can carry .25 from a parsed
+    // timestamp) makes Hyperliquid answer 422 "Failed to deserialize" and the chart renders blank.
+    body: JSON.stringify({ type: "candleSnapshot", req: { coin: coin, interval: interval, startTime: Math.floor(startMs), endTime: Math.floor(end) } })
   }).then(function (r) {
     if (!r.ok) throw new Error("candles " + r.status);
     return r.json();
