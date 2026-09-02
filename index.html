@@ -540,6 +540,7 @@
   A level is not a prediction — it is where the market has previously turned, and the interesting question is always whether it holds.
   These are computed from <b>spot daily candles</b> and drawn over <b>perpetual</b> price, so a level sits near, not exactly on, the wick that made it.</p>
   <div class="ch-bar" id="lvl-picker"></div>
+  <div class="src" id="lvl-asof"></div>
   <div id="level-chart"></div>
 </div>
 <div class="page" data-page="news">
@@ -1640,12 +1641,22 @@ function renderTape(d) {
 // marketsDesk is REPORT-STASHED (00:00 / 06:00 / 12:00 / 18:00 SAST), not live like the
 // ticker strip. Stamping the macro tables with the cycle they came from keeps a five-hour-old
 // print from reading as a live quote — the same honesty the whale desk caption carries.
-function macroAsOf(md) {
-  if (!md || !md.at) return "";
-  var t = new Date(md.at);
+// [#322] Per-block age. The feed now carries marketsDesk.asOf[key] = when THAT block's data was
+// fetched (or carried from), so a 4h-old level pack, a T+1 ETF print and a carried whale book
+// no longer all read as the cycle time. Falls back to md.at (the old behaviour) for feeds
+// that predate the field. Carried blocks say so.
+function blockAsOf(md, key) {
+  if (!md) return "";
+  var iso = (md.asOf && key && md.asOf[key]) || md.at;
+  if (!iso) return "";
+  var t = new Date(iso);
   if (isNaN(t)) return "";
-  return " · as of " + t.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Africa/Johannesburg" });
+  var carried = md.carried && md.carried.blocks && key && md.carried.blocks.indexOf(key) >= 0;
+  var hm = t.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Africa/Johannesburg" });
+  var age = relAge(iso);
+  return " · <span class='src' title='" + esc(t.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Africa/Johannesburg" })) + " SAST'>as of " + hm + (age ? " (" + age + ")" : "") + (carried ? " · carried" : "") + "</span>";
 }
+function macroAsOf(md) { return blockAsOf(md, "macro"); }
 function bps(v) { return v == null || !isFinite(v) ? "—" : (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(1) + "bps"; }
 
 // [#198] BotExchange Risk Index — rendered on the HOME page with weight, [#199] directly
@@ -1767,7 +1778,7 @@ function renderDesk(d) {
     }
   }
   if (md && md.etf && (md.etf.BTC || md.etf.ETH || md.etf.SOL)) {
-    h += "<table class='data'><caption>ETF flows" + (md.etf.BTC && md.etf.BTC.date ? " (" + esc(md.etf.BTC.date) + ")" : "") + "</caption>";
+    h += "<table class='data'><caption>ETF flows" + (md.etf.BTC && md.etf.BTC.date ? " (data for " + esc(md.etf.BTC.date) + ")" : "") + blockAsOf(md, "etf") + "</caption>";
     ["BTC", "ETH", "SOL"].forEach(function (k) {
       var e = md.etf[k]; if (!e) return;
       h += "<tr><td>" + k + " ETF</td><td class='rt " + cls(e.latestM) + "'>" + (e.latestM >= 0 ? "+" : "−") + "$" + Math.abs(e.latestM).toFixed(1) + "M</td>" +
@@ -1776,7 +1787,7 @@ function renderDesk(d) {
     h += "</table>";
   }
   if (md && md.liq) {
-    h += "<table class='data'><caption>Derivatives · 24h</caption>" +
+    h += "<table class='data'><caption>Derivatives · 24h" + blockAsOf(md, "liq") + "</caption>" +
       "<tr><td>Liquidations</td><td class='rt'><span class='down'>$" + esc(md.liq.longM) + "M L</span> / <span class='up'>$" + esc(md.liq.shortM) + "M S</span></td></tr>" +
       (md.liq.btcOiB ? "<tr><td>BTC open interest</td><td class='rt'>$" + esc(md.liq.btcOiB) + "B</td></tr>" : "") +
       (md.liq.dominant ? "<tr><td>Status</td><td class='rt'>" + esc(md.liq.dominant) + "</td></tr>" : "") + "</table>";
@@ -1799,7 +1810,7 @@ function renderDesk(d) {
     h += "</table>";
   }
   if (md && md.funding && md.funding.length) {
-    h += "<table class='data'><caption>Funding gaps (APR)</caption>";
+    h += "<table class='data'><caption>Funding gaps (APR)" + blockAsOf(md, "funding") + "</caption>";
     md.funding.forEach(function (f) {
       h += "<tr><td>" + esc(f.coin) + "</td><td class='rt'>HL " + pct(f.hl, 1) + "</td><td class='rt'>Bin " + pct(f.bin, 1) + "</td></tr>";
     });
@@ -1897,7 +1908,7 @@ function renderTopTraders(d) {
     return (k < 0 ? "−" : "") + "$" + (a >= 1000 ? (a / 1000).toFixed(1) + "M" : Math.round(a) + "k");
   };
   var h = "<div class='kicker' style='margin-top:26px'>Lens 1, continued — the same accounts, one by one</div>" +
-    "<h2 class='sec'>Top traders on Hyperliquid</h2>" +
+    "<h2 class='sec'>Top traders on Hyperliquid" + blockAsOf(d.marketsDesk, "topTraders").replace(/^ · /, " <span class='src'>·</span> ") + "</h2>" +
     "<p class='sub'>The table above nets these accounts together; this is them individually, so you can see whether a net figure is one big conviction bet or genuine agreement. Ranked by 7-day profit. Accounts sitting flat are hidden — many of the largest are protocol or market-maker vaults holding nothing.</p>";
   t.forEach(function (tr, i) {
     var who = tr.name ? esc(tr.name) : tr.addr.slice(0, 6) + "…" + tr.addr.slice(-4);
@@ -1959,7 +1970,7 @@ function renderHLWhales(d) {
     "<p class='sub'>The 30 best-performing accounts on Hyperliquid this week, and how they are positioned per coin. " +
     "<b>3L/1S</b> means three of them are long and one is short; the dollar figure is their combined long minus short. " +
     "Their positions are public on-chain, so this is what they hold — not a survey or a guess.</p>" +
-    "<table class='data'><caption>Net positioning · top 30 accounts by weekly P&amp;L</caption>";
+    "<table class='data'><caption>Net positioning · top 30 accounts by weekly P&amp;L" + blockAsOf(md, "whales") + "</caption>";
   var board = whaleCoinBoard(md.whales, function (w) {
     return { v: w.netM, txt: (w.netM >= 0 ? "net long +" : "net short −") + "$" + Math.abs(w.netM) + "M" };
   });
@@ -1983,7 +1994,7 @@ function renderLighterWhales(d) {
     return (k < 0 ? "−" : "") + "$" + (a >= 1000 ? (a / 1000).toFixed(1) + "M" : Math.round(a) + "k");
   };
   var h = "<div class='kicker' style='margin-top:26px'>Lens 2 — the tape</div>" +
-    "<h2 class='sec'>Big money on Lighter</h2>" +
+    "<h2 class='sec'>Big money on Lighter" + blockAsOf(d.marketsDesk, "lighterWhales").replace(/^ · /, " <span class='src'>·</span> ") + "</h2>" +
     "<p class='sub'>A <b>print</b> is a single trade that actually executed — every trade below is one that really happened, not an estimate. Three views, zooming in: <b>where the money flowed</b> across all large prints (≥$" + esc(lw.minUsdK) + "k each) over 7 days, then <b>what the biggest books hold</b> right now, then the <b>individual accounts</b> behind it. Lighter is live for three of the agents, so this is the venue they trade on.</p>";
   // [#196] coinFlow has been computed and shipped in the feed since the Lighter desk landed
   // and rendered NOWHERE — zero references in this file. It is the only CROWD-sized whale
@@ -3213,6 +3224,7 @@ function renderLevelChart() {
   if (!host || !pick) return;
   if (_lvlChart) { try { _lvlChart.remove(); } catch (e) {} _lvlChart = null; _lvlSeries = null; }
   var sr = srPack();
+  var lvlAsOf = $("lvl-asof"); if (lvlAsOf) lvlAsOf.innerHTML = sr ? ("Level pack" + blockAsOf(_chFeed && _chFeed.marketsDesk, "sr")) : "";   // [#322]
   if (!sr) {
     pick.innerHTML = "";
     host.innerHTML = '<p class="ch-none">The level pack publishes with each desk cycle (00:00 / 06:00 / 12:00 / 18:00 SAST) — nothing stashed yet.</p>';
