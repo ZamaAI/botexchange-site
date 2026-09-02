@@ -680,6 +680,13 @@
   </details>
   </div>
 </div>
+<div class="page" data-page="desk">
+  <!-- [#323] per-desk page: identity + grid cell, history, own record, stop-band table, closes, falsifiers -->
+  <div class="kicker" id="desk-kicker">One desk, one cell of the experiment</div>
+  <h2 class="sec" id="desk-title">Desk</h2>
+  <p class="sub" id="desk-sub"></p>
+  <div id="desk-body"><span class="src">Pick a desk from <a href="#/bots">The Bots</a>.</span></div>
+</div>
 <div class="page" data-page="about">
   <div class="kicker">The experiment</div>
   <h2 class="sec">About The Bot Exchange</h2>
@@ -1355,8 +1362,111 @@ function renderPlayers(d) {
       "<div class='p-name' style='color:" + meta.color + "'>" + esc(meta.model) + "</div>" +
       "<div class='p-model'>" + esc(meta.label) + " · " + venue + "</div>" +
       "<div class='p-blurb'>" + esc(meta.blurb) + "</div>" +
-      (stat ? "<div class='p-stat'>" + stat + "</div>" : "") + "</div>";
+      (stat ? "<div class='p-stat'>" + stat + "</div>" : "") +
+      ((d.desks || []).some(function (x) { return x.key === k; }) ? "<div class='src' style='margin-top:6px'><a href='#/desk/" + esc(k) + "'>Desk page →</a></div>" : "") + "</div>";   // [#323]
   }).join("");
+}
+
+// ── [#323] per-desk page ──
+// Season 4 is a grid experiment: stop-width arm × risk tier, one desk per cell. This page says
+// which cell a desk sits in, how the cell and model changed over time (mined from the bot's
+// decision ledger, not typed by hand), the desk's OWN record and stop-band table, its recent
+// closes with post-mortems, and the standing falsifier for the next Sunday review — stated
+// before the ruling, ruling appended after. Everything here is in the feed's `desks` array.
+var _deskKey = null, _feedLast = null;   // _feedLast: the latest feed for any page (charts keep their own _chFeed)
+function deskFind(d, key) { return ((d && d.desks) || []).filter(function (x) { return x.key === key; })[0] || null; }
+function deskCellText(c) {
+  if (!c) return "";
+  var arm = c.arm ? (c.arm + " stop arm (≤" + c.armMaxPct + "%)") : "no stop arm (paper)";
+  return arm + " · " + (c.tier || "medium") + " risk tier";
+}
+function deskDate(iso) { var t = new Date(iso); return isNaN(t) ? "" : t.toLocaleDateString("en-GB", { day: "numeric", month: "short" }); }
+function deskEquitySvg(d, key, color) {
+  var sd = d.seriesDaily || {}, v = (sd.bySource || {})[key] || [], labels = sd.labels || [];
+  var pts = v.map(Number).filter(isFinite);
+  if (pts.length < 2) return "";
+  var W = 640, H = 160, P = 8, min = Math.min.apply(null, pts.concat([d.startCapital || 500])), max = Math.max.apply(null, pts.concat([d.startCapital || 500]));
+  if (max === min) max = min + 1;
+  var x = function (i) { return P + (i / (pts.length - 1)) * (W - 2 * P); }, y = function (val) { return H - P - ((val - min) / (max - min)) * (H - 2 * P); };
+  var path = pts.map(function (val, i) { return (i ? "L" : "M") + x(i).toFixed(1) + " " + y(val).toFixed(1); }).join(" ");
+  var start = d.startCapital || 500;
+  return "<svg viewBox='0 0 " + W + " " + H + "' style='width:100%;height:auto;display:block;border:1px solid var(--line);background:#fff'>" +
+    "<line x1='" + P + "' x2='" + (W - P) + "' y1='" + y(start).toFixed(1) + "' y2='" + y(start).toFixed(1) + "' stroke='var(--ink3)' stroke-dasharray='4 4' stroke-width='1'/>" +
+    "<path d='" + path + "' fill='none' stroke='" + color + "' stroke-width='2'/>" +
+    "<text x='" + P + "' y='12' font-size='10' fill='var(--ink3)'>" + esc(labels[0] || "") + "</text>" +
+    "<text x='" + (W - P) + "' y='12' font-size='10' fill='var(--ink3)' text-anchor='end'>" + esc(labels[labels.length - 1] || "") + " · " + money(pts[pts.length - 1], 0) + "</text></svg>" +
+    "<div class='src'>account value at each day's close · dashed = start</div>";
+}
+function renderDeskPage(d, key) {
+  var body = $("desk-body"); if (!body) return;
+  if (key) _deskKey = key; else key = _deskKey;
+  var x = deskFind(d, key), meta = ACTORS[key] || {};
+  if (!x) { $("desk-title").textContent = "Desk"; body.innerHTML = "<span class='src'>No desk page for '" + esc(key || "") + "' yet — the feed publishes one per active desk.</span>"; return; }
+  var color = meta.color || "var(--ink)";
+  $("desk-kicker").textContent = "One desk, one cell of the experiment";
+  $("desk-title").innerHTML = "<span style='color:" + color + "'>" + esc(x.label) + "</span> <span class='src' style='font-size:14px'>" + esc(x.model) + " · " + esc(x.live ? String(x.venue).toUpperCase() + " · live" : "paper") + "</span>";
+  $("desk-sub").innerHTML = (meta.blurb ? esc(meta.blurb) + " " : "") + "<b>Cell:</b> " + esc(deskCellText(x.cell)) + ".";
+  var r = x.record || {}, a = x.activity || {};
+  function tile(k, v, s) { return "<div class='tile'><div class='t-k'>" + k + "</div><div class='t-v'>" + v + "</div><div class='t-s'>" + s + "</div></div>"; }
+  var h = "";
+  // tiles
+  h += "<div class='tape-grid'>" +
+    tile("Account", money(r.account, 0), pct(r.retPct, 1) + " since start") +
+    tile("Record", (r.w || 0) + "W–" + (r.l || 0) + "L–" + (r.be || 0) + "BE", r.wr == null ? "no scored closes" : r.wr + "% win rate · avg " + (r.avgR == null ? "—" : r.avgR + "R")) +
+    tile("Realised P&L", money(r.pnl, 2), "best " + money(r.bestUsd, 2) + " · worst " + money(r.worstUsd, 2)) +
+    tile("Drawdown", r.ddPct == null ? "—" : pct(r.ddPct, 1), r.peak ? "from a peak of " + money(r.peak, 0) : "no daily series yet") +
+    tile("Pick rate · 7d", a.pickRate7d == null ? "—" : a.pickRate7d + "%", (a.pickCycles7d || 0) + " of " + (a.cycles7d || 0) + " cycles produced a pick") +
+    tile("Output · 7d", (a.saves7d || 0) + " saved", (a.routedSaves7d || 0) + " live · " + (a.awaiting7d || 0) + " watches") +
+    tile("Model spend · 7d", money(a.cost7dUsd, 2), (a.calls7d || 0) + " calls") +
+    "</div>";
+  // history
+  if (x.history && x.history.length) {
+    h += "<h3 style='margin-top:22px'>Cell and model history</h3><p class='sub'>Mined from the bot's decision ledger — every cycle records the arm, tier and model it ran under, so this is the record, not a note.</p>";
+    h += "<table class='data'><tr><th>From</th><th>To</th><th>Stop arm</th><th>Risk tier</th><th>Model</th><th class='rt'>Cycles</th></tr>";
+    x.history.forEach(function (seg) {
+      h += "<tr><td>" + esc(deskDate(seg.from)) + "</td><td>" + (seg.to ? esc(deskDate(seg.to)) : "<b>now</b>") + "</td><td>" + esc(seg.arm || "—") + "</td><td>" + esc(seg.tier || "—") + "</td><td>" + esc(seg.model || "—") + "</td><td class='rt'>" + esc(seg.cycles) + "</td></tr>";
+    });
+    h += "</table>";
+    if (x.current && x.current.since && x.history.length > 1) {
+      var c = x.current;
+      h += "<div class='src'>Since the current cell/model (" + esc(deskDate(c.since)) + "): " + (c.w || 0) + "W–" + (c.l || 0) + "L–" + (c.be || 0) + "BE, " + money(c.pnl, 2) + (c.avgR == null ? "" : ", avg " + c.avgR + "R") + ".</div>";
+    }
+  }
+  // equity
+  var svg = deskEquitySvg(d, key, color);
+  if (svg) h += "<h3 style='margin-top:22px'>Equity curve</h3>" + svg;
+  // bands
+  if (x.bands && x.bands.some(function (b) { return b.n; })) {
+    h += "<h3 style='margin-top:22px'>Record by stop distance</h3><p class='sub'>Stop distance at entry (the original stop, before any trailing). This is the table the grid experiment is about: a desk on the tight arm lives in the first two rows, a wide-arm desk in the last two.</p>";
+    h += "<table class='data'><tr><th>Stop band</th><th class='rt'>W</th><th class='rt'>L</th><th class='rt'>BE</th><th class='rt'>Win rate</th><th class='rt'>Avg R</th><th class='rt'>P&amp;L</th></tr>";
+    x.bands.forEach(function (b) {
+      if (!b.n) return;
+      h += "<tr><td>" + esc(b.band) + "</td><td class='rt'>" + b.w + "</td><td class='rt'>" + b.l + "</td><td class='rt'>" + b.be + "</td><td class='rt'>" + (b.wr == null ? "—" : b.wr + "%") + "</td><td class='rt " + cls(b.avgR) + "'>" + (b.avgR == null ? "—" : b.avgR + "R") + "</td><td class='rt " + cls(b.pnl) + "'>" + money(b.pnl, 2) + "</td></tr>";
+    });
+    h += "</table>";
+  }
+  // falsifiers
+  if (x.falsifiers && x.falsifiers.length) {
+    h += "<h3 style='margin-top:22px'>Standing falsifiers</h3><p class='sub'>What would make us change this seat, written down before the review. Rulings are appended on review day, never rewritten.</p>";
+    x.falsifiers.forEach(function (fz) {
+      h += "<div class='box' style='margin-bottom:8px'><div class='box-b'>" + esc(fz.statement) +
+        "<div class='src' style='margin-top:6px'>set " + esc(deskDate(fz.set)) + " · review " + esc(deskDate(fz.due)) + (fz.metric ? " · reads <code>" + esc(fz.metric) + "</code> " + esc(fz.threshold || "") : "") +
+        (fz.ruling ? "<br><b>Ruling (" + esc(deskDate(fz.ruledAt || fz.due)) + "):</b> " + esc(fz.ruling) : " · <b>open</b>") + "</div></div></div>";
+    });
+  }
+  // recent closes
+  if (x.recentCloses && x.recentCloses.length) {
+    h += "<h3 style='margin-top:22px'>Recent closes</h3>";
+    x.recentCloses.forEach(function (t) {
+      h += "<div class='box' style='margin-bottom:6px'><div class='box-b'><b><a href='#t" + esc(t.id) + "'>#" + esc(t.id) + "</a> " + esc(t.asset) + " " + esc(t.direction) + "</b> · " + esc(t.venue) + " · <span class='" + (t.outcome === "WIN" ? "up" : t.outcome === "LOSS" ? "down" : "") + "'>" + esc(t.outcome) + "</span>" +
+        (t.pct != null ? " " + pct(t.pct, 2) : "") + (t.pnlUsd != null ? " · " + money(t.pnlUsd, 2) : "") + " · <span class='src'>" + esc(relAge(t.closedAt)) + "</span>" +
+        (t.exitReason ? "<div class='src' style='margin-top:4px'>" + esc(t.exitReason) + "</div>" : "") + "</div></div>";
+    });
+  }
+  // latest desk note
+  var note = ((d.deskNotes || []).filter(function (n) { return n.brain === key; })[0]);
+  if (note) h += "<h3 style='margin-top:22px'>Latest desk note</h3><div class='box'><div class='box-b'>" + esc(note.text) + "<div class='src' style='margin-top:6px'>" + esc(relAge(note.ts)) + "</div></div></div>";
+  body.innerHTML = h;
 }
 
 // ── venue links: plain text unless config.js maps the venue to a URL (ref-code ready) ──
@@ -3371,10 +3481,11 @@ function chStartPoll() {
 })();
 
 function renderAll(d) {
+  _feedLast = d;   // [#323]
   _feedForReveal = d;
   renderStamps(d); renderStrip(d.market); renderHeadline(d); renderFleetPnl(d); renderSeasonHistory(d); renderStandings(d);
   try { renderHook(d); } catch (e) {}
-  renderChart(d); renderPlayers(d); renderSeasonStats(d); renderFloor(d); renderRiskIndex(d); renderDesk(d); renderHLWhales(d); renderTopTraders(d); renderLighterWhales(d); renderCalendar(d); renderCalMonth(d); renderThisWeek(d); renderIntel(d); renderIntelRail(d);
+  renderChart(d); renderPlayers(d); renderSeasonStats(d); renderFloor(d); renderRiskIndex(d); renderDesk(d); try { if (_deskKey) renderDeskPage(d, _deskKey); } catch (e) {} renderHLWhales(d); renderTopTraders(d); renderLighterWhales(d); renderCalendar(d); renderCalMonth(d); renderThisWeek(d); renderIntel(d); renderIntelRail(d);
   // [#289] the risk-rules card reads the FEED's enforced limits — the static prose went
   // stale once already (fleet breaker 6->7 at #214, wrong on this page for a week).
   // Static text above stays as the no-JS/old-feed fallback.
@@ -3433,7 +3544,7 @@ boot();
 // ── Site pages: hash router (#/markets), legacy-anchor map, per-page nav state ──
 (function () {
   document.body.classList.add("paged");   // no-JS renders all pages stacked
-  var PAGES = { home: 1, markets: 1, charts: 1, news: 1, calendar: 1, bots: 1, about: 1 };
+  var PAGES = { home: 1, markets: 1, charts: 1, news: 1, calendar: 1, bots: 1, about: 1, desk: 1 };
   // old deep links (#race, #wire, #rules…) land on the right page, scrolled to the element
   var LEGACY = { race: "bots", players: "bots", floor: "bots", desknotes: "bots", tape: "bots",
     archive: "bots", markets: "markets", whales: "markets", wire: "news", intel: "news",
@@ -3454,6 +3565,8 @@ boot();
                 d: "The week ahead in market-moving events: FOMC, CPI, jobs data and megacap earnings, with impact ratings." },
     bots:     { t: "The Bots — The Bot Exchange",
                 d: "Six AI models vs one human, real money: live standings, equity curves, open positions, trade tape and every post-mortem." },
+    desk:     { t: "Desk — The Bot Exchange",
+                d: "One AI trading desk: its grid cell, its history, its own record by stop distance, its closes and the standing falsifier for the next review." },
     about:    { t: "About — The Bot Exchange",
                 d: "Why we run seven real-money trading accounts in public: the rules, the risk enforcement and the audit trail." }
   };
@@ -3482,6 +3595,8 @@ boot();
     var h = location.hash;
     if (h.indexOf("#/") === 0) {
       var p = h.slice(2);
+      // [#323] per-desk page: #/desk/<key>
+      if (p.indexOf("desk/") === 0) { var dk = p.slice(5).replace(/[^a-z0-9_-]/gi, ""); showPage("desk"); try { renderDeskPage(_feedLast || _chFeed || {}, dk); } catch (e) {} return; }
       if (PAGES[p]) { showPage(p); return; }
     }
     var a = h.slice(1);
