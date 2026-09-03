@@ -922,24 +922,25 @@ function renderStrip(mkt) {
     h += "<span class='bxr-tick'>Risk index <b>" + Math.round(Number(mkt.riskIndex.score)) + " — " + esc(String(mkt.riskIndex.band || "")) + "</b></span>";
   $("strip-crypto").innerHTML = h ? "<span class='rowlab'>CRYPTO</span>" + h : "Market data loading…";
   var m = "";
-  _macroStrip.forEach(function (p) {
-    // DXY/VIX marks can sit on a flat prevDay — hide a meaningless +0.00%
-    var showChg = p.change != null && Math.abs(p.change) >= 0.005;
-    var band = p.sym === "VIX" ? " (" + vixBand(p.price) + ")" : "";
-    m += "<span>" + MACRO_SYMS[p.sym] + " <b>" + fmtMacro(p.sym, p.price) + "</b>" + band + (showChg ? " " + strippct(p.change) : "") + "</span>";
-  });
-  // DXY/VIX from the feed (Yahoo cash values, server-side) — their xyz perp markets are
-  // dead (frozen oracle marks), so they never come through _macroStrip. Feed-absent → omitted.
-  var liveSyms = {};
-  _macroStrip.forEach(function (p) { liveSyms[p.sym] = 1; });
+  // [3 Sep] ONE merged macro list: live xyz marks (client-side, _macroStrip) win per symbol;
+  // the feed's market.macro (Yahoo cash, server-side) fills every symbol the browser did not
+  // get — previously only DXY/VIX had a feed fallback, so a visitor whose HL fetch did not
+  // answer saw the S&P, Nasdaq and gold vanish. Rendered in MACRO_SYMS order either way.
+  var macroRows = {};
+  _macroStrip.forEach(function (p) { macroRows[p.sym] = { price: p.price, change: p.change }; });
   var feedMac = (mkt && mkt.macro) || {};
-  [["DXY", "dxy"], ["VIX", "vix"]].forEach(function (pair) {
-    if (liveSyms[pair[0]]) return;
+  [["SP500", "spx"], ["XYZ100", "ndx"], ["GOLD", "gold"], ["DXY", "dxy"], ["VIX", "vix"]].forEach(function (pair) {
+    if (macroRows[pair[0]]) return;
     var v = feedMac[pair[1]];
     if (!v || v.price == null || !isFinite(v.price)) return;
-    var band = pair[0] === "VIX" ? " (" + vixBand(v.price) + ")" : "";
+    macroRows[pair[0]] = { price: v.price, change: v.change };
+  });
+  Object.keys(MACRO_SYMS).forEach(function (sym) {
+    var v = macroRows[sym]; if (!v) return;
+    // DXY/VIX marks can sit on a flat prevDay — hide a meaningless +0.00%
     var showChg = v.change != null && isFinite(v.change) && Math.abs(v.change) >= 0.005;
-    m += "<span>" + MACRO_SYMS[pair[0]] + " <b>" + fmtMacro(pair[0], v.price) + "</b>" + band + (showChg ? " " + strippct(v.change) : "") + "</span>";
+    var band = sym === "VIX" ? " (" + vixBand(v.price) + ")" : "";
+    m += "<span>" + MACRO_SYMS[sym] + " <b>" + fmtMacro(sym, v.price) + "</b>" + band + (showChg ? " " + strippct(v.change) : "") + "</span>";
   });
   if (mkt && mkt.stockFearGreed && m) m += "<span>Fear &amp; Greed <b>" + esc(mkt.stockFearGreed.value) + " — " + esc(mkt.stockFearGreed.classification) + "</b></span>";
   if (mkt && mkt.equityRegime && m) m += "<span>Regime <b>" + esc(String(mkt.equityRegime).replace("_", "-")) + "</b></span>";
@@ -1700,6 +1701,9 @@ function refreshOpenLive() {
         if (isFinite(vpx)) { paintOpenLive(t, i, vpx); return; }
         // live-venue row with no HL mid → show nothing rather than risk a wrong-asset price
         if (t.venue && t.venue !== "PAPER") return;
+        // [3 Sep] paper STOCK rows (BMNR, ASTS…) have no Binance pair — a 400 with no CORS
+        // header logs a console error per row per refresh. The feed now says what class a row is.
+        if (t.cls && t.cls !== "crypto") return;
         fetch("https://api.binance.com/api/v3/ticker/price?symbol=" + encodeURIComponent(t.asset.toUpperCase() + "USDT"))
           .then(function (r) { return r.ok ? r.json() : null; })
           .then(function (j) {
