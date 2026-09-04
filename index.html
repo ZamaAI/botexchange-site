@@ -1599,6 +1599,17 @@ function renderFloor(d) {
         ? "<div class='why clamp' data-th='" + i + "'><b>The thesis:</b> " + esc(t.thesis) + "</div><button class='morelink th-more' data-th='" + i + "'>read more</button>"
         : "") + "</div>";
   });
+  // [#345] the close-confirmation verdict on a watch. Since [#344] a "<tf> close" trigger fills
+  // only after the bar has actually CLOSED through the level — a wick to it does not fill — so
+  // this line says where that stands, from the last CLOSED Binance bar the bot read.
+  function confirmLine(c) {
+    if (!c || !c.tf) return "";
+    var tf = esc(String(c.tf)), lc = c.lastClose != null ? money(+c.lastClose, +c.lastClose < 10 ? 4 : 2) : null;
+    var need = c.mode === "retest" ? "a closed " + tf + " bar that tags the level and holds" : "a " + tf + " close through the level";
+    if (c.status === "through") return "<div class='src' style='color:var(--up)'>✓ confirmed — last closed " + tf + " bar" + (lc ? " (" + lc + ")" : "") + " went through; fills on the next touch</div>";
+    if (c.status === "not") return "<div class='src'>needs " + need + " — last closed bar" + (lc ? " (" + lc + ")" : "") + " did not; a wick alone won't fill it</div>";
+    return "<div class='src'>needs " + need + "</div>";
+  }
   waits.forEach(function (t) {
     h += "<div class='titem'><div class='l1'><span class='asset'>" + esc(t.asset) + "</span>" +
       "<span class='dirpill " + (t.direction === "SHORT" ? "s" : "l") + "'>" + esc(t.direction) + "</span>" +
@@ -1609,6 +1620,7 @@ function renderFloor(d) {
       "<span class='outc'>" + (t.conviction != null ? "<span class='num'>conv " + esc(t.conviction) + "/10</span> " : "") +
       "<span style='color:var(--watch)'>WATCHING</span></span></div>" +
       (t.trigger ? "<div class='trig'><b>Trigger:</b> " + esc(smartTrim(String(t.trigger), 200)) + "</div>" : "") +
+      confirmLine(t.confirm) +
       "<div class='why'>Anticipatory entries are the fleet's #1 loss cause — agents wait for the trigger to print.</div></div>";
   });
   // The human's live book (Extended) — entry + live % only; feed omits it when flat/unreadable.
@@ -2944,7 +2956,9 @@ function renderHome(d) {
       esc(String(w.direction || "").toUpperCase()) + " · " + esc(w.brain || "") +
       (w.conviction != null ? " · conv " + esc(String(w.conviction)) + "/10" : "") +
       "<br><span class='src'>waiting for: " + esc(w.trigger || "its trigger level") +
-      (w.entry != null ? " (≈" + esc(fmtLvl(w.entry)) + (w.levelsApprox ? ", approx" : "") + ")" : "") + "</span></span></div>";
+      (w.entry != null ? " (≈" + esc(fmtLvl(w.entry)) + (w.levelsApprox ? ", approx" : "") + ")" : "") + "</span>" +
+      (w.confirm && w.confirm.tf ? "<br><span class='src'>" + (w.confirm.status === "through" ? "✓ " + esc(String(w.confirm.tf)) + " close confirmed — fills on the next touch" : w.confirm.status === "not" ? "no " + esc(String(w.confirm.tf)) + " close through the level yet — a wick alone won't fill it" : "needs a " + esc(String(w.confirm.tf)) + " close through the level") + "</span>" : "") +
+      "</span></div>";
   });
   // [#192] ...and how often those watches actually WORK. The lane has been published since
   // [#174] — asset, brain, conviction, trigger — with no way for a reader to know whether any
