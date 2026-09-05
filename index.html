@@ -436,22 +436,18 @@
   <span class="datestamp" id="datestamp"></span>
 </div></header>
 <nav class="sections pagesnav"><div class="wrap">
-  <!-- [T2] five rooms: the sport (LIVE, BOTS, ARCHIVE), the terminal (MARKET INTEL: markets · charts · news · calendar), the audit (ABOUT).
-       Old routes (#/markets #/charts #/news #/calendar #/desks) keep resolving; they are reached from the Market Intel sub-nav and desk cards. -->
+  <!-- [T2b] operator call 5 Sep: the grouped "Market intel" item was worse than the flat nav — restored.
+       Archive stays its own room; the sticky score stays. -->
   <a href="#/home" data-page="home" class="active">Live</a>
-  <a href="#/bots" data-page="bots">Bots</a>
-  <a href="#/markets" data-page="markets" data-group="intel">Market intel</a>
+  <a href="#/markets" data-page="markets">Markets</a>
+  <a href="#/charts" data-page="charts">Charts</a>
+  <a href="#/news" data-page="news">News &amp; Intel</a>
+  <a href="#/calendar" data-page="calendar">Calendar</a>
+  <a href="#/bots" data-page="bots">The Bots</a>
+  <a href="#/desks" data-page="desks">Desks</a>
   <a href="#/archive" data-page="archive">Archive</a>
   <a href="#/about" data-page="about">About</a>
   <span class="nav-score" id="nav-score"></span>
-</div></nav>
-<!-- [T2] terminal sub-nav: visible only on the Market intel rooms -->
-<nav class="sections subnav hidden" id="intel-subnav"><div class="wrap">
-  <a href="#/markets" data-page="markets">Markets</a>
-  <a href="#/charts" data-page="charts">Charts</a>
-  <a href="#/news" data-page="news">News &amp; intel</a>
-  <a href="#/calendar" data-page="calendar">Calendar</a>
-  <a href="#whales">Whales</a>
 </div></nav>
 
 <div class="wrap" id="pages">
@@ -520,8 +516,8 @@
   <div id="split-body"><span class="src">Live stances load with the feed.</span></div>
 
   <div class="home-grid" style="margin-top:18px">
-    <div class="hw w6" id="hw-live"><h3>Live trades — the three biggest</h3><div id="hw-live-body"><span class="src">Open positions load with the feed.</span></div></div>
-    <div class="hw w6" id="hw-closes"><h3>Recent closes — with the post-mortem</h3><div id="hw-closes-body"><span class="src">Closed trades load with the feed.</span></div></div>
+    <div class="hw w12" id="hw-live"><h3>Live trades — every open position</h3><div id="hw-live-body"><span class="src">Open positions load with the feed.</span></div></div>
+    <div class="hw w12" id="hw-closes"><h3>Recent closes — with the post-mortem</h3><div id="hw-closes-body"><span class="src">Closed trades load with the feed.</span></div></div>
   </div>
   <!-- [T2] the trust band — the old process strip, re-cut as the audit argument and moved under the
        competition instead of above it. Static copy for crawlers; numbers filled by JS. -->
@@ -3181,12 +3177,13 @@ function renderHome(d) {
   // open positions: floor-style compact items — dir/actor/venue pills, live P&L span and
   // the stop→target position bar (same data-pnl/data-pl indices as the floor; the live
   // layer paints ALL matching elements, so both copies stay in sync)
-  // [T2] three real-money positions (conviction, then age, as the size proxy — notional is not published), each with why it was taken
+  // [T2b] operator call: EVERY real-money position on the home page (not a top-3), each with why it
+  // was taken; paper rows are counted, not listed (the floor on Bots has them).
   var ot = d.openTrades || [], l = "";
   var liveOT = ot.filter(function (t) { return t.venue !== "PAPER"; }).sort(function (a, b) { return (b.conviction || 0) - (a.conviction || 0) || (Date.parse(a.openedAt) - Date.parse(b.openedAt)); });
   if (!ot.length) l = "<div class='row'><span>All desks are flat</span><b>0 open</b></div>";
   else if (!liveOT.length) l = "<div class='row'><span>Live venues are flat — " + ot.length + " paper position" + (ot.length > 1 ? "s" : "") + " only</span></div>";
-  else liveOT.slice(0, 3).forEach(function (t) {
+  else liveOT.forEach(function (t) {
     var i = ot.indexOf(t);
     l += "<div class='titem' style='padding:8px 0'><div class='l1'><span class='asset'>" + esc(t.asset) + "</span>" +
       "<span class='dirpill " + (t.direction === "SHORT" ? "s" : "l") + "'>" + esc(t.direction) + "</span>" +
@@ -3197,7 +3194,7 @@ function renderHome(d) {
       posBar(t, i) +
       (t.thesis ? "<div class='src' style='margin-top:4px'>" + esc(smartTrim(String(t.thesis).replace(/\[[^\]]*\]/g, ""), 140)) + " <a href='#floor'>Why " + esc((ACTORS[t.actor] || {}).short || t.actor) + " took it →</a></div>" : "") + "</div>";
   });
-  if (liveOT.length > 3) l += "<div class='row'><span>+" + (liveOT.length - 3) + " more live" + (ot.length - liveOT.length ? " · " + (ot.length - liveOT.length) + " paper" : "") + "</span><span></span></div>";
+  if (ot.length - liveOT.length) l += "<div class='row'><span>" + (ot.length - liveOT.length) + " paper position" + (ot.length - liveOT.length > 1 ? "s" : "") + " on the floor</span><span></span></div>";
   if ((d.awaiting || []).length) l += "<div class='row'><span>Watch-list</span><b>" + d.awaiting.length + " trigger" + (d.awaiting.length > 1 ? "s" : "") + " armed</b></div>";
   l += "<a class='more' href='#/bots'>The trading floor →</a>";
   $("hw-live-body").innerHTML = l;
