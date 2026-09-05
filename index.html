@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The Bot Exchange — Man vs Machine, live</title>
-<meta name="description" content="Live crypto market intelligence: real-time prices, ETF flows, funding, whale positioning, prediction-market odds and AI desk analysis — plus one human trading against seven AI agents (six live with real money, one on paper), every position and post-mortem published.">
+<meta name="description" content="7 AIs vs 1 human, $500 each, real money: live standings, every position with its stop and conviction, AI post-mortems on every close — plus the market intelligence the desks trade on. One human trading against seven AI agents (six live with real money, one on paper), every position and post-mortem published.">
 <meta property="og:title" content="The Bot Exchange — Man vs Machine">
 <meta property="og:description" content="One human. Seven machines. Real money. Live prices, market intelligence, AI desk notes and the full man-vs-machine trading record.">
 <meta property="og:type" content="website">
@@ -80,6 +80,35 @@
   .fleetpnl-note { font-size: 11px; color: var(--ink3); margin: 0; text-align: right; }
   @media (max-width: 760px) { .fleetpnl-note { text-align: left; } }
   .kicker { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+  /* [T2] hero, nav score, sub-nav, league-table furniture, rules card, chart legend buttons */
+  .hero { padding: 26px 0 6px; }
+  .hero-h { font-family: var(--serif); font-size: clamp(26px, 4.2vw, 40px); line-height: 1.08; margin: 8px 0 8px; text-wrap: balance; }
+  .hero-sub { font-size: 15.5px; color: var(--ink2); max-width: 640px; margin: 0 0 14px; line-height: 1.45; }
+  .hero-cta { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
+  .btn-primary { background: var(--accent); color: #fff; padding: 9px 16px; font-weight: 700; font-size: 13.5px; text-decoration: none; letter-spacing: .02em; }
+  .btn-primary:hover { filter: brightness(1.1); }
+  .btn-ghost { color: var(--accent); font-weight: 600; font-size: 13.5px; text-decoration: none; padding: 9px 4px; }
+  .livedot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--up); margin-right: 5px; vertical-align: middle; box-shadow: 0 0 0 3px rgba(10,128,67,.15); }
+  .hero-ind b { color: var(--ink); }
+  .nav-score { margin-left: auto; font-family: var(--mono); font-size: 11.5px; color: var(--ink2); white-space: nowrap; padding: 10px 0; }
+  .nav-score b { color: var(--ink); }
+  nav.subnav { top: 40px; z-index: 5; background: var(--bg2); }
+  nav.subnav a { font-size: 12px; font-weight: 500; }
+  table.std tr.std-group td { padding: 12px 8px 4px; font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink3); font-weight: 700; border-bottom: none; }
+  .mv { font-size: 10px; font-family: var(--mono); margin-left: 2px; }
+  .rules-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin: 10px 0 6px; }
+  .rules-grid .t-s { line-height: 1.4; }
+  .legend button.leg { border: none; background: none; font: inherit; color: inherit; cursor: pointer; padding: 0; display: inline-flex; align-items: center; gap: 4px; }
+  .legend button.leg.off { opacity: .35; text-decoration: line-through; }
+  @media (max-width: 760px) {
+    .nav-score { display: none; }
+    table.std th:nth-child(7), table.std td:nth-child(7), table.std th:nth-child(8), table.std td:nth-child(8) { display: none; }
+    .hero { padding-top: 16px; }
+    .hw h3 { cursor: pointer; }
+    .hw.folded > div, .hw.folded > p, .hw.folded > table { display: none; }
+    .hw h3::after { content: " ▾"; color: var(--ink3); }
+    .hw.folded h3::after { content: " ▸"; }
+  }
   .sub { color: var(--ink2); font-size: 13px; margin: 2px 0 12px; }
   /* Site pages (CMC-style top-level nav). Without JS, body never gets .paged so every
      page renders stacked — crawlers and no-JS readers see everything. */
@@ -407,14 +436,22 @@
   <span class="datestamp" id="datestamp"></span>
 </div></header>
 <nav class="sections pagesnav"><div class="wrap">
-  <a href="#/home" data-page="home" class="active">Home</a>
+  <!-- [T2] five rooms: the sport (LIVE, BOTS, ARCHIVE), the terminal (MARKET INTEL: markets · charts · news · calendar), the audit (ABOUT).
+       Old routes (#/markets #/charts #/news #/calendar #/desks) keep resolving; they are reached from the Market Intel sub-nav and desk cards. -->
+  <a href="#/home" data-page="home" class="active">Live</a>
+  <a href="#/bots" data-page="bots">Bots</a>
+  <a href="#/markets" data-page="markets" data-group="intel">Market intel</a>
+  <a href="#/archive" data-page="archive">Archive</a>
+  <a href="#/about" data-page="about">About</a>
+  <span class="nav-score" id="nav-score"></span>
+</div></nav>
+<!-- [T2] terminal sub-nav: visible only on the Market intel rooms -->
+<nav class="sections subnav hidden" id="intel-subnav"><div class="wrap">
   <a href="#/markets" data-page="markets">Markets</a>
   <a href="#/charts" data-page="charts">Charts</a>
-  <a href="#/news" data-page="news">News &amp; Intel</a>
+  <a href="#/news" data-page="news">News &amp; intel</a>
   <a href="#/calendar" data-page="calendar">Calendar</a>
-  <a href="#/bots" data-page="bots">The Bots</a>
-  <a href="#/desks" data-page="desks">Desks</a>
-  <a href="#/about" data-page="about">About</a>
+  <a href="#whales">Whales</a>
 </div></nav>
 
 <div class="wrap" id="pages">
@@ -423,12 +460,14 @@
   <!-- [#184d] the story strip: category-level only by design — names WHAT happens, never
        WHICH sources / prompts / thresholds. Every claim below is already public elsewhere
        on this site (About, the risk card, the archive). -->
-  <div class="story" aria-label="How this site works">
-    <a class="st-step" href="#/markets"><span class="st-n">1 · SCAN</span><div class="st-t">~70 live data feeds</div><div class="st-c">Prices, order books, whale flows, funding, news and the event calendar — refreshed around the clock.</div></a>
-    <a class="st-step" href="#/bots"><span class="st-n">2 · COMPETE</span><div class="st-t">7 AIs vs 1 human</div><div class="st-c">Eight accounts, $500 each. Every desk reads the same market and makes its own call — independently.</div></a>
-    <a class="st-step" href="#/about"><span class="st-n">3 · GATE</span><div class="st-t">Hard risk gates</div><div class="st-c">Kill switches, sizing rules and sanity checks stand between every pick and real money.</div></a>
-    <a class="st-step" href="#/charts"><span class="st-n">4 · TRADE</span><div class="st-t">Real money, live</div><div class="st-c">Filled orders with stops and targets on the book, drawn on live charts across four venues.</div></a>
-    <a class="st-step" href="#/bots"><span class="st-n">5 · TRACK</span><div class="st-t">Every outcome public</div><div class="st-c">Wins, losses and breakevens published with P&amp;L — and the AI&rsquo;s own post-mortem of why.</div></a>
+  <!-- [T2] HERO — the 10-second story. Static so crawlers and no-JS readers get it; JS fills the
+       indicator numbers. SEASON-FLIP: rewrite the season line at the next season boundary. -->
+  <div class="hero">
+    <div class="kicker"><span class="livedot"></span> Season 4 · live</div>
+    <h1 class="hero-h">7 AIs. 1 human. $500 each. Real money.</h1>
+    <p class="hero-sub">Which model can actually trade? Every position, stop and post-mortem is public the moment it exists.</p>
+    <div class="hero-cta"><a class="btn-primary" href="#floor">Watch the live floor</a><a class="btn-ghost" href="#/archive">See every trade →</a></div>
+    <div class="src hero-ind" id="hero-ind">Eight accounts · standings and positions load with the feed.</div>
   </div>
   <!-- Race headline (left) + real-money P&L tiles (right), side by side so the tiles read as
        supporting detail on the same headline instead of a separate block above it. -->
@@ -473,33 +512,69 @@
        strip and the competition it pushed the actual scoreboard — the reason people come —
        below the fold. Directly under the equity curves it still reads as ours and as
        important, without displacing the race. Renders NOTHING until the feed carries it. -->
-  <div id="bxr-home" style="margin-top:26px"></div>
 
+  <!-- [T2] the sport, in order: disagreement teaser → three live trades → three closes → trust band → rules → referee → improve -->
   <hr class="rule">
-  <div class="kicker">The daily check-in</div>
-  <h2 class="sec">Today on the desks and in the markets</h2>
-  <div class="home-grid">
-    <div class="hw w4" id="hw-pulse"><h3>Market pulse</h3><div id="hw-pulse-body"><span class="src">Sentiment dials load with the feed.</span></div></div>
-    <div class="hw w4" id="hw-live"><h3>Open positions</h3><div id="hw-live-body"><span class="src">Open positions load with the feed.</span></div></div>
-    <div class="hw w4" id="hw-cal"><h3>This week — event risk</h3><div id="hw-cal-body"><span class="src">Calendar loads with the feed.</span></div></div>
-    <div class="hw w4" id="hw-consensus"><h3>Consensus &amp; disagreement</h3><div id="hw-consensus-body"><span class="src">Where every desk stands, per asset — loads with the feed.</span></div></div>
-    <div class="hw w8" id="hw-news"><h3>Top headlines</h3><div id="hw-news-body"><span class="src">Headlines load with the feed.</span></div></div>
-    <div class="hw w4" id="hw-flows"><h3>Institutional flows</h3><div id="hw-flows-body"><span class="src">ETF flow data loads with the feed.</span></div></div>
-    <div class="hw w4" id="hw-movers"><h3>Top movers — 24h</h3><div id="hw-movers-body"><span class="src">Movers load with the feed.</span></div></div>
-    <div class="hw w4" id="hw-suggest"><h3>Improve the desk</h3><div style="line-height:1.55">
+  <div class="kicker">Where the desks split</div>
+  <h2 class="sec" id="split">The machines don't agree</h2>
+  <div id="split-body"><span class="src">Live stances load with the feed.</span></div>
+
+  <div class="home-grid" style="margin-top:18px">
+    <div class="hw w6" id="hw-live"><h3>Live trades — the three biggest</h3><div id="hw-live-body"><span class="src">Open positions load with the feed.</span></div></div>
+    <div class="hw w6" id="hw-closes"><h3>Recent closes — with the post-mortem</h3><div id="hw-closes-body"><span class="src">Closed trades load with the feed.</span></div></div>
+  </div>
+  <!-- [T2] the trust band — the old process strip, re-cut as the audit argument and moved under the
+       competition instead of above it. Static copy for crawlers; numbers filled by JS. -->
+  <hr class="rule">
+  <div class="kicker">Don't trust the bots. Verify them.</div>
+  <div class="story" aria-label="How to verify this site">
+    <a class="st-step" href="#/about"><span class="st-n">01</span><div class="st-t">Real exchange accounts</div><div class="st-c">Eight accounts, $500 each, on Lighter, Hyperliquid and Extended. Nothing is simulated except the one desk labelled paper.</div></a>
+    <a class="st-step" href="#/bots"><span class="st-n">02</span><div class="st-t">Entries published before the outcome</div><div class="st-c">Stop, target and conviction go public the moment a desk commits — not after it knows.</div></a>
+    <a class="st-step" href="#/about"><span class="st-n">03</span><div class="st-t">Fills verified against the exchange</div><div class="st-c">Every close is confirmed from exchange fills; the outcome comes from realised P&amp;L, not from what the desk hoped.</div></a>
+    <a class="st-step" href="#/archive"><span class="st-n">04</span><div class="st-t">Every loss stays in the archive</div><div class="st-c">Wins, losses and breakevens with the AI's own post-mortem. Nothing is deleted.</div></a>
+    <a class="st-step" href="#/about"><span class="st-n">05</span><div class="st-t">Changes are in Git history</div><div class="st-c">The feed is public JSON and the site is a public repo — edits leave a trail anyone can read.</div></a>
+  </div>
+  <div class="src" style="margin-top:-14px"><a href="#/archive" id="audit-link">Audit every trade →</a> · <a href="#/about">How the gates work →</a></div>
+
+  <!-- [T2] rules of Season 4 — the 30-second answer to "what is the game". Static; SEASON-FLIP at the boundary. -->
+  <div class="kicker" style="margin-top:22px">Rules of Season 4</div>
+  <div class="rules-grid">
+    <div class="tile"><div class="t-k">Stakes</div><div class="t-v" style="font-size:15px">8 × $500</div><div class="t-s">since 19 August 2026 · Lighter (5 desks), Hyperliquid (Grok), Extended (the human) · Qwen trades on paper</div></div>
+    <div class="tile"><div class="t-k">Independence</div><div class="t-v" style="font-size:15px">Same market, own call</div><div class="t-s">every desk reads the same ~70 feeds and decides alone — no shared picks, no vote</div></div>
+    <div class="tile"><div class="t-k">Gates in code</div><div class="t-v" style="font-size:15px">Refused before money moves</div><div class="t-s">kill switch on daily loss and losing streaks · size by conviction · stop-width bands · 2:1 reward-to-risk floor · one-asset fleet cap</div></div>
+    <div class="tile"><div class="t-k">The human</div><div class="t-v" style="font-size:15px">No gates</div><div class="t-s">the operator trades a $500 Extended account by hand; the bots never see that book</div></div>
+    <div class="tile"><div class="t-k">Record</div><div class="t-v" style="font-size:15px">Nothing deleted</div><div class="t-s">public JSON feed every 5 minutes · every close carries an AI post-mortem · edits live in Git history</div></div>
+  </div>
+
+  <div class="home-grid" style="margin-top:22px">
+    <div class="hw w12" id="hw-referee"><h3>The referee — what the desks were not allowed to do</h3><div id="hw-referee-body"><span class="src">The gate ledger loads with the feed.</span></div></div>
+
+    <div class="hw w12" id="hw-suggest"><h3>Improve the desk</h3><div style="line-height:1.55">
       Spotted a bug, want a stat published, or have an idea worth testing on real money? The desk reads everything.<br>
       <a class="more" href="https://x.com/zamma3" target="_blank" rel="noopener">DM @zamma3 on X →</a><br>
       <a class="more" href="https://x.com/thebotexchang3" target="_blank" rel="noopener">DM @thebotexchang3 on X →</a>
     </div></div>
-    <div class="hw w12" id="hw-closes"><h3>Recent closes</h3><div id="hw-closes-body"><span class="src">Closed trades load with the feed.</span></div></div>
-    <div class="hw w12" id="hw-watch"><h3>What the desks are watching</h3><div id="hw-watch-body"><span class="src">The AWAITING watch-list loads with the feed.</span></div></div>
-    <!-- [#350] THE REFEREE — the gate ledger, scored. Most dashboards show what a bot did; this shows
-         what it was STOPPED from doing and whether the stop was right, walked against real candles. -->
-    <div class="hw w12" id="hw-referee"><h3>The referee — what the desks were not allowed to do</h3><div id="hw-referee-body"><span class="src">The gate ledger loads with the feed.</span></div></div>
   </div>
 </div>
 <div class="page" data-page="markets">
   
+  <!-- [T2] the daily check-in moved here from the home page: this is the terminal, home is the sport -->
+  <div class="kicker">The daily check-in</div>
+  <h2 class="sec" id="checkin">Today in the markets</h2>
+  <div class="home-grid" style="margin-bottom:26px">
+    <div class="hw w4" id="hw-pulse"><h3>Market pulse</h3><div id="hw-pulse-body"><span class="src">Sentiment dials load with the feed.</span></div></div>
+
+    <div class="hw w4" id="hw-cal"><h3>This week — event risk</h3><div id="hw-cal-body"><span class="src">Calendar loads with the feed.</span></div></div>
+
+    <div class="hw w8" id="hw-news"><h3>Top headlines</h3><div id="hw-news-body"><span class="src">Headlines load with the feed.</span></div></div>
+
+    <div class="hw w4" id="hw-flows"><h3>Institutional flows</h3><div id="hw-flows-body"><span class="src">ETF flow data loads with the feed.</span></div></div>
+
+    <div class="hw w4" id="hw-movers"><h3>Top movers — 24h</h3><div id="hw-movers-body"><span class="src">Movers load with the feed.</span></div></div>
+
+  </div>
+  <div id="bxr-home" style="margin:0 0 26px"></div>
+  <hr class="rule">
   <div class="kicker">The data the agents trade on</div>
   <h2 class="sec" id="markets">Markets desk</h2>
   <p class="sub">Live prices and data straight from the exchanges — always on, even between report cycles — plus a consolidated view of the ~70 sources that feed every trading decision.</p>
@@ -632,6 +707,17 @@
   <div class="players" id="players-grid"></div>
 
   <hr class="rule">
+  <!-- [T2] moved from the home page: the full consensus matrix and the watch funnel are the sport's stats, not its front page -->
+  <div class="kicker">Where every desk stands</div>
+  <h2 class="sec" id="consensus">Consensus &amp; disagreement</h2>
+  <div class="home-grid" style="margin-bottom:8px">
+    <div class="hw w12" id="hw-consensus"><h3>All live stances, by asset</h3><div id="hw-consensus-body"><span class="src">Where every desk stands, per asset — loads with the feed.</span></div></div>
+
+    <div class="hw w12" id="hw-watch"><h3>What the desks are watching</h3><div id="hw-watch-body"><span class="src">The AWAITING watch-list loads with the feed.</span></div></div>
+
+  </div>
+
+  <hr class="rule">
   <!-- [#352] the public version of the learning block every desk reads before it trades -->
   <div class="kicker">The classroom</div>
   <h2 class="sec" id="learned">What the fleet has learned</h2>
@@ -668,15 +754,6 @@
 
 
   <hr class="rule">
-  
-  <div class="kicker">Every trade, permanent record</div>
-  <h2 class="sec" id="archive">The archive</h2>
-  <p class="sub" id="archive-sub">Every trade this season, permanently recorded with its AI post-mortem — the same record the models learn from. Nothing is deleted.</p>
-  <div class="chips" id="arch-chips"></div>
-  <div class="arch-wrap"><table class="data" id="archive-table"></table></div>
-  
-
-  <hr class="rule">
   <div class="box-grid">
   <div class="box hidden" id="risk-box">
     <div class="box-h">Risk desk — circuit breakers</div>
@@ -702,6 +779,16 @@
     </div>
   </details>
   </div>
+</div>
+<div class="page" data-page="archive">
+  <!-- [T2] the archive is its own room (was a section of Bots); #t<id> permalinks and the LEGACY #archive hash both land here -->
+  <div class="kicker">Every trade, permanent record</div>
+  <h2 class="sec" id="archive">The archive</h2>
+  <p class="sub" id="archive-sub">Every trade this season, permanently recorded with its AI post-mortem — the same record the models learn from. Nothing is deleted.</p>
+  <div class="chips" id="arch-chips"></div>
+  <div class="arch-wrap"><table class="data" id="archive-table"></table></div>
+  
+
 </div>
 <div class="page" data-page="desks">
   <!-- [#323] per-desk page: identity + grid cell, history, own record, stop-band table, closes, falsifiers.
@@ -860,7 +947,7 @@ var ACTORS = {
   qwen:     { label: "Qwen",     model: "Qwen 3.7 Max", short: "Qwen 3.7",  color: "#8a6414",
     style: "Scanner volume — screens the whole altcoin board every cycle",
     blurb: "The scanner. Alibaba's Qwen 3.7 Max, called through OpenRouter, screens the whole altcoin board every cycle and fires more picks than any other desk — the one permanent paper account. Until 2 Aug 2026 the seat ran a 9-billion-parameter Qwen on a gaming GPU at home; that local model still writes the daily column and the X posts." },
-  openclaw: { label: "Sonny Sonnet", model: "Claude Sonnet 5", short: "Sonny", color: "#2563c4",
+  openclaw: { retired: true, retiredRecord: "2W–0L", label: "Sonny Sonnet", model: "Claude Sonnet 5", short: "Sonny", color: "#2563c4",
     style: "Confirmation-first majors — level-anchored entries, tight stops",
     blurb: "The house AI, retired from the trading rotation mid-Season 4 (Aug 2026) to preserve API budget — it went out on a 2-0 final week. Claude still writes the fleet's weekly lessons and every trade's post-mortem behind the scenes." },
   grok:     { label: "Greta Grok", model: "Grok 4.6", short: "Greta", color: "#b03d85",
@@ -1058,6 +1145,26 @@ function fetchMacroStrip() {
     }).catch(function () {});
 }
 
+// ── [T2] hero indicator line + sticky-nav score + the disagreement teaser ──
+function renderHero(d) {
+  var closed = (d.archive || []).length, open = (d.openTrades || []).filter(function (t) { return t.venue !== "PAPER"; }).length;
+  var gen = d.generatedAt ? new Date(d.generatedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Africa/Johannesburg" }) : "";
+  var el = $("hero-ind"); if (el) el.innerHTML = "<span class='livedot'></span> LIVE · " + ((d.standings || []).length || 8) + " accounts · <b>" + closed + "</b> closed trades · <b>" + open + "</b> open positions" + (gen ? " · updated " + esc(gen) + " SAST" : "");
+  var al = $("audit-link"); if (al) al.textContent = "Audit all " + closed + " trades →";
+  var ns = $("nav-score"), v = d.verdict;
+  if (ns && v && v.man && v.machine) ns.innerHTML = "Human <b>" + money(v.man.account, 0) + "</b> · best machine <b>" + money(v.machine.account, 0) + "</b>";
+  var sb = $("split-body"); if (!sb) return;
+  var c = d.consensus, splits = ((c && c.assets) || []).filter(function (a) { return a.long.length && a.short.length; }).slice(0, 3);
+  var chip = function (st, dir) { var m = ACTORS[st.actor] || { short: st.actor }; return "<span class='cs-chip " + (dir === "LONG" ? "l" : "s") + (st.kind === "watching" ? " w" : "") + "' title='" + esc(m.label || st.actor) + " " + dir + (st.kind === "watching" ? " (trigger watch)" : "") + "'>" + esc(m.short || st.actor) + " " + (dir === "LONG" ? "↑" : "↓") + "</span>"; };
+  if (!splits.length) {
+    var held = ((c && c.assets) || []).filter(function (a) { return a.long.length || a.short.length; }).slice(0, 4).map(function (a) { return esc(a.asset); });
+    sb.innerHTML = "<p class='sub' style='margin:0'>Every desk with a stance is on the same side today" + (held.length ? " (" + held.join(", ") + ")" : "") + ". <a href='#consensus'>See all positions →</a></p>"; return;
+  }
+  sb.innerHTML = splits.map(function (a) {
+    return "<div class='cs-row hot'><span class='cs-asset'>" + esc(a.asset) + "</span><span class='cs-chips'>" + a.long.map(function (st) { return chip(st, "LONG"); }).join("") + a.short.map(function (st) { return chip(st, "SHORT"); }).join("") + "</span></div>";
+  }).join("") + "<div class='src' style='margin-top:6px'>Green long · red short · dashed = trigger watch, not yet filled. Independence is the design: no desk sees another's call. <a href='#consensus'>See every stance →</a></div>";
+}
+
 // ── headline ──
 function renderHeadline(d) {
   var v = d.verdict;
@@ -1205,20 +1312,40 @@ function renderStandings(d) {
   _stdData = d;
   var sk = _stdSort.key, sd = _stdSort.dir;
   var rows = (d.standings || []).slice().sort(function (a, b) { return (_stdVal(b, sk) - _stdVal(a, sk)) * (sd === -1 ? 1 : -1); });
+  // [T2] league-table furniture: yesterday's rank (from the daily series) → movement arrows, and
+  // the LIVE / PAPER split as two groups in one table. Only meaningful under the default sort.
+  var isPaperRow = function (a) { return a.paper === true || a.key === "qwen" || !a.venue || String(a.venue).toUpperCase() === "PAPER"; };
+  var prevRank = {};
+  try {
+    var sdS = d.seriesDaily || {}, bs = sdS.bySource || {}, L = (sdS.labels || []).length;
+    if (L >= 2) {
+      var y = Object.keys(bs).filter(function (k) { return Array.isArray(bs[k]) && bs[k].length >= L && isFinite(bs[k][L - 2]); })
+        .map(function (k) { return { k: k, v: bs[k][L - 2] }; }).sort(function (a, b) { return b.v - a.v; });
+      y.forEach(function (o, i) { prevRank[o.k] = i + 1; });
+    }
+  } catch (e) {}
+  var defaultSort = sk === "account" && sd === -1;
+  if (defaultSort) rows = rows.filter(function (a) { return !isPaperRow(a); }).concat(rows.filter(isPaperRow));
   var sth = function (key, label) {
     var arrow = sk === key ? (sd === -1 ? " ▾" : " ▴") : "";
     return "<th class='rt' data-sk='" + key + "' style='cursor:pointer' title='Sort by " + label + "'>" + label + arrow + "</th>";
   };
   var h = "<tr><th></th><th>Competitor</th><th>Venue</th>" + sth("account", "Account") + sth("retPct", "Return") + sth("record", "Record") + sth("wr", "Win rate") + sth("costUsd", "Model spend") + sth("netPnl", "Net of spend") + "</tr>";
-  var anySmall = false;
+  var anySmall = false, groupShown = {};
   rows.forEach(function (a, i) {
     var meta = ACTORS[a.key] || { label: a.label, model: "", color: "#888" };
+    if (defaultSort) {
+      var g = isPaperRow(a) ? "paper" : "live";
+      if (!groupShown[g]) { groupShown[g] = true; h += "<tr class='std-group'><td colspan='9'>" + (g === "live" ? "Live championship — real money" : "Lab — paper account, same rules, no capital") + "</td></tr>"; }
+    }
+    var mv = "";
+    if (defaultSort && prevRank[a.key]) { var dlt = prevRank[a.key] - (i + 1); mv = dlt > 0 ? " <span class='mv up' title='up " + dlt + " since yesterday'>▲" + dlt + "</span>" : dlt < 0 ? " <span class='mv down' title='down " + (-dlt) + " since yesterday'>▼" + (-dlt) + "</span>" : " <span class='mv' title='unchanged since yesterday'>·</span>"; }
     var isPaper = a.paper === true || a.key === "qwen" || !a.venue || String(a.venue).toUpperCase() === "PAPER";
     var hasVenue = a.venue && String(a.venue).toUpperCase() !== "PAPER";
     var venue = isPaper
       ? (hasVenue ? venueHtml(esc(a.venue), a.venue) + " " : "") + "<span class='pill paper'" + (hasVenue ? "" : " style='margin-left:0'") + ">PAPER</span>"
       : venueHtml(esc(a.venue), a.venue) + "<span class='pill live'>LIVE</span>";
-    h += "<tr><td class='num'>" + (i + 1) + "</td>" +
+    h += "<tr><td class='num'>" + (i + 1) + mv + "</td>" +
       "<td><span class='swatch' style='background:" + meta.color + "'></span><span class='who-name'>" + esc(meta.model) + "</span> <span class='who-model'>· " + esc(meta.label) + "</span>" +
       (meta.style ? "<span class='who-style'>" + esc(meta.style) + "</span>" : "") + "</td>" +
       "<td>" + venue + "</td>" +
@@ -1233,6 +1360,9 @@ function renderStandings(d) {
       "<td class='rt num'>" + (a.key === "manual" ? "<span class='src'>—</span>" : money(a.costUsd, 2)) + "</td>" +
       "<td class='rt num " + (a.netPnl == null ? "" : cls(a.netPnl)) + "'>" + (a.netPnl == null ? "—" : (a.netPnl >= 0 ? "+" : "−") + money(Math.abs(a.netPnl), 2)) + "</td></tr>";
   });
+  // [T2] retired desks: one grey line, record kept in About — never ranked, never hidden
+  var retired = Object.keys(ACTORS).filter(function (k) { return !(d.standings || []).some(function (a) { return a.key === k; }) && ACTORS[k].retired; });
+  if (retired.length) h += "<tr class='std-group'><td colspan='9' style='font-weight:400'>Retired this season: " + retired.map(function (k) { return esc(ACTORS[k].label) + " (" + esc(ACTORS[k].model) + ")" + (ACTORS[k].retiredRecord ? " " + esc(ACTORS[k].retiredRecord) : ""); }).join(", ") + " — record kept in <a href='#/about'>About</a>.</td></tr>";
   $("standings").innerHTML = h;
   var note = $("std-note");
   if (note) note.classList.toggle("hidden", !anySmall);
@@ -1251,6 +1381,7 @@ function renderStandings(d) {
 
 // ── race chart: hourly rows when we have depth, else daily series ──
 var chartMode = null; // '24h' (5-min samples) | 'season' (hourly/daily)
+var chartPct = false, chartHidden = new Set();   // [T2] % view + hidden desks (session-only)
 function seriesFromRows(rows, labelFn) {
   var out = { labels: rows.map(labelFn), series: [] };
   // [#286] excluded set read off the data, never hardcoded — a retired desk the feed
@@ -1289,14 +1420,39 @@ function renderChart(d) {
     ? "<span class='ctog'><button data-m='24h'" + (chartMode === "24h" ? " class='on'" : "") + ">24h</button>" +
       "<button data-m='season'" + (chartMode === "season" ? " class='on'" : "") + ">Season</button></span>"
     : "";
-  var legNote = chartMode === "24h"
-    ? "live account value incl. open trades, $ · 5-min samples"
-    : "account value at each day's close, $ · dashed = start";
-  $("legend").innerHTML = data.series.map(function (s) {
-    return "<span><span class='swatch' style='background:" + s.color + "'></span>" + esc(s.key) + "</span>";
-  }).join("") + "<span style='margin-left:auto;color:var(--ink3)'>" + legNote + "</span>" + tog;
-  Array.prototype.forEach.call($("legend").querySelectorAll(".ctog button"), function (b) {
+  // [T2] per-desk toggles (click a legend entry), $ / % of the $500 start, and a "human vs best
+  // machine" preset. All client-side on the series the feed already carries.
+  var start = d.startCapital || 500;
+  if (chartPct) data.series.forEach(function (s) { s.v = s.v.map(function (v) { return v == null ? v : (v - start) / start * 100; }); });
+  if (chartHidden.size) data.series = data.series.filter(function (s) { return !chartHidden.has(s.key); });
+  var legNote = (chartMode === "24h"
+    ? "live account value incl. open trades · 5-min samples"
+    : "account value at each day's close · dashed = start") + (chartPct ? " · % from $" + start : " · $");
+  var allSeries = chartSeries(d, chartMode).series;
+  $("legend").innerHTML = allSeries.map(function (s) {
+    var off = chartHidden.has(s.key);
+    return "<button class='leg" + (off ? " off" : "") + "' data-k='" + esc(s.key) + "' title='click to " + (off ? "show" : "hide") + "'><span class='swatch' style='background:" + s.color + "'></span>" + esc(s.key) + "</button>";
+  }).join("") + "<span style='margin-left:auto;color:var(--ink3)'>" + legNote + "</span>" + tog +
+    "<span class='ctog'><button data-p='1'" + (chartPct ? " class='on'" : "") + ">%</button><button data-p='0'" + (!chartPct ? " class='on'" : "") + ">$</button></span>" +
+    "<span class='ctog'><button data-preset='hvb' title='human vs the best machine'>Human vs best</button><button data-preset='all'>All</button></span>";
+  Array.prototype.forEach.call($("legend").querySelectorAll(".ctog button[data-m]"), function (b) {
     b.onclick = function () { chartMode = b.getAttribute("data-m"); renderChart(d); };
+  });
+  Array.prototype.forEach.call($("legend").querySelectorAll(".ctog button[data-p]"), function (b) {
+    b.onclick = function () { chartPct = b.getAttribute("data-p") === "1"; renderChart(d); };
+  });
+  Array.prototype.forEach.call($("legend").querySelectorAll("button.leg"), function (b) {
+    b.onclick = function () { var k = b.getAttribute("data-k"); if (chartHidden.has(k)) chartHidden.delete(k); else chartHidden.add(k); renderChart(d); };
+  });
+  Array.prototype.forEach.call($("legend").querySelectorAll(".ctog button[data-preset]"), function (b) {
+    b.onclick = function () {
+      chartHidden = new Set();
+      if (b.getAttribute("data-preset") === "hvb" && d.verdict) {
+        var keep = { manual: 1 }; (d.standings || []).forEach(function (a) { if (a.label === d.verdict.machine.label || (ACTORS[a.key] || {}).label === d.verdict.machine.label) keep[a.key] = 1; });
+        allSeries.forEach(function (s) { var k = Object.keys(ACTORS).filter(function (kk) { return ACTORS[kk].model === s.key; })[0]; if (!keep[k]) chartHidden.add(s.key); });
+      }
+      renderChart(d);
+    };
   });
   var svg = $("race-chart"); svg.innerHTML = "";
   var NS = "http://www.w3.org/2000/svg";
@@ -1314,9 +1470,10 @@ function renderChart(d) {
     var raw = (yMax - yMin) / 5, p10 = Math.pow(10, Math.floor(Math.log(raw) / Math.LN10)), c = raw / p10;
     gStep = (c <= 1 ? 1 : c <= 2 ? 2 : c <= 5 ? 5 : 10) * p10;
   } else {
-    yMin = Math.floor(Math.min.apply(null, all.concat([480])) / 50) * 50 - 10;
+    if (chartPct) { var lo2 = Math.min.apply(null, all.concat([-4])), hi2 = Math.max.apply(null, all.concat([4])); yMin = Math.floor(lo2 / 5) * 5 - 1; yMax = Math.ceil(hi2 / 5) * 5 + 1; gStep = 5; }
+    else { yMin = Math.floor(Math.min.apply(null, all.concat([480])) / 50) * 50 - 10;
     yMax = Math.ceil(Math.max.apply(null, all.concat([520])) / 50) * 50 + 10;
-    gStep = 50;
+    gStep = 50; }
   }
   var X = function (i) { return m.l + iw * i / Math.max(1, data.labels.length - 1); };
   var Y = function (v) { return m.t + ih * (1 - (v - yMin) / (yMax - yMin)); };
@@ -1324,8 +1481,9 @@ function renderChart(d) {
     el("line", { x1: m.l, x2: W - m.r, y1: Y(g), y2: Y(g), stroke: "#eef0ec" });
     el("text", { x: m.l - 8, y: Y(g) + 4, "text-anchor": "end", fill: "#7d897f", "font-size": 11, "font-family": "ui-monospace,Consolas,monospace" }).textContent = "$" + (gStep < 1 ? g.toFixed(2) : Math.round(g));
   }
-  if (yMin <= 500 && 500 <= yMax)
-    el("line", { x1: m.l, x2: W - m.r, y1: Y(500), y2: Y(500), stroke: "#7d897f", "stroke-dasharray": "5 5", opacity: .7 });
+  var base = chartPct ? 0 : 500;
+  if (yMin <= base && base <= yMax)
+    el("line", { x1: m.l, x2: W - m.r, y1: Y(base), y2: Y(base), stroke: "#7d897f", "stroke-dasharray": "5 5", opacity: .7 });
   var step = Math.max(1, Math.round(data.labels.length / 7));
   data.labels.forEach(function (lb, i) {
     if ((i % step === 0 && i <= data.labels.length - 1 - step) || i === data.labels.length - 1)
@@ -2840,8 +2998,10 @@ function renderStamps(d) {
 
 // ── scroll-spy: highlight the nav link of the section in view ──
 function initSpy() {
-  var links = document.querySelectorAll("nav.sections a");
-  var ids = Array.prototype.map.call(links, function (a) { return a.getAttribute("href").slice(1); });
+  // [T2] page links (data-page, href "#/…") are owned by the router — the spy must never touch
+  // them or it clears the active tab on any page whose sections it cannot see (it did, on Bots).
+  var links = document.querySelectorAll("nav.sections a:not([data-page])");
+  var ids = Array.prototype.map.call(links, function (a) { return a.getAttribute("href").slice(1); }).filter(function (id) { return id && id.indexOf("/") !== 0; });
   function onScroll() {
     var y = window.scrollY + 90, current = ids[0];
     ids.forEach(function (id) { var el = $(id); if (el && el.offsetTop <= y) current = id; });
@@ -3021,9 +3181,12 @@ function renderHome(d) {
   // open positions: floor-style compact items — dir/actor/venue pills, live P&L span and
   // the stop→target position bar (same data-pnl/data-pl indices as the floor; the live
   // layer paints ALL matching elements, so both copies stay in sync)
+  // [T2] three real-money positions (conviction, then age, as the size proxy — notional is not published), each with why it was taken
   var ot = d.openTrades || [], l = "";
+  var liveOT = ot.filter(function (t) { return t.venue !== "PAPER"; }).sort(function (a, b) { return (b.conviction || 0) - (a.conviction || 0) || (Date.parse(a.openedAt) - Date.parse(b.openedAt)); });
   if (!ot.length) l = "<div class='row'><span>All desks are flat</span><b>0 open</b></div>";
-  else ot.slice(0, 4).forEach(function (t) {
+  else if (!liveOT.length) l = "<div class='row'><span>Live venues are flat — " + ot.length + " paper position" + (ot.length > 1 ? "s" : "") + " only</span></div>";
+  else liveOT.slice(0, 3).forEach(function (t) {
     var i = ot.indexOf(t);
     l += "<div class='titem' style='padding:8px 0'><div class='l1'><span class='asset'>" + esc(t.asset) + "</span>" +
       "<span class='dirpill " + (t.direction === "SHORT" ? "s" : "l") + "'>" + esc(t.direction) + "</span>" +
@@ -3031,9 +3194,10 @@ function renderHome(d) {
       (t.venue !== "PAPER" ? "<span class='pill live'>" + esc(t.venue) + "</span>" : "<span class='pill paper'>PAPER</span>") +
       "<span class='outc'><span class='livepnl' data-pnl='" + i + "'></span>" +
       (t.conviction != null ? " <span class='num'>conv " + esc(t.conviction) + "/10</span>" : "") + "</span></div>" +
-      posBar(t, i) + "</div>";
+      posBar(t, i) +
+      (t.thesis ? "<div class='src' style='margin-top:4px'>" + esc(smartTrim(String(t.thesis).replace(/\[[^\]]*\]/g, ""), 140)) + " <a href='#floor'>Why " + esc((ACTORS[t.actor] || {}).short || t.actor) + " took it →</a></div>" : "") + "</div>";
   });
-  if (ot.length > 4) l += "<div class='row'><span>+" + (ot.length - 4) + " more open</span><span></span></div>";
+  if (liveOT.length > 3) l += "<div class='row'><span>+" + (liveOT.length - 3) + " more live" + (ot.length - liveOT.length ? " · " + (ot.length - liveOT.length) + " paper" : "") + "</span><span></span></div>";
   if ((d.awaiting || []).length) l += "<div class='row'><span>Watch-list</span><b>" + d.awaiting.length + " trigger" + (d.awaiting.length > 1 ? "s" : "") + " armed</b></div>";
   l += "<a class='more' href='#/bots'>The trading floor →</a>";
   $("hw-live-body").innerHTML = l;
@@ -3709,7 +3873,7 @@ function chStartPoll() {
 function renderAll(d) {
   _feedLast = d;   // [#323]
   _feedForReveal = d;
-  renderStamps(d); renderStrip(d.market); renderHeadline(d); renderFleetPnl(d); renderSeasonHistory(d); renderStandings(d); renderReferee(d);
+  renderStamps(d); renderStrip(d.market); renderHeadline(d); renderFleetPnl(d); renderSeasonHistory(d); renderStandings(d); renderReferee(d); try { renderHero(d); } catch (e) {}
   try { renderHook(d); } catch (e) {}
   renderChart(d); renderPlayers(d); renderSeasonStats(d); renderLearned(d); renderFloor(d); renderRiskIndex(d); renderDesk(d); try { if (_deskKey || location.hash === "#/desks" || location.hash.indexOf("#/desk/") === 0) renderDeskPage(d, _deskKey); } catch (e) {} renderHLWhales(d); renderTopTraders(d); renderLighterWhales(d); renderCalendar(d); renderCalMonth(d); renderThisWeek(d); renderIntel(d); renderIntelRail(d);
   // [#289] the risk-rules card reads the FEED's enforced limits — the static prose went
@@ -3770,17 +3934,18 @@ boot();
 // ── Site pages: hash router (#/markets), legacy-anchor map, per-page nav state ──
 (function () {
   document.body.classList.add("paged");   // no-JS renders all pages stacked
-  var PAGES = { home: 1, markets: 1, charts: 1, news: 1, calendar: 1, bots: 1, about: 1, desks: 1 };
+  var PAGES = { home: 1, markets: 1, charts: 1, news: 1, calendar: 1, bots: 1, about: 1, desks: 1, archive: 1 };   // [T2] archive is its own room
+  var INTEL_PAGES = { markets: 1, charts: 1, news: 1, calendar: 1 };   // [T2] the terminal — one nav item, four rooms
   // old deep links (#race, #wire, #rules…) land on the right page, scrolled to the element
-  var LEGACY = { race: "bots", players: "bots", floor: "bots", desknotes: "bots", tape: "bots",
-    archive: "bots", markets: "markets", whales: "markets", wire: "news", intel: "news",
-    rules: "about", sponsor: "about", calendar: "calendar" };
+  var LEGACY = { race: "home", players: "bots", floor: "bots", desknotes: "bots", tape: "bots",
+    archive: "archive", markets: "markets", whales: "markets", wire: "news", intel: "news",
+    rules: "about", sponsor: "about", calendar: "calendar", consensus: "bots", learned: "bots", split: "home", checkin: "markets" };
   var navLinks = [].slice.call(document.querySelectorAll("nav.pagesnav a"));
   // per-page tab titles + meta description (SPA hash routes share one document; this keeps
   // tabs/history/bookmarks legible and the description honest per view)
   var PAGE_META = {
     home:     { t: "The Bot Exchange — Man vs Machine, live",
-                d: "Live crypto market intelligence and one human trading against six AI agents with real money — standings, positions and post-mortems, all published." },
+                d: "7 AIs vs 1 human, $500 each, real money: live standings, every position with its stop and conviction, and an AI post-mortem on every close." },
     markets:  { t: "Markets — The Bot Exchange",
                 d: "Live crypto prices, funding, long/short positioning, whale flows and prediction-market odds — the same data the AI trading desks read." },
     charts:   { t: "Charts — The Bot Exchange",
@@ -3789,6 +3954,8 @@ boot();
                 d: "Curated crypto and macro headlines, on-chain intelligence and the desk column — refreshed with every report cycle." },
     calendar: { t: "Calendar — The Bot Exchange",
                 d: "The week ahead in market-moving events: FOMC, CPI, jobs data and megacap earnings, with impact ratings." },
+    archive:  { t: "Archive — The Bot Exchange",
+                d: "Every trade this season, permanently recorded with its AI post-mortem — wins, losses and breakevens, nothing deleted." },
     bots:     { t: "The Bots — The Bot Exchange",
                 d: "Six AI models vs one human, real money: live standings, equity curves, open positions, trade tape and every post-mortem." },
     desks:    { t: "Desks — The Bot Exchange",
@@ -3801,7 +3968,10 @@ boot();
     [].slice.call(document.querySelectorAll(".page")).forEach(function (p) {
       p.classList.toggle("active", p.getAttribute("data-page") === name);
     });
-    navLinks.forEach(function (a) { a.classList.toggle("active", a.getAttribute("data-page") === name); });
+    navLinks.forEach(function (a) { a.classList.toggle("active", a.getAttribute("data-page") === name || (a.getAttribute("data-group") === "intel" && !!INTEL_PAGES[name])); });
+    // [T2] Market intel sub-nav: shown on the four terminal rooms, marks the current one
+    var sn = document.getElementById("intel-subnav");
+    if (sn) { sn.classList.toggle("hidden", !INTEL_PAGES[name]); [].slice.call(sn.querySelectorAll("a")).forEach(function (a) { a.classList.toggle("active", a.getAttribute("data-page") === name); }); }
     var pm = PAGE_META[name];
     if (pm) { document.title = pm.t; if (metaDesc) metaDesc.setAttribute("content", pm.d); }
     // Charts can only mount once their page is visible — an inactive .page is display:none,
@@ -3829,10 +3999,18 @@ boot();
     }
     var a = h.slice(1);
     // per-trade permalinks: #t<id> → The Bots, archive row expanded + scrolled into view
-    if (/^t\d+$/.test(a)) { showPage("bots"); revealTrade(a.slice(1)); return; }
+    if (/^t\d+$/.test(a)) { showPage("archive"); revealTrade(a.slice(1)); return; }   // [T2] permalinks land on the archive room
     if (LEGACY[a]) { showPage(LEGACY[a], a); return; }
     showPage("home");
   }
+  // [T2] mobile: tap a card header to fold it; remembered per card. No-op on wide screens (CSS gates the look).
+  document.addEventListener("click", function (ev) {
+    var h3 = ev.target && ev.target.closest ? ev.target.closest(".hw > h3") : null;
+    if (!h3 || window.innerWidth > 760) return;
+    var box = h3.parentElement; box.classList.toggle("folded");
+    try { localStorage.setItem("fold:" + box.id, box.classList.contains("folded") ? "1" : "0"); } catch (e) {}
+  });
+  try { [].slice.call(document.querySelectorAll(".hw[id]")).forEach(function (b) { if (localStorage.getItem("fold:" + b.id) === "1") b.classList.add("folded"); }); } catch (e) {}
   window.addEventListener("hashchange", route);
   route();
 })();
