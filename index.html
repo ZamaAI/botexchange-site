@@ -628,6 +628,12 @@
   in code, not promises — and nothing is ever deleted.</p>
   <div class="players" id="players-grid"></div>
 
+  <hr class="rule">
+  <!-- [#352] the public version of the learning block every desk reads before it trades -->
+  <div class="kicker">The classroom</div>
+  <h2 class="sec" id="learned">What the fleet has learned</h2>
+  <p class="sub" style="max-width:none">Before every decision each desk is shown the fleet's own record cut by conviction, stop distance, planned reward-to-risk, direction and whether the pick cited outside intel. This is that table, on real-money trades, recomputed every few minutes. The lessons are computed from the numbers, not written by hand.</p>
+  <div id="learned-body"><span class="src">The classroom loads with the feed.</span></div>
 
   <hr class="rule">
   <div class="kicker">Live book</div>
@@ -2942,6 +2948,37 @@ function renderReferee(d) {
   h += "<div class='src'>Scored by the bot once a day: from each refusal, walk the hourly candles forward and record which level was touched first. This is the save-time ledger only — shadow gates that never block a trade, and watches that simply never triggered, are counted elsewhere. Counts, not dollars: no money was placed on any of these.</div>";
   el.innerHTML = h;
 }
+
+// ── [#352] the classroom ───────────────────────────────────────────────────
+function renderLearned(d) {
+  var el = $("learned-body"); if (!el) return;
+  var L = d.learning;
+  if (!L || !L.live || !L.live.n) { el.innerHTML = "<span class='src'>Not enough scored trades in the window yet.</span>"; return; }
+  var h = "";
+  if (L.takeaways && L.takeaways.length) {
+    h += "<ul style='margin:0 0 12px;padding-left:18px;line-height:1.55'>" + L.takeaways.map(function (t) { return "<li>" + esc(t) + "</li>"; }).join("") + "</ul>";
+  }
+  function tbl(title, rows, labelHead) {
+    var maxN = Math.max.apply(null, rows.map(function (r) { return r.n || 0; }).concat([1]));
+    var t = "<table class='data' style='margin-bottom:0'><caption>" + esc(title) + "</caption><tr><th>" + esc(labelHead) + "</th><th class='rt'>Trades</th><th class='rt'>W–L–BE</th><th>Win rate</th><th class='rt'>Avg R</th><th class='rt'>P&amp;L</th></tr>";
+    rows.forEach(function (r) {
+      var thin = r.n < 5;
+      var bar = r.wr == null ? "<span class='src'>—</span>" :
+        "<span style='display:inline-block;width:64px;height:7px;background:rgba(0,0,0,.07);vertical-align:middle;margin-right:6px'><span style='display:block;height:100%;width:" + r.wr + "%;background:" + (r.wr >= 50 ? "var(--up)" : "var(--down)") + "'></span></span><span class='num" + (thin ? " src" : "") + "'>" + r.wr + "%</span>";
+      t += "<tr" + (thin ? " style='color:var(--ink3)'" : "") + "><td><b>" + esc(r.band) + "</b>" + (r.n === 0 ? "" : "") + "</td><td class='rt'>" + r.n + "</td><td class='rt'>" + r.w + "–" + r.l + "–" + r.be + "</td><td>" + bar + "</td><td class='rt " + (r.avgR == null ? "" : cls(r.avgR)) + "'>" + (r.avgR == null ? "—" : (r.avgR >= 0 ? "+" : "") + r.avgR.toFixed(2) + "R") + "</td><td class='rt " + cls(r.pnl) + "'>" + (r.pnl >= 0 ? "+" : "−") + money(Math.abs(r.pnl), 0) + "</td></tr>";
+    });
+    return t + "</table>";
+  }
+  var v = L.live;
+  h += "<div style='display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px 22px'>" +
+    "<div>" + tbl("By conviction (the desk's own 1–10 score)", v.conviction.map(function (r) { return Object.assign({}, r, { band: r.band + "/10" }); }), "Conviction") + "</div>" +
+    "<div>" + tbl("By stop distance from entry", v.stopBand, "Stop") + "</div>" +
+    "<div>" + tbl("By planned reward-to-risk at entry", v.rrBand.map(function (r) { return Object.assign({}, r, { band: r.band + "×" }); }), "R:R") + "</div>" +
+    "<div>" + tbl("By direction", v.direction, "Side") + tbl("Cited outside intel?", v.intel.map(function (r) { return Object.assign({}, r, { band: r.band === "tagged" ? "cited [INTEL]" : "did not" }); }), "Pick") + "</div>" +
+    "</div>";
+  h += "<div class='src' style='margin-top:10px'>" + esc(L.filter) + " Real-money trades only: <b>" + v.n + "</b> scored" + (L.paperN ? "; " + L.paperN + " paper trades are excluded here but sit in the desks' own prompts" : "") + ". Rows in grey rest on fewer than 5 trades. Since " + esc(deskDate(L.since)) + " · as of " + esc(relAge(L.at) || "") + ".</div>";
+  el.innerHTML = h;
+}
 function renderHome(d) {
   // pulse: F&G + regimes + corr
   var m = d.market || {}, p = "";
@@ -3644,7 +3681,7 @@ function renderAll(d) {
   _feedForReveal = d;
   renderStamps(d); renderStrip(d.market); renderHeadline(d); renderFleetPnl(d); renderSeasonHistory(d); renderStandings(d); renderReferee(d);
   try { renderHook(d); } catch (e) {}
-  renderChart(d); renderPlayers(d); renderSeasonStats(d); renderFloor(d); renderRiskIndex(d); renderDesk(d); try { if (_deskKey || location.hash === "#/desks" || location.hash.indexOf("#/desk/") === 0) renderDeskPage(d, _deskKey); } catch (e) {} renderHLWhales(d); renderTopTraders(d); renderLighterWhales(d); renderCalendar(d); renderCalMonth(d); renderThisWeek(d); renderIntel(d); renderIntelRail(d);
+  renderChart(d); renderPlayers(d); renderSeasonStats(d); renderLearned(d); renderFloor(d); renderRiskIndex(d); renderDesk(d); try { if (_deskKey || location.hash === "#/desks" || location.hash.indexOf("#/desk/") === 0) renderDeskPage(d, _deskKey); } catch (e) {} renderHLWhales(d); renderTopTraders(d); renderLighterWhales(d); renderCalendar(d); renderCalMonth(d); renderThisWeek(d); renderIntel(d); renderIntelRail(d);
   // [#289] the risk-rules card reads the FEED's enforced limits — the static prose went
   // stale once already (fleet breaker 6->7 at #214, wrong on this page for a week).
   // Static text above stays as the no-JS/old-feed fallback.
