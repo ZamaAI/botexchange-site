@@ -3074,7 +3074,41 @@ function renderHome(d) {
       "<br>Walked forward against real candles. No money was placed on any of them." +
       "</div>";
   }
-  if ($("hw-watch-body")) $("hw-watch-body").innerHTML = (awH + awScoreH) ||
+  // [#351] THE FUNNEL — what happens to a watch. Registered → filled / dropped / expired /
+  // pending, why they were dropped, per desk, what the fills became, and the [#344]
+  // close-confirmed lane's record next to the frozen wick-fill measurement it replaced.
+  var wf = d.watchFunnel, funnelH = "";
+  if (wf && wf.registered) {
+    var pctOf = function (n) { return wf.registered ? Math.round(n / wf.registered * 100) : 0; };
+    var seg = function (label, n, color) { var p = pctOf(n); return p ? "<span title='" + esc(label + ": " + n) + "' style='display:inline-block;height:100%;width:" + p + "%;background:" + color + "'></span>" : ""; };
+    var REASON = { anticipation: "anticipation (stop too wide for the conviction)", struct_chase: "structure chase", correlation_cap: "correlation cap", reentry_cooldown: "re-entry cooldown", stop_min_distance: "stop too tight", stop_hard_ceiling: "stop ceiling", duplicate_open: "already open", contradiction: "contradicts an open trade", rr_floor: "R:R floor", fleet_asset_cap: "fleet asset cap", demotion_below_rr_floor: "demoted below the R:R floor", desk_cancelled: "withdrawn by the desk", refused_at_fill_unrecorded: "refused at fill (gate not recorded)", other: "other" };
+    var fl = wf.fills.live || {}, fp = wf.fills.paper || {}, cf = wf.confirmed || {}, bl = wf.baseline || {};
+    var rec = function (x) { return (x.w || 0) + "W–" + (x.l || 0) + "L–" + (x.be || 0) + "BE" + ((x.open || 0) ? " · " + x.open + " open" : ""); };
+    funnelH = "<div class='src' style='margin-top:12px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08)'>" +
+      "<b>What happens to a watch.</b> Over the last " + esc(String(wf.windowDays)) + " days the desks registered <b>" + wf.registered + "</b> watches. " +
+      "<b>" + wf.filled + "</b> triggered and filled (" + pctOf(wf.filled) + "%), <b>" + wf.dropped + "</b> were dropped before or at the trigger (" + pctOf(wf.dropped) + "%), <b>" + wf.expired + "</b> expired untouched, <b>" + wf.pending + "</b> are still waiting." +
+      "<div style='display:flex;height:8px;margin:8px 0 4px;background:rgba(255,255,255,.06)'>" + seg("filled", wf.filled, "#1e7a3a") + seg("dropped", wf.dropped, "#b5473a") + seg("expired", wf.expired, "#8a6414") + seg("pending", wf.pending, "#556") + "</div>" +
+      "<span style='color:#1e7a3a'>■</span> filled · <span style='color:#b5473a'>■</span> dropped · <span style='color:#8a6414'>■</span> expired · <span style='color:#889'>■</span> pending" +
+      "</div>";
+    if (wf.dropReasons && wf.dropReasons.length) {
+      funnelH += "<div class='src' style='margin-top:6px'><b>Why they were dropped:</b> " + wf.dropReasons.slice(0, 7).map(function (r) { return esc(REASON[r.reason] || r.reason) + " " + r.n; }).join(" · ") + "</div>";
+    }
+    funnelH += "<div class='src' style='margin-top:6px'><b>What the fills became:</b> live money " + fl.n + " fills → " + rec(fl) + "; paper " + fp.n + " → " + rec(fp) +
+      ((wf.demotedToPaper || 0) ? " (" + wf.demotedToPaper + " live watches were filled as paper because the trigger slipped past the real-capital band)" : "") + ".</div>";
+    if (wf.byActor && wf.byActor.length) {
+      funnelH += "<div style='overflow-x:auto'><table class='data' style='margin:8px 0 6px'><tr><th>Desk</th><th class='rt'>Registered</th><th class='rt'>Filled</th><th class='rt'>Dropped</th><th class='rt'>Expired</th><th class='rt'>Waiting</th></tr>";
+      wf.byActor.forEach(function (x) {
+        var m = ACTORS[x.actor] || { short: x.actor, color: "#888" };
+        funnelH += "<tr><td><span class='swatch' style='background:" + m.color + "'></span>" + esc(m.short || x.actor) + "</td><td class='rt'>" + x.registered + "</td><td class='rt'>" + x.filled + "</td><td class='rt'>" + x.dropped + "</td><td class='rt'>" + x.expired + "</td><td class='rt'>" + x.pending + "</td></tr>";
+      });
+      funnelH += "</table></div>";
+    }
+    if (bl.closedThrough) {
+      funnelH += "<div class='src' style='margin-top:4px'><b>Wick or close?</b> Nearly every watch says \"4h close above X\". Until 4 Sep the engine filled on a 0.3% touch at any 15-minute tick — it bought the wick. Measured once on " + (bl.closedThrough.n + bl.wickOnly.n) + " live fills (" + esc(bl.window) + "): fills where the bar <b>closed through</b> the level went " + rec(bl.closedThrough) + " (" + (bl.closedThrough.sumPct >= 0 ? "+" : "") + bl.closedThrough.sumPct + "% summed); <b>wick-only</b> fills went " + rec(bl.wickOnly) + " (" + bl.wickOnly.sumPct + "%). " +
+        "Since 4 Sep a close-worded watch fills only once a bar has actually closed through its level. That lane so far: <b>" + (cf.n || 0) + "</b> live fills → " + rec(cf) + ". Judge it on outcome, not volume — fewer fills is the design.</div>";
+    }
+  }
+  if ($("hw-watch-body")) $("hw-watch-body").innerHTML = (awH + awScoreH + funnelH) ||
     "<span class='src'>Nothing on the watch-list this cycle — every setup either confirmed or wasn't worth flagging.</span>";
 }
 // ── Charts page ───────────────────────────────────────────────────────────────
