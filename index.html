@@ -1629,7 +1629,7 @@ function renderFloor(d) {
       "<div class='lvls'>entry " + money(e, e < 10 ? 4 : 2) + " · stop " + (t.levelsApprox ? "≈" : "") + money(s, s < 10 ? 4 : 2) +
       (t.trailed ? " <span title='The risk engine has trailed this stop from its original level — profit locked in'>🔒 trailed</span>" : "") +
       " · target " + (t.levelsApprox ? "≈" : "") + money(tg, tg < 10 ? 4 : 2) +
-      (rr ? " · R/R " + rr.toFixed(1) + subFloorBadge(rr, t.openedAt) : "") + (age != null ? " · open " + (age < 48 ? age + "h" : Math.round(age / 24) + "d") : "") + "</div>" +
+      (rr ? " · R/R " + rr.toFixed(1) + subFloorBadge(rr, t.openedAt, t.actor) : "") + (age != null ? " · open " + (age < 48 ? age + "h" : Math.round(age / 24) + "d") : "") + "</div>" +
       posBar(t, i) +
       (t.thesis && !/scanner pick \(paper\)|see COIN SCANNER/i.test(t.thesis)
         ? "<div class='why clamp' data-th='" + i + "'><b>The thesis:</b> " + esc(t.thesis) + "</div><button class='morelink th-more' data-th='" + i + "'>read more</button>"
@@ -2487,7 +2487,7 @@ function renderArchive(d) {
     var when = new Date(r.closedAt).toLocaleDateString("en-GB", Object.assign({ day: "2-digit", month: "short" }, TZ));
     var res = r.outcome === "BREAKEVEN" ? "<span style='color:var(--ink3)'>BE</span>"
       : "<span class='" + (r.outcome === "WIN" ? "up" : "down") + "'>" + esc(r.outcome) + (r.pct != null ? " " + pct(r.pct, 1) : "") + "</span>";
-    res += subFloorBadge(r.rr, r.openedAt);
+    res += subFloorBadge(r.rr, r.openedAt, r.actor);
     var pnl = r.pnlUsd == null ? "<span class='src'>—</span>"
       : "<span class='" + cls(r.pnlUsd) + " num'>" + (r.pnlUsd >= 0 ? "+" : "−") + "$" + Math.abs(r.pnlUsd).toFixed(2) + "</span>";
     h += "<tr class='arch-row' data-i='" + i + "'" + (r.id != null ? " id='t" + r.id + "'" : "") + "><td>" + when +
@@ -3001,8 +3001,8 @@ function renderLearned(d) {
 // shipped that day and refuses those since. Say so on the row rather than leave the reader to
 // assume a violated gate.
 var RR_FLOOR = 2, RR_RECHECK_SINCE = Date.parse("2026-08-26T00:00:00Z");
-function subFloorBadge(rr, openedAt) {
-  if (rr == null || !(rr < RR_FLOOR)) return "";
+function subFloorBadge(rr, openedAt, actor) {
+  if (actor === "manual" || rr == null || !(rr < RR_FLOOR)) return "";   // the human's imported trades carry no planned levels
   var pre = openedAt && Date.parse(openedAt) < RR_RECHECK_SINCE;
   var why = pre
     ? "Planned reward-to-risk fell under the 2:1 floor because the watch filled adverse of its trigger — possible before the 26 Aug fill-time recheck, refused since."
