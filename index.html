@@ -452,6 +452,7 @@
   </div>
   <p class="hook hidden" id="hook"></p>
   <div style="overflow-x:auto"><table class="std" id="standings" aria-label="Competition standings"><tr><td><span class="skel">Eight competitors — one human, seven AI models — ranked by live account value.</span></td></tr></table></div>
+  <div class="src" id="std-spend-note" style="margin-top:6px"><b>Model spend</b> is what each desk's own analysis and scan calls have cost in API fees this season, from the bot's cost ledger; <b>Net of spend</b> is realised P&amp;L minus that bill. Shared overhead (post-mortems, card captions, the weekly lessons writer) is fleet cost and is not charged to any desk. Some models are on introductory or promotional pricing, so today's bill understates the list price.</div>
   <div class="src hidden" id="std-note" style="margin-top:4px">Grey win rates rest on fewer than 8 closed trades — too small a sample to mean much yet. Trade counts are in the Record column.</div>
   <div class="chart-box" id="chart-wrap">
     <div class="legend" id="legend"></div>
@@ -1196,7 +1197,7 @@ function renderStandings(d) {
     var arrow = sk === key ? (sd === -1 ? " ▾" : " ▴") : "";
     return "<th class='rt' data-sk='" + key + "' style='cursor:pointer' title='Sort by " + label + "'>" + label + arrow + "</th>";
   };
-  var h = "<tr><th></th><th>Competitor</th><th>Venue</th>" + sth("account", "Account") + sth("retPct", "Return") + sth("record", "Record") + sth("wr", "Win rate") + "</tr>";
+  var h = "<tr><th></th><th>Competitor</th><th>Venue</th>" + sth("account", "Account") + sth("retPct", "Return") + sth("record", "Record") + sth("wr", "Win rate") + sth("costUsd", "Model spend") + sth("netPnl", "Net of spend") + "</tr>";
   var anySmall = false;
   rows.forEach(function (a, i) {
     var meta = ACTORS[a.key] || { label: a.label, model: "", color: "#888" };
@@ -1212,7 +1213,13 @@ function renderStandings(d) {
       "<td class='rt num' style='font-weight:700'>" + money(a.account) + "</td>" +
       "<td class='rt num " + cls(a.retPct) + "'>" + pct(a.retPct, 1) + "</td>" +
       "<td class='rt num'>" + a.wins + "W–" + a.losses + "L</td>" +
-      "<td class='rt num'>" + wrCellHtml(a, function () { anySmall = true; }) + "</td></tr>";
+      "<td class='rt num'>" + wrCellHtml(a, function () { anySmall = true; }) + "</td>" +
+      // [#349] season model spend (the desk's own analysis + scan calls, from the bot's cost
+      // ledger) and realised P&L net of it. The human has no model bill — shown as a dash,
+      // not $0, so the column reads "not applicable" rather than "free". Feeds without the
+      // field (older payloads) render dashes via money()/isFinite, never NaN.
+      "<td class='rt num'>" + (a.key === "manual" ? "<span class='src'>—</span>" : money(a.costUsd, 2)) + "</td>" +
+      "<td class='rt num " + (a.netPnl == null ? "" : cls(a.netPnl)) + "'>" + (a.netPnl == null ? "—" : (a.netPnl >= 0 ? "+" : "−") + money(Math.abs(a.netPnl), 2)) + "</td></tr>";
   });
   $("standings").innerHTML = h;
   var note = $("std-note");
@@ -1446,6 +1453,13 @@ function renderDeskPage(d, key) {
     tile("Pick rate · 7d", a.pickRate7d == null ? "—" : a.pickRate7d + "%", (a.pickCycles7d || 0) + " of " + (a.cycles7d || 0) + " cycles produced a pick") +
     tile("Output · 7d", (a.saves7d || 0) + " saved", (a.routedSaves7d || 0) + " live · " + (a.awaiting7d || 0) + " watches") +
     tile("Model spend · 7d", money(a.cost7dUsd, 2), (a.calls7d || 0) + " calls") +
+    // [#349] season bill next to season P&L — the standings' "net of spend" column, per desk.
+    (function () {
+      var st = ((d.standings || []).filter(function (s) { return s.key === key; })[0]) || {};
+      if (st.netPnl == null) return "";
+      return tile("Net of model spend · season", (st.netPnl >= 0 ? "+" : "−") + money(Math.abs(st.netPnl), 2),
+        money(st.pnl, 2) + " realised − " + money(st.costUsd, 2) + " spend (" + (st.costCalls || 0) + " calls)");
+    })() +
     "</div>";
   // history
   if (x.history && x.history.length) {
