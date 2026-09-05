@@ -83,11 +83,12 @@
   /* [T2] hero, nav score, sub-nav, league-table furniture, rules card, chart legend buttons */
   .hero { padding: 26px 0 6px; flex: 1 1 640px; min-width: 0; }   /* wide enough for the one-line headline at desktop widths */
   .hero-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px 32px; flex-wrap: wrap; }
-  .hero-row .race-row-right { margin-left: auto; padding-top: 30px; text-align: right; }
+  .hero-row .race-row-right { margin-left: auto; padding-top: 58px; text-align: right; }   /* [T2d] tiles sit level with the headline, not the kicker */
   .hero-row .fleetpnl { margin-left: auto; }
   .hook { display: none; }   /* [T2c] the hook repeated the verdict headline word for word */
   .race-row { margin-top: 6px; }
-  .hero-h { font-family: var(--serif); font-size: clamp(26px, 4.2vw, 40px); line-height: 1.08; margin: 8px 0 8px; text-wrap: balance; }
+  .hero-h { font-family: var(--serif); font-size: clamp(22px, 3vw, 36px); line-height: 1.1; margin: 8px 0 8px; white-space: nowrap; }   /* [T2d] one line on desktop */
+  @media (max-width: 900px) { .hero-h { white-space: normal; text-wrap: balance; font-size: clamp(24px, 6vw, 34px); } }
   .hero-sub { font-size: 15.5px; color: var(--ink2); max-width: 640px; margin: 0 0 14px; line-height: 1.45; }
   .hero-cta { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
   .btn-primary { background: var(--accent); color: #fff; padding: 9px 16px; font-weight: 700; font-size: 13.5px; text-decoration: none; letter-spacing: .02em; }
