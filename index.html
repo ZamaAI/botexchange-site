@@ -424,7 +424,7 @@
        WHICH sources / prompts / thresholds. Every claim below is already public elsewhere
        on this site (About, the risk card, the archive). -->
   <div class="story" aria-label="How this site works">
-    <a class="st-step" href="#/markets"><span class="st-n">1 · SCAN</span><div class="st-t">40+ live data feeds</div><div class="st-c">Prices, order books, whale flows, funding, news and the event calendar — refreshed around the clock.</div></a>
+    <a class="st-step" href="#/markets"><span class="st-n">1 · SCAN</span><div class="st-t">~70 live data feeds</div><div class="st-c">Prices, order books, whale flows, funding, news and the event calendar — refreshed around the clock.</div></a>
     <a class="st-step" href="#/bots"><span class="st-n">2 · COMPETE</span><div class="st-t">7 AIs vs 1 human</div><div class="st-c">Eight accounts, $500 each. Every desk reads the same market and makes its own call — independently.</div></a>
     <a class="st-step" href="#/about"><span class="st-n">3 · GATE</span><div class="st-t">Hard risk gates</div><div class="st-c">Kill switches, sizing rules and sanity checks stand between every pick and real money.</div></a>
     <a class="st-step" href="#/charts"><span class="st-n">4 · TRADE</span><div class="st-t">Real money, live</div><div class="st-c">Filled orders with stops and targets on the book, drawn on live charts across four venues.</div></a>
@@ -448,10 +448,13 @@
         <div class="tile"><div class="t-k">Today</div><div class="t-v" id="fp-today">—</div><div class="t-s">vs yesterday</div></div>
       </div>
       <p class="fleetpnl-note" id="fp-note">Real money only.</p>
+      <p class="fleetpnl-note">Not investment advice. Small accounts, real venue risk; the human desk is also the operator.</p>
     </div>
   </div>
   <p class="hook hidden" id="hook"></p>
   <div style="overflow-x:auto"><table class="std" id="standings" aria-label="Competition standings"><tr><td><span class="skel">Eight competitors — one human, seven AI models — ranked by live account value.</span></td></tr></table></div>
+  <!-- [T1] the trust argument, where the numbers are — it lived only in About -->
+  <div class="src" style="margin-top:8px;letter-spacing:.06em;text-transform:uppercase;font-weight:600">Real money · exchange-verified fills · public archive · nothing deleted <a href="#/about" style="text-transform:none;letter-spacing:0;font-weight:500;margin-left:6px">Audit the experiment →</a></div>
   <div class="src" id="std-spend-note" style="margin-top:6px"><b>Model spend</b> is what each desk's own analysis and scan calls have cost in API fees this season, from the bot's cost ledger; <b>Net of spend</b> is realised P&amp;L minus that bill. Shared overhead (post-mortems, card captions, the weekly lessons writer) is fleet cost and is not charged to any desk. Some models are on introductory or promotional pricing, so today's bill understates the list price.</div>
   <div class="src hidden" id="std-note" style="margin-top:4px">Grey win rates rest on fewer than 8 closed trades — too small a sample to mean much yet. Trade counts are in the Record column.</div>
   <div class="chart-box" id="chart-wrap">
@@ -1393,6 +1396,16 @@ function renderPlayers(d) {
       "<div class='p-model'>" + esc(meta.label) + " · " + venue + "</div>" +
       "<div class='p-blurb'>" + esc(meta.blurb) + "</div>" +
       (stat ? "<div class='p-stat'>" + stat + "</div>" : "") +
+      // [T1] the cell the desk trades under (stop arm × risk tier) and how often the referee
+      // refused it — the constraints that explain WHY two desks behave differently, on the card.
+      (function () {
+        var x = deskFind(d, k), ref = d.referee && d.referee.byActor && d.referee.byActor[k];
+        var bits = [];
+        if (x && x.cell && x.cell.arm) bits.push(esc(x.cell.arm) + " stops ≤" + esc(String(x.cell.armMaxPct)) + "%");
+        if (x && x.cell && x.cell.tier) bits.push(esc(x.cell.tier) + " risk tier");
+        if (ref && ref.n) bits.push(ref.n + " refused by the gates · " + (d.referee.windowDays || 14) + "d");
+        return bits.length ? "<div class='src' style='margin-top:6px'>" + bits.join(" · ") + "</div>" : "";
+      })() +
       ((d.desks || []).some(function (x) { return x.key === k; }) ? "<div class='src' style='margin-top:6px'><a href='#/desk/" + esc(k) + "'>Desk page →</a></div>" : "") + "</div>";   // [#323]
   }).join("");
 }
@@ -1616,7 +1629,7 @@ function renderFloor(d) {
       "<div class='lvls'>entry " + money(e, e < 10 ? 4 : 2) + " · stop " + (t.levelsApprox ? "≈" : "") + money(s, s < 10 ? 4 : 2) +
       (t.trailed ? " <span title='The risk engine has trailed this stop from its original level — profit locked in'>🔒 trailed</span>" : "") +
       " · target " + (t.levelsApprox ? "≈" : "") + money(tg, tg < 10 ? 4 : 2) +
-      (rr ? " · R/R " + rr.toFixed(1) : "") + (age != null ? " · open " + (age < 48 ? age + "h" : Math.round(age / 24) + "d") : "") + "</div>" +
+      (rr ? " · R/R " + rr.toFixed(1) + subFloorBadge(rr, t.openedAt) : "") + (age != null ? " · open " + (age < 48 ? age + "h" : Math.round(age / 24) + "d") : "") + "</div>" +
       posBar(t, i) +
       (t.thesis && !/scanner pick \(paper\)|see COIN SCANNER/i.test(t.thesis)
         ? "<div class='why clamp' data-th='" + i + "'><b>The thesis:</b> " + esc(t.thesis) + "</div><button class='morelink th-more' data-th='" + i + "'>read more</button>"
@@ -2474,6 +2487,7 @@ function renderArchive(d) {
     var when = new Date(r.closedAt).toLocaleDateString("en-GB", Object.assign({ day: "2-digit", month: "short" }, TZ));
     var res = r.outcome === "BREAKEVEN" ? "<span style='color:var(--ink3)'>BE</span>"
       : "<span class='" + (r.outcome === "WIN" ? "up" : "down") + "'>" + esc(r.outcome) + (r.pct != null ? " " + pct(r.pct, 1) : "") + "</span>";
+    res += subFloorBadge(r.rr, r.openedAt);
     var pnl = r.pnlUsd == null ? "<span class='src'>—</span>"
       : "<span class='" + cls(r.pnlUsd) + " num'>" + (r.pnlUsd >= 0 ? "+" : "−") + "$" + Math.abs(r.pnlUsd).toFixed(2) + "</span>";
     h += "<tr class='arch-row' data-i='" + i + "'" + (r.id != null ? " id='t" + r.id + "'" : "") + "><td>" + when +
@@ -2529,7 +2543,9 @@ function renderRisk(d) {
       (x.halted ? "<b class='down'>HALTED</b>" + (x.rule ? " <span class='src'>" + esc(x.rule) + "</span>" : "")
         : "<b class='up'>TRADING</b>") +
       (x.equity != null ? " · equity " + money(x.equity, 0) : "") +
-      (x.peak ? " · peak " + money(x.peak, 0) : "") + "</div>";
+      // [T1] "peak" is the season high of DAILY snapshots; live equity can sit above it intraday,
+      // which read as "equity above its own peak". Show the season high including now, labelled.
+      (x.peak || x.equity ? " · season high " + money(Math.max(x.peak || 0, x.equity || 0), 0) : "") + "</div>";
   });
   var s = r.streaks || {}, L = r.limits || {};
   // [#203 site refresh] was hardcoded per-actor strings (incl. two stale S3 codenames,
@@ -2978,6 +2994,20 @@ function renderLearned(d) {
     "</div>";
   h += "<div class='src' style='margin-top:10px'>" + esc(L.filter) + " Real-money trades only: <b>" + v.n + "</b> scored" + (L.paperN ? "; " + L.paperN + " paper trades are excluded here but sit in the desks' own prompts" : "") + ". Rows in grey rest on fewer than 5 trades. Since " + esc(deskDate(L.since)) + " · as of " + esc(relAge(L.at) || "") + ".</div>";
   el.innerHTML = h;
+}
+// [T1] A trade below the 2:1 reward-to-risk floor looks like the system broke its own rule.
+// It did not: before 26 Aug a watch could fill adverse of its trigger and land under the floor
+// (planned R:R is judged at registration, the fill moved the entry); the fill-time recheck
+// shipped that day and refuses those since. Say so on the row rather than leave the reader to
+// assume a violated gate.
+var RR_FLOOR = 2, RR_RECHECK_SINCE = Date.parse("2026-08-26T00:00:00Z");
+function subFloorBadge(rr, openedAt) {
+  if (rr == null || !(rr < RR_FLOOR)) return "";
+  var pre = openedAt && Date.parse(openedAt) < RR_RECHECK_SINCE;
+  var why = pre
+    ? "Planned reward-to-risk fell under the 2:1 floor because the watch filled adverse of its trigger — possible before the 26 Aug fill-time recheck, refused since."
+    : "Planned reward-to-risk under the 2:1 floor at fill — see About for how the floor is applied.";
+  return " <span class='pill paper' title='" + esc(why) + "' style='cursor:help'>below 2:1 floor</span>";
 }
 function renderHome(d) {
   // pulse: F&G + regimes + corr
