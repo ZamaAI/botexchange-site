@@ -70,7 +70,7 @@
   .race-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px 28px; flex-wrap: wrap; margin: 14px 0 0; }
   .race-row-left { flex: 1 1 320px; min-width: 0; }
   .race-row-right { flex: 0 0 auto; }
-  @media (max-width: 760px) { .race-row-right { order: 2; width: 100%; margin-top: 4px; } .race-row-left { order: 1; } }
+  @media (max-width: 760px) { .race-row-right { order: 2; width: 100%; margin-top: 4px; } .race-row-left { order: 1; } .hero-row .race-row-right { padding-top: 0; text-align: left; } .hero-row .fleetpnl { margin-left: 0; } }
   /* [fleet P&L tiles] real-money-only season/today totals. Deliberately excludes paper
      accounts (Sonny Sonnet, Quinn Qwen) — the site's own tagline says "Real money", so a
      real-money-only number is the one that can't quietly mislead. Reuses the existing .tile
@@ -81,7 +81,12 @@
   @media (max-width: 760px) { .fleetpnl-note { text-align: left; } }
   .kicker { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
   /* [T2] hero, nav score, sub-nav, league-table furniture, rules card, chart legend buttons */
-  .hero { padding: 26px 0 6px; }
+  .hero { padding: 26px 0 6px; flex: 1 1 640px; min-width: 0; }   /* wide enough for the one-line headline at desktop widths */
+  .hero-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px 32px; flex-wrap: wrap; }
+  .hero-row .race-row-right { margin-left: auto; padding-top: 30px; text-align: right; }
+  .hero-row .fleetpnl { margin-left: auto; }
+  .hook { display: none; }   /* [T2c] the hook repeated the verdict headline word for word */
+  .race-row { margin-top: 6px; }
   .hero-h { font-family: var(--serif); font-size: clamp(26px, 4.2vw, 40px); line-height: 1.08; margin: 8px 0 8px; text-wrap: balance; }
   .hero-sub { font-size: 15.5px; color: var(--ink2); max-width: 640px; margin: 0 0 14px; line-height: 1.45; }
   .hero-cta { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
@@ -458,23 +463,16 @@
        on this site (About, the risk card, the archive). -->
   <!-- [T2] HERO — the 10-second story. Static so crawlers and no-JS readers get it; JS fills the
        indicator numbers. SEASON-FLIP: rewrite the season line at the next season boundary. -->
+  <!-- [T2c] hero text left, the real-money P&L tiles flush right beside it (they sat in dead space
+       under the hero); one sentence per line; the season/accounts facts appear ONCE. -->
+  <div class="hero-row">
   <div class="hero">
-    <div class="kicker"><span class="livedot"></span> Season 4 · live</div>
+    <div class="kicker" id="hero-kicker">Season 4 · since 19 August</div>
     <h1 class="hero-h">7 AIs. 1 human. $500 each. Real money.</h1>
-    <p class="hero-sub">Which model can actually trade? Every position, stop and post-mortem is public the moment it exists.</p>
+    <p class="hero-sub">Every position, stop and post-mortem goes public the moment it exists.</p>
     <div class="hero-cta"><a class="btn-primary" href="#floor">Watch the live floor</a><a class="btn-ghost" href="#/archive">See every trade →</a></div>
-    <div class="src hero-ind" id="hero-ind">Eight accounts · standings and positions load with the feed.</div>
+    <div class="src hero-ind" id="hero-ind">Standings and positions load with the feed.</div>
   </div>
-  <!-- Race headline (left) + real-money P&L tiles (right), side by side so the tiles read as
-       supporting detail on the same headline instead of a separate block above it. -->
-  <div class="race-row">
-    <div class="race-row-left">
-      <!-- SEASON-FLIP: Season 4 opened 19 Aug 2026. Season 3's closing notice removed per its
-           own instruction. Re-add a similar static block at the NEXT season boundary. -->
-      <div class="kicker" id="race-kicker">Season 4 · eight accounts · $500 each · since 19 August</div>
-      <h2 class="sec" id="race"><span class="skel">Man vs machine — the race is on</span></h2>
-      <p class="sub" id="race-sub"></p>
-    </div>
     <div class="race-row-right">
       <!-- Real-money-only P&L tiles: season total + today's change. Excludes paper accounts —
            see .fleetpnl CSS comment and renderFleetPnl() for why and how. -->
@@ -484,6 +482,14 @@
       </div>
       <p class="fleetpnl-note" id="fp-note">Real money only.</p>
       <p class="fleetpnl-note">Not investment advice. Small accounts, real venue risk; the human desk is also the operator.</p>
+    </div>
+  </div>
+  <!-- the verdict: the question the site exists to answer, then today's answer -->
+  <div class="race-row">
+    <div class="race-row-left">
+      <div class="kicker" id="race-kicker">Which model can actually trade?</div>
+      <h2 class="sec" id="race"><span class="skel">Man vs machine — the race is on</span></h2>
+      <p class="sub" id="race-sub"></p>
     </div>
   </div>
   <p class="hook hidden" id="hook"></p>
@@ -1145,7 +1151,7 @@ function fetchMacroStrip() {
 function renderHero(d) {
   var closed = (d.archive || []).length, open = (d.openTrades || []).filter(function (t) { return t.venue !== "PAPER"; }).length;
   var gen = d.generatedAt ? new Date(d.generatedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Africa/Johannesburg" }) : "";
-  var el = $("hero-ind"); if (el) el.innerHTML = "<span class='livedot'></span> LIVE · " + ((d.standings || []).length || 8) + " accounts · <b>" + closed + "</b> closed trades · <b>" + open + "</b> open positions" + (gen ? " · updated " + esc(gen) + " SAST" : "");
+  var el = $("hero-ind"); if (el) el.innerHTML = "<span class='livedot'></span> LIVE · <b>" + closed + "</b> closed trades · <b>" + open + "</b> open positions" + (gen ? " · updated " + esc(gen) + " SAST" : "");
   var al = $("audit-link"); if (al) al.textContent = "Audit all " + closed + " trades →";
   var ns = $("nav-score"), v = d.verdict;
   if (ns && v && v.man && v.machine) ns.innerHTML = "Human <b>" + money(v.man.account, 0) + "</b> · best machine <b>" + money(v.machine.account, 0) + "</b>";
@@ -1164,7 +1170,8 @@ function renderHero(d) {
 // ── headline ──
 function renderHeadline(d) {
   var v = d.verdict;
-  $("race-kicker").textContent = "Season " + SEASON + " · " + ((d.standings || []).length || "eight") + " accounts · " + money(d.startCapital, 0) + " each · since " + esc(d.since);
+  // [T2c] the race kicker is the question now (static); the season facts live in the hero kicker once
+  try { var t0 = Date.parse(d.since); if (isFinite(t0)) { var dayN = Math.max(1, Math.ceil((Date.now() - t0) / 864e5)); $("hero-kicker").textContent = "Season " + SEASON + " · day " + dayN + " · since " + new Date(t0).toLocaleDateString("en-GB", { day: "numeric", month: "long" }); } } catch (e) {}
   if (!v) { $("race").textContent = "The race is on"; return; }
   var gap = Math.abs(v.machine.account - v.man.account);
   var h = v.tie ? "Dead heat between man and machine"
