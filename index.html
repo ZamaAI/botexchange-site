@@ -387,6 +387,10 @@
   .pill { display: inline-block; font-size: 9.5px; font-weight: 700; letter-spacing: .08em; padding: 1px 5px; border-radius: 3px; vertical-align: 1px; margin-left: 5px; font-family: var(--mono); }
   .pill.live { color: #1e7a3a; border: 1px solid #9ec9ab; background: #f0f7f2; }
   .pill.paper { color: #8a6414; border: 1px solid #d9c489; background: #faf5e6; }
+  /* [#355] Copy on Lighter — opens the market on Lighter in a new tab; the visitor types the levels */
+  .copybtn { display: inline-block; font-size: 9.5px; font-weight: 700; letter-spacing: .06em; padding: 2px 7px; border-radius: 3px; vertical-align: 1px; margin-left: 5px; font-family: var(--mono); color: #fff; background: #1e7a3a; border: 1px solid #176230; text-decoration: none; white-space: nowrap; }
+  .copybtn:hover { background: #176230; }
+  .copynote { font-size: 11px; color: var(--ink3); margin-top: 8px; line-height: 1.4; }
   #stale-note { background: #fdf3e0; border-bottom: 1px solid #ecd9ac; color: #6b4a08; font-size: 12px; text-align: center; padding: 5px 10px; }
 
   /* ── #116 additions: players, live position bars, tape analytics, archive filters, skeletons ── */
@@ -1700,6 +1704,19 @@ function venueHtml(text, venueKey) {
   var url = (window.VENUE_LINKS || {})[String(venueKey || "").toUpperCase()];
   return url ? "<a class='venue-link' href='" + esc(url) + "' target='_blank' rel='noopener sponsored'>" + text + "</a>" : text;
 }
+// [#355] "Copy on Lighter": one button per open LIGHTER position. Opens the market on Lighter in
+// a new tab (referral in the URL, so a visitor with no account lands on sign-up with the code
+// applied); the visitor enters the stop and target shown on the row and chooses their own size.
+// Lighter offers no order-prefill parameter, so nothing is placed by the click. Feed rows carry
+// exact levels for this (SITE_LIVE_LEVELS_EXACT on the bot side); the ≈ marker disappears then.
+function copyBtn(t) {
+  var tpl = window.LIGHTER_TRADE_URL;
+  if (!tpl || !t || String(t.venue || "").toUpperCase() !== "LIGHTER" || !t.asset) return "";
+  var url = tpl.replace("{ASSET}", encodeURIComponent(String(t.asset).toUpperCase()));
+  return "<a class='copybtn' href='" + esc(url) + "' target='_blank' rel='noopener sponsored' title='Opens " + esc(t.asset) +
+    " on Lighter in a new tab. Enter the stop and target shown here and choose your own size — nothing is placed for you.'>Copy on Lighter ↗</a>";
+}
+var COPY_NOTE = "<div class='copynote'><b>Copy on Lighter</b> opens that market on Lighter (our referral link). Enter the stop and target shown on the row and choose your own size. Nothing is placed for you, and none of this is advice — every desk here is a machine with a public record, including its losses.</div>";
 
 // ── the season in numbers: fleet activity, computed from the archive ──
 function renderSeasonStats(d) {
@@ -1784,7 +1801,7 @@ function renderFloor(d) {
       "<span class='dirpill " + (t.direction === "SHORT" ? "s" : "l") + "'>" + esc(t.direction) + "</span>" +
       actorTag(t.actor) +
       (t.venue !== "PAPER"
-        ? "<span class='pill live'>" + esc(t.venue) + " · LIVE</span>"
+        ? "<span class='pill live'>" + esc(t.venue) + " · LIVE</span>" + copyBtn(t)
         : (t.actor === "qwen" ? "" : "<span class='pill paper' title='Tracked on paper — not a live order (agent benched or venue-unrouted)'>PAPER</span>")) +
       (t.smartMoney ? "<span class='smpill' title='Top Hyperliquid accounts hold this same trade'>TOP BOOKS AGREE ×" + esc(t.smartMoney) + "</span>" : "") +
       "<span class='outc'><span class='livepnl' data-pnl='" + i + "'></span> <span class='num'>conv " + esc(t.conviction) + "/10</span></span></div>" +
@@ -1797,6 +1814,7 @@ function renderFloor(d) {
         ? "<div class='why clamp' data-th='" + i + "'><b>The thesis:</b> " + esc(t.thesis) + "</div><button class='morelink th-more' data-th='" + i + "'>read more</button>"
         : "") + "</div>";
   });
+  if (liveOpen.some(function (t) { return copyBtn(t); })) h += COPY_NOTE;   // [#355]
   // [#345] the close-confirmation verdict on a watch. Since [#344] a "<tf> close" trigger fills
   // only after the bar has actually CLOSED through the level — a wick to it does not fill — so
   // this line says where that stands, from the last CLOSED Binance bar the bot read.
@@ -3196,12 +3214,13 @@ function renderHome(d) {
     l += "<div class='titem' style='padding:8px 0'><div class='l1'><span class='asset'>" + esc(t.asset) + "</span>" +
       "<span class='dirpill " + (t.direction === "SHORT" ? "s" : "l") + "'>" + esc(t.direction) + "</span>" +
       actorTag(t.actor) +
-      (t.venue !== "PAPER" ? "<span class='pill live'>" + esc(t.venue) + "</span>" : "<span class='pill paper'>PAPER</span>") +
+      (t.venue !== "PAPER" ? "<span class='pill live'>" + esc(t.venue) + "</span>" + copyBtn(t) : "<span class='pill paper'>PAPER</span>") +
       "<span class='outc'><span class='livepnl' data-pnl='" + i + "'></span>" +
       (t.conviction != null ? " <span class='num'>conv " + esc(t.conviction) + "/10</span>" : "") + "</span></div>" +
       posBar(t, i) +
       (t.thesis ? "<div class='src' style='margin-top:4px'>" + esc(smartTrim(String(t.thesis).replace(/\[[^\]]*\]/g, ""), 140)) + " <a href='#floor'>Why " + esc((ACTORS[t.actor] || {}).short || t.actor) + " took it →</a></div>" : "") + "</div>";
   });
+  if (liveOT.some(function (t) { return copyBtn(t); })) l += COPY_NOTE;   // [#355]
   if (ot.length - liveOT.length) l += "<div class='row'><span>" + (ot.length - liveOT.length) + " paper position" + (ot.length - liveOT.length > 1 ? "s" : "") + " on the floor</span><span></span></div>";
   if ((d.awaiting || []).length) l += "<div class='row'><span>Watch-list</span><b>" + d.awaiting.length + " trigger" + (d.awaiting.length > 1 ? "s" : "") + " armed</b></div>";
   l += "<a class='more' href='#/bots'>The trading floor →</a>";

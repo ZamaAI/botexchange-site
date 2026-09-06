@@ -16,5 +16,12 @@ window.VENUE_LINKS = {
   LIGHTER: "https://app.lighter.xyz/?referral=ZAMA"
 };
 
+// [#355] "Copy on Lighter" button on every open LIGHTER position. {ASSET} is the market slug
+// (Lighter market symbol == our asset name; verified headless 6 Sep: /trade/ETH and /trade/BNB
+// land on the market, and the referral query rides along). Lighter documents no parameter that
+// prefills an order, so the button opens the market and the visitor types the levels shown.
+// Set to "" to remove the button.
+window.LIGHTER_TRADE_URL = "https://app.lighter.xyz/trade/{ASSET}?referral=ZAMA";
+
 // Sponsor CTA target (X profile DM / contact page / mailto).
 window.SPONSOR_CONTACT_URL = "https://x.com/zamma3";
