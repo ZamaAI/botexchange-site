@@ -1709,14 +1709,18 @@ function venueHtml(text, venueKey) {
 // applied); the visitor enters the stop and target shown on the row and chooses their own size.
 // Lighter offers no order-prefill parameter, so nothing is placed by the click. Feed rows carry
 // exact levels for this (SITE_LIVE_LEVELS_EXACT on the bot side); the ≈ marker disappears then.
+// [#356] same button for Hyperliquid (grok's seat). HIP-3 stock rows need the "xyz:" slug.
 function copyBtn(t) {
-  var tpl = window.LIGHTER_TRADE_URL;
-  if (!tpl || !t || String(t.venue || "").toUpperCase() !== "LIGHTER" || !t.asset) return "";
-  var url = tpl.replace("{ASSET}", encodeURIComponent(String(t.asset).toUpperCase()));
-  return "<a class='copybtn' href='" + esc(url) + "' target='_blank' rel='noopener sponsored' title='Opens " + esc(t.asset) +
-    " on Lighter in a new tab. Enter the stop and target shown here and choose your own size — nothing is placed for you.'>Copy on Lighter ↗</a>";
+  var cfg = (window.COPY_TRADE_URLS || {})[String((t && t.venue) || "").toUpperCase()];
+  if (!cfg || !cfg.url || !t || !t.asset) return "";
+  var asset = String(t.asset).toUpperCase();
+  var slug = (String(t.venue).toUpperCase() === "HL" && t.cls === "equity") ? "xyz:" + asset : asset;
+  var url = cfg.url.replace("{SLUG}", encodeURIComponent(slug));
+  var venueName = cfg.label.replace(/^Copy on /, "");
+  return "<a class='copybtn' href='" + esc(url) + "' target='_blank' rel='noopener sponsored' title='Opens " + esc(asset) +
+    " on " + esc(venueName) + " in a new tab. Enter the stop and target shown here and choose your own size — nothing is placed for you.'>" + esc(cfg.label) + " ↗</a>";
 }
-var COPY_NOTE = "<div class='copynote'><b>Copy on Lighter</b> opens that market on Lighter (our referral link). Enter the stop and target shown on the row and choose your own size. Nothing is placed for you, and none of this is advice — every desk here is a machine with a public record, including its losses.</div>";
+var COPY_NOTE = "<div class='copynote'><b>Copy on Lighter / Hyperliquid</b> opens that market on the venue (our referral link). Enter the stop and target shown on the row and choose your own size. Nothing is placed for you, and none of this is advice — every desk here is a machine with a public record, including its losses.</div>";
 
 // ── the season in numbers: fleet activity, computed from the archive ──
 function renderSeasonStats(d) {

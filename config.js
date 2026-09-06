@@ -16,12 +16,17 @@ window.VENUE_LINKS = {
   LIGHTER: "https://app.lighter.xyz/?referral=ZAMA"
 };
 
-// [#355] "Copy on Lighter" button on every open LIGHTER position. {ASSET} is the market slug
-// (Lighter market symbol == our asset name; verified headless 6 Sep: /trade/ETH and /trade/BNB
-// land on the market, and the referral query rides along). Lighter documents no parameter that
-// prefills an order, so the button opens the market and the visitor types the levels shown.
-// Set to "" to remove the button.
-window.LIGHTER_TRADE_URL = "https://app.lighter.xyz/trade/{ASSET}?referral=ZAMA";
+// [#355/#356] "Copy on <venue>" button on every open position at a venue listed here. {SLUG} is
+// the venue's market slug: Lighter = our asset name (market symbol == asset, verified headless
+// 6 Sep: /trade/ETH, /trade/BNB land on the market, the referral query rides along); Hyperliquid
+// = asset for core perps and "xyz:<asset>" for HIP-3 stocks (/trade/xyz:NVDA lands on NVDA (xyz);
+// a bare /trade/NVDA falls back to the default market — verified headless 6 Sep). Neither venue
+// documents an order-prefill parameter, so the button opens the market and the visitor types the
+// levels shown. Remove a venue's entry to drop its button.
+window.COPY_TRADE_URLS = {
+  LIGHTER: { url: "https://app.lighter.xyz/trade/{SLUG}?referral=ZAMA", label: "Copy on Lighter" },
+  HL:      { url: "https://app.hyperliquid.xyz/trade/{SLUG}?ref=ZAMMA", label: "Copy on Hyperliquid" }
+};
 
 // Sponsor CTA target (X profile DM / contact page / mailto).
 window.SPONSOR_CONTACT_URL = "https://x.com/zamma3";
