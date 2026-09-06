@@ -391,6 +391,28 @@
   .copybtn { display: inline-block; font-size: 9.5px; font-weight: 700; letter-spacing: .06em; padding: 2px 7px; border-radius: 3px; vertical-align: 1px; margin-left: 5px; font-family: var(--mono); color: #fff; background: #1e7a3a; border: 1px solid #176230; text-decoration: none; white-space: nowrap; }
   .copybtn:hover { background: #176230; }
   .copynote { font-size: 11px; color: var(--ink3); margin-top: 8px; line-height: 1.4; }
+  /* [#359] the trade room */
+  .tr-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .tr-head h2.sec { margin: 0; }
+  .tr-status { font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: .08em; padding: 3px 9px; border-radius: 3px; border: 1px solid; }
+  .tr-status.live { color: #1e7a3a; border-color: #9ec9ab; background: #f0f7f2; }
+  .tr-status.paper { color: #8a6414; border-color: #d9c489; background: #faf5e6; }
+  .tr-status.up { color: #1e7a3a; border-color: #9ec9ab; background: #f0f7f2; }
+  .tr-status.down { color: #b3261e; border-color: #e3a29c; background: #fbf0ee; }
+  .tr-status.be { color: var(--ink3); border-color: var(--line); background: #f4f3ef; }
+  .tr-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 22px; align-items: start; margin-top: 16px; }
+  @media (max-width: 900px) { .tr-grid { grid-template-columns: minmax(0, 1fr); } }
+  .tr-levels { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; margin: 12px 0; }
+  .tr-levels .lv { border: 1px solid var(--line); background: #fff; padding: 8px 10px; }
+  .tr-levels .k { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink3); font-weight: 700; }
+  .tr-levels .v { font-family: var(--mono); font-size: 17px; font-weight: 700; margin-top: 2px; }
+  .sharebox { border: 1px solid var(--line); background: #fff; padding: 12px 14px; }
+  .sharebox h3 { margin: 0 0 8px; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink3); }
+  .sharebox img.tcard { width: 100%; height: auto; border: 1px solid var(--line); display: block; margin-bottom: 10px; }
+  .sharebox .url { display: flex; gap: 6px; }
+  .sharebox .url input { flex: 1; min-width: 0; font-family: var(--mono); font-size: 12px; padding: 6px 8px; border: 1px solid var(--line); background: #fbfaf7; }
+  .sharebox button, .sharebox a.xshare { font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: .06em; padding: 6px 10px; border: 1px solid #176230; background: #1e7a3a; color: #fff; cursor: pointer; text-decoration: none; white-space: nowrap; }
+  .sharebox a.xshare { display: inline-block; margin-top: 8px; background: #1b1b1b; border-color: #000; }
   #stale-note { background: #fdf3e0; border-bottom: 1px solid #ecd9ac; color: #6b4a08; font-size: 12px; text-align: center; padding: 5px 10px; }
 
   /* ── #116 additions: players, live position bars, tape analytics, archive filters, skeletons ── */
@@ -795,8 +817,12 @@
   <p class="sub" id="archive-sub">Every trade this season, permanently recorded with its AI post-mortem — the same record the models learn from. Nothing is deleted.</p>
   <div class="chips" id="arch-chips"></div>
   <div class="arch-wrap"><table class="data" id="archive-table"></table></div>
-  
 
+
+</div>
+<div class="page" data-page="trade">
+  <!-- [#359] one room per trade: reached by link only (#/t/<id>, or /t/<id> which serves the OG tags first). Nothing in the nav points here. -->
+  <div id="trade-room"><div class="kicker">Trade</div><h2 class="sec">Loading…</h2><p class="sub">The trade loads with the feed.</p></div>
 </div>
 <div class="page" data-page="desks">
   <!-- [#323] per-desk page: identity + grid cell, history, own record, stop-band table, closes, falsifiers.
@@ -1722,6 +1748,75 @@ function copyBtn(t) {
     " on " + esc(venueName) + " in a new tab. Enter the stop and target shown here and choose your own size — nothing is placed for you.'>" + esc(cfg.label) + " ↗</a>";
 }
 var COPY_NOTE = "<div class='copynote'><b>Copy on Lighter / Hyperliquid</b> opens that market on the venue (our referral link). Enter the stop and target shown on the row and choose your own size. Nothing is placed for you, and none of this is advice — every desk here is a machine with a public record, including its losses.</div>";
+// [#359] a small link to a trade's own room, on every row that has an id
+function tradeLink(id) { return id == null ? "" : " <a class='tlink' href='#/t/" + esc(id) + "' title='This trade&#39;s own page — share it'>#" + esc(id) + "</a>"; }
+// [#359] THE TRADE ROOM — one page per trade, from the feed (openTrades first, then the archive).
+// Reached by link only: #/t/<id> in-site, or thebotexchange.com/t/<id> (a Pages Function serves
+// the Open Graph tags for scrapers, then lands the browser here). Card image = /og/t/<id>.png.
+function renderTradePage(d, id) {
+  var box = $("trade-room"); if (!box) return;
+  var TZ = { timeZone: "Africa/Johannesburg" };
+  id = String(id || "").replace(/\D/g, "");
+  var open = d.openTrades || [], t = null, oi = -1, closed = false;
+  for (var i = 0; i < open.length; i++) if (String(open[i].id) === id) { t = open[i]; oi = i; break; }
+  if (!t) { t = (d.archive || []).filter(function (r) { return String(r.id) === id; })[0] || null; closed = !!t; }
+  var url = "https://thebotexchange.com/t/" + id;
+  if (!t) {
+    box.innerHTML = "<div class='kicker'>Trade #" + esc(id) + "</div><h2 class='sec'>Not in the published window</h2>" +
+      "<p class='sub'>This trade is older than the season archive the site publishes, or the id does not exist. <a href='#/archive'>Browse the archive →</a></p>";
+    return;
+  }
+  var a = ACTORS[t.actor] || { label: t.actor, color: "#888", short: t.actor };
+  var isPaper = t.venue === "PAPER";
+  var stLabel = closed ? (t.outcome === "BREAKEVEN" ? "BREAKEVEN" : t.outcome) : (isPaper ? "PAPER" : "LIVE · " + t.venue);
+  var stCls = closed ? (t.outcome === "WIN" ? "up" : t.outcome === "LOSS" ? "down" : "be") : (isPaper ? "paper" : "live");
+  var res = "";
+  if (closed) {
+    res = (t.pnlUsd != null ? "<span class='" + cls(t.pnlUsd) + " num'>" + (t.pnlUsd >= 0 ? "+" : "−") + "$" + Math.abs(t.pnlUsd).toFixed(2) + "</span>" : "") +
+      (t.pct != null ? " <span class='" + cls(t.pct) + "'>" + pct(t.pct, 1) + "</span>" : "");
+  } else {
+    res = "<span class='livepnl' data-pnl='" + oi + "'></span>";
+  }
+  var lv = [["Entry", t.entry], ["Stop", t.stop], ["Target", t.target]];
+  if (closed && t.exit != null) lv.splice(1, 0, ["Exit", t.exit]);
+  var rr = t.rr != null ? t.rr : ((t.entry != null && t.stop != null && t.target != null && t.entry !== t.stop) ? Math.abs((t.target - t.entry) / (t.entry - t.stop)) : null);
+  if (rr != null) lv.push(["Planned R:R", Number(rr).toFixed(1) + ":1"]);
+  if (t.conviction != null) lv.push(["Conviction", t.conviction + "/10"]);
+  var held = (t.openedAt && (closed ? t.closedAt : true)) ? ((closed ? new Date(t.closedAt) : new Date()) - new Date(t.openedAt)) / 36e5 : null;
+  if (held != null && isFinite(held) && held >= 0) lv.push([closed ? "Held" : "Open for", held < 48 ? Math.round(held) + "h" : (held / 24).toFixed(1) + "d"]);
+  var opened = t.openedAt ? new Date(t.openedAt).toLocaleString("en-GB", Object.assign({ day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }, TZ)) : "";
+  var closedAt = closed && t.closedAt ? new Date(t.closedAt).toLocaleString("en-GB", Object.assign({ day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }, TZ)) : "";
+  var thesis = String(t.thesis || "").replace(/\[[^\]]*\]\s*/g, "").trim();
+  var shareText = (a.label || t.actor) + " " + t.asset + " " + t.direction + (closed ? " — " + stLabel + (t.pct != null ? " " + pct(t.pct, 1) : "") : " — live on The Bot Exchange");
+  var h = "<div class='kicker'>Trade #" + esc(id) + " · Season 4 · <a href='" + (closed ? "#/archive" : "#/home") + "'>" + (closed ? "← the archive" : "← live positions") + "</a></div>" +
+    "<div class='tr-head'><h2 class='sec'>" + esc(t.asset) + " <span class='dirpill " + (t.direction === "SHORT" ? "s" : "l") + "'>" + esc(t.direction) + "</span></h2>" +
+    "<span class='tr-status " + stCls + "'>" + esc(stLabel) + "</span><span class='num'>" + res + "</span></div>" +
+    "<p class='sub' style='margin-top:6px'>" + actorTag(t.actor) + (a.model ? " <span class='src'>" + esc(a.model) + "</span>" : "") +
+    (!isPaper ? " · " + venueHtml(esc(t.venue), t.venue) : " · paper") + (opened ? " · opened " + esc(opened) : "") + (closedAt ? " · closed " + esc(closedAt) : "") +
+    (!closed ? " " + copyBtn(t) : "") + "</p>" +
+    "<div class='tr-grid'><div>" +
+    "<div class='tr-levels'>" + lv.map(function (x) { return "<div class='lv'><div class='k'>" + esc(x[0]) + "</div><div class='v'>" + (typeof x[1] === "number" ? esc(fmtLvl(x[1])) : esc(x[1] == null ? "—" : x[1])) + "</div></div>"; }).join("") + "</div>" +
+    (!closed && t.stop != null && t.target != null ? posBar(t, oi) : "") +
+    (thesis ? "<div class='why' style='margin-top:14px'><b>The thesis:</b> " + esc(thesis) + "</div>" : "<div class='src' style='margin-top:14px'>No thesis was published for this trade.</div>") +
+    (closed && t.exitReason ? "<div class='why' style='margin-top:10px'><b>What happened:</b> " + esc(t.exitReason) + "</div>" : "") +
+    (!closed && copyBtn(t) ? COPY_NOTE : "") +
+    (closed ? "<div class='copynote'>A closed trade. Every trade on this site is a machine's decision with a public record, including its losses. None of this is advice.</div>" : "") +
+    "</div><div class='sharebox'><h3>Share this trade</h3>" +
+    "<img class='tcard' src='/og/t/" + esc(id) + ".png' alt='Share card for trade #" + esc(id) + "' loading='lazy'>" +
+    "<div class='url'><input id='tr-url' type='text' readonly value='" + esc(url) + "'><button id='tr-copy' type='button'>Copy link</button></div>" +
+    "<a class='xshare' target='_blank' rel='noopener' href='https://x.com/intent/post?text=" + encodeURIComponent(shareText) + "&url=" + encodeURIComponent(url) + "'>Share on X ↗</a>" +
+    "<div class='src' style='margin-top:8px'>Pasted anywhere, the link previews as the card above.</div></div></div>";
+  box.innerHTML = h;
+  try { document.title = shareText + " — The Bot Exchange"; } catch (e) {}
+  var cb = $("tr-copy");
+  if (cb) cb.onclick = function () {
+    var inp = $("tr-url");
+    var done = function () { cb.textContent = "Copied"; setTimeout(function () { cb.textContent = "Copy link"; }, 1800); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, function () { inp.select(); document.execCommand("copy"); done(); });
+    else { inp.select(); try { document.execCommand("copy"); } catch (e) {} done(); }
+  };
+  try { refreshOpenLive(); } catch (e) {}
+}
 
 // ── the season in numbers: fleet activity, computed from the archive ──
 function renderSeasonStats(d) {
@@ -1802,7 +1897,7 @@ function renderFloor(d) {
     // stop, which is wrong once the risk engine trails it (locked-profit stop ~at entry).
     var rr = t.rr != null ? t.rr : ((e != null && s != null && tg != null && e !== s) ? Math.abs((tg - e) / (e - s)) : null);
     var age = t.openedAt ? Math.round((Date.now() - new Date(t.openedAt).getTime()) / 36e5) : null;
-    h += "<div class='titem'><div class='l1'><span class='asset'>" + esc(t.asset) + "</span>" +
+    h += "<div class='titem'><div class='l1'><span class='asset'>" + esc(t.asset) + "</span>" + tradeLink(t.id) +
       "<span class='dirpill " + (t.direction === "SHORT" ? "s" : "l") + "'>" + esc(t.direction) + "</span>" +
       actorTag(t.actor) +
       (t.venue !== "PAPER"
@@ -2676,7 +2771,7 @@ function renderArchive(d) {
     var pnl = r.pnlUsd == null ? "<span class='src'>—</span>"
       : "<span class='" + cls(r.pnlUsd) + " num'>" + (r.pnlUsd >= 0 ? "+" : "−") + "$" + Math.abs(r.pnlUsd).toFixed(2) + "</span>";
     h += "<tr class='arch-row' data-i='" + i + "'" + (r.id != null ? " id='t" + r.id + "'" : "") + "><td>" + when +
-      (r.id != null ? " <a class='tlink' href='#t" + r.id + "' title='Permalink — share this trade'>#" + r.id + "</a>" : "") +
+      tradeLink(r.id) +   // [#359] the trade's own room (the old #t<id> permalink still lands on this row)
       "</td><td>" + actorTag(r.actor) + "</td><td><b>" + esc(r.asset) + "</b> " + esc(r.direction) + "</td>" +
       "<td>" + esc(r.venue) + "</td><td class='rt'>" + res + "</td><td class='rt'>" + pnl + "</td></tr>";
     if (r.exitReason) {
@@ -3216,7 +3311,7 @@ function renderHome(d) {
   else if (!liveOT.length) l = "<div class='row'><span>Live venues are flat — " + ot.length + " paper position" + (ot.length > 1 ? "s" : "") + " only</span></div>";
   else liveOT.forEach(function (t) {
     var i = ot.indexOf(t);
-    l += "<div class='titem' style='padding:8px 0'><div class='l1'><span class='asset'>" + esc(t.asset) + "</span>" +
+    l += "<div class='titem' style='padding:8px 0'><div class='l1'><span class='asset'>" + esc(t.asset) + "</span>" + tradeLink(t.id) +
       "<span class='dirpill " + (t.direction === "SHORT" ? "s" : "l") + "'>" + esc(t.direction) + "</span>" +
       actorTag(t.actor) +
       (t.venue !== "PAPER" ? "<span class='pill live'>" + esc(t.venue) + "</span>" + copyBtn(t) : "<span class='pill paper'>PAPER</span>") +
@@ -3904,7 +3999,7 @@ function renderAll(d) {
   _feedForReveal = d;
   renderStamps(d); renderStrip(d.market); renderHeadline(d); renderFleetPnl(d); renderSeasonHistory(d); renderStandings(d); renderReferee(d); try { renderHero(d); } catch (e) {}
   try { renderHook(d); } catch (e) {}
-  renderChart(d); renderPlayers(d); renderSeasonStats(d); renderLearned(d); renderFloor(d); renderRiskIndex(d); renderDesk(d); try { if (_deskKey || location.hash === "#/desks" || location.hash.indexOf("#/desk/") === 0) renderDeskPage(d, _deskKey); } catch (e) {} renderHLWhales(d); renderTopTraders(d); renderLighterWhales(d); renderCalendar(d); renderCalMonth(d); renderThisWeek(d); renderIntel(d); renderIntelRail(d);
+  renderChart(d); renderPlayers(d); renderSeasonStats(d); renderLearned(d); renderFloor(d); renderRiskIndex(d); renderDesk(d); try { if (_deskKey || location.hash === "#/desks" || location.hash.indexOf("#/desk/") === 0) renderDeskPage(d, _deskKey); } catch (e) {} try { if (location.hash.indexOf("#/t/") === 0) renderTradePage(d, location.hash.slice(4)); } catch (e) {} renderHLWhales(d); renderTopTraders(d); renderLighterWhales(d); renderCalendar(d); renderCalMonth(d); renderThisWeek(d); renderIntel(d); renderIntelRail(d);
   // [#289] the risk-rules card reads the FEED's enforced limits — the static prose went
   // stale once already (fleet breaker 6->7 at #214, wrong on this page for a week).
   // Static text above stays as the no-JS/old-feed fallback.
@@ -3963,7 +4058,7 @@ boot();
 // ── Site pages: hash router (#/markets), legacy-anchor map, per-page nav state ──
 (function () {
   document.body.classList.add("paged");   // no-JS renders all pages stacked
-  var PAGES = { home: 1, markets: 1, charts: 1, news: 1, calendar: 1, bots: 1, about: 1, desks: 1, archive: 1 };   // [T2] archive is its own room
+  var PAGES = { home: 1, markets: 1, charts: 1, news: 1, calendar: 1, bots: 1, about: 1, desks: 1, archive: 1, trade: 1 };   // [T2] archive is its own room; [#359] trade = one room per trade, reached by link only
   var INTEL_PAGES = { markets: 1, charts: 1, news: 1, calendar: 1 };   // [T2] the terminal — one nav item, four rooms
   // old deep links (#race, #wire, #rules…) land on the right page, scrolled to the element
   var LEGACY = { race: "home", players: "bots", floor: "bots", desknotes: "bots", tape: "bots",
@@ -3975,6 +4070,8 @@ boot();
   var PAGE_META = {
     home:     { t: "The Bot Exchange — Man vs Machine, live",
                 d: "7 AIs vs 1 human, $500 each, real money: live standings, every position with its stop and conviction, and an AI post-mortem on every close." },
+    trade:    { t: "Trade — The Bot Exchange",
+                d: "One trade from the Man vs Machine competition: the desk, its levels, its thesis and what happened — copy it on the venue or share it." },
     markets:  { t: "Markets — The Bot Exchange",
                 d: "Live crypto prices, funding, long/short positioning, whale flows and prediction-market odds — the same data the AI trading desks read." },
     charts:   { t: "Charts — The Bot Exchange",
@@ -4024,6 +4121,8 @@ boot();
       if (p.indexOf("desk/") === 0) { var dk = p.slice(5).replace(/[^a-z0-9_-]/gi, ""); showPage("desks"); try { renderDeskPage(_feedLast || _chFeed || {}, dk); } catch (e) {} return; }
       // [3 Sep] #/desks: the tab itself — last desk viewed, else the first desk in the feed
       if (p === "desks") { showPage("desks"); try { renderDeskPage(_feedLast || _chFeed || {}, null); } catch (e) {} return; }
+      // [#359] #/t/<id>: one room per trade (the /t/<id> Pages Function lands browsers here after serving the OG tags)
+      if (/^t\/\d+$/.test(p)) { showPage("trade"); try { renderTradePage(_feedLast || _chFeed || {}, p.slice(2)); } catch (e) {} return; }
       if (PAGES[p]) { showPage(p); return; }
     }
     var a = h.slice(1);
