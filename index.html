@@ -1252,9 +1252,13 @@ function renderFleetPnl(d) {
   $("fp-today").className = "t-v " + pnlCls(today);
   var noteEl = $("fp-note");
   if (noteEl) {
-    noteEl.textContent = paper.length
+    // [#371] regime honesty: how much of the real-money record was earned in a RISK_ON tape.
+    var on = 0, known = 0;
+    real.forEach(function (s) { if (s.key === "manual" || !s.regimes) return; on += (s.regimes.RISK_ON || {}).n || 0; known += s.regimes.known || 0; });
+    var regimeNote = known ? " " + Math.round(100 * on / known) + "% of the machines' closes were opened in a RISK_ON regime" + (on === known ? " — untested outside it." : ".") : "";
+    noteEl.textContent = (paper.length
       ? "Real money only — excludes " + paper.map(function (s) { return s.label; }).join(" & ") + " (paper)."
-      : "Real money only.";
+      : "Real money only.") + regimeNote;
   }
 }
 
@@ -1366,13 +1370,13 @@ function renderStandings(d) {
     var arrow = sk === key ? (sd === -1 ? " ▾" : " ▴") : "";
     return "<th class='rt' data-sk='" + key + "' style='cursor:pointer' title='Sort by " + label + "'>" + label + arrow + "</th>";
   };
-  var h = "<tr><th></th><th>Competitor</th><th>Venue</th>" + sth("account", "Account") + sth("retPct", "Return") + sth("record", "Record") + sth("wr", "Win rate") + sth("costUsd", "Model spend") + sth("netPnl", "Net of spend") + "</tr>";
+  var h = "<tr><th></th><th>Competitor</th><th>Venue</th>" + sth("account", "Account") + sth("retPct", "Return") + sth("record", "Record") + sth("wr", "Win rate") + sth("costUsd", "Model spend") + sth("netPnl", "Net of spend") + sth("riskOnPct", "In RISK_ON") + "</tr>";
   var anySmall = false, groupShown = {};
   rows.forEach(function (a, i) {
     var meta = ACTORS[a.key] || { label: a.label, model: "", color: "#888" };
     if (defaultSort) {
       var g = isPaperRow(a) ? "paper" : "live";
-      if (!groupShown[g]) { groupShown[g] = true; h += "<tr class='std-group'><td colspan='9'>" + (g === "live" ? "Live championship — real money" : "Lab — paper account, same rules, no capital") + "</td></tr>"; }
+      if (!groupShown[g]) { groupShown[g] = true; h += "<tr class='std-group'><td colspan='10'>" + (g === "live" ? "Live championship — real money" : "Lab — paper account, same rules, no capital") + "</td></tr>"; }
     }
     var mv = "";
     if (defaultSort && prevRank[a.key]) { var dlt = prevRank[a.key] - (i + 1); mv = dlt > 0 ? " <span class='mv up' title='up " + dlt + " since yesterday'>▲" + dlt + "</span>" : dlt < 0 ? " <span class='mv down' title='down " + (-dlt) + " since yesterday'>▼" + (-dlt) + "</span>" : " <span class='mv' title='unchanged since yesterday'>·</span>"; }
@@ -1394,11 +1398,15 @@ function renderStandings(d) {
       // not $0, so the column reads "not applicable" rather than "free". Feeds without the
       // field (older payloads) render dashes via money()/isFinite, never NaN.
       "<td class='rt num'>" + (a.key === "manual" ? "<span class='src'>—</span>" : money(a.costUsd, 2)) + "</td>" +
-      "<td class='rt num " + (a.netPnl == null ? "" : cls(a.netPnl)) + "'>" + (a.netPnl == null ? "—" : (a.netPnl >= 0 ? "+" : "−") + money(Math.abs(a.netPnl), 2)) + "</td></tr>";
+      "<td class='rt num " + (a.netPnl == null ? "" : cls(a.netPnl)) + "'>" + (a.netPnl == null ? "—" : (a.netPnl >= 0 ? "+" : "−") + money(Math.abs(a.netPnl), 2)) + "</td>" +
+      // [#371] regime at ENTRY: what share of this account's closed trades were opened in a RISK_ON
+      // tape. A record earned almost entirely in one regime is a claim about that regime; the
+      // column makes that visible before the tape turns rather than after. Dash = no regime known.
+      "<td class='rt num' title='Share of closed trades entered while the crypto regime read RISK_ON'>" + (a.riskOnPct == null ? "<span class='src'>—</span>" : esc(String(a.riskOnPct)) + "%") + "</td></tr>";
   });
   // [T2] retired desks: one grey line, record kept in About — never ranked, never hidden
   var retired = Object.keys(ACTORS).filter(function (k) { return !(d.standings || []).some(function (a) { return a.key === k; }) && ACTORS[k].retired; });
-  if (retired.length) h += "<tr class='std-group'><td colspan='9' style='font-weight:400'>Retired this season: " + retired.map(function (k) { return esc(ACTORS[k].label) + " (" + esc(ACTORS[k].model) + ")" + (ACTORS[k].retiredRecord ? " " + esc(ACTORS[k].retiredRecord) : ""); }).join(", ") + " — record kept in <a href='#/about'>About</a>.</td></tr>";
+  if (retired.length) h += "<tr class='std-group'><td colspan='10' style='font-weight:400'>Retired this season: " + retired.map(function (k) { return esc(ACTORS[k].label) + " (" + esc(ACTORS[k].model) + ")" + (ACTORS[k].retiredRecord ? " " + esc(ACTORS[k].retiredRecord) : ""); }).join(", ") + " — record kept in <a href='#/about'>About</a>.</td></tr>";
   $("standings").innerHTML = h;
   var note = $("std-note");
   if (note) note.classList.toggle("hidden", !anySmall);
