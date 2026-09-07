@@ -1729,6 +1729,38 @@ function renderDeskPage(d, key) {
         (t.exitReason ? "<div class='src' style='margin-top:4px'>" + esc(t.exitReason) + "</div>" : "") + "</div></div>";
     });
   }
+  // [#373] the referee on THIS desk — what the gates refused it, and whether they were right.
+  // Same scoring as the home-page referee (GOOD = stop first, MISSED = target first, on the 1h
+  // Binance path). Per-desk gate split + the desk's own recent refusals come from the feed
+  // (referee.byActorGate / byActorRecent); older payloads without them fall back to the total.
+  (function () {
+    var R = d.referee; if (!R || !R.byActor || !R.byActor[key]) return;
+    var ra = R.byActor[key], res = (ra.good || 0) + (ra.missed || 0), right = res ? Math.round((ra.good || 0) / res * 100) : null;
+    h += "<h3 style='margin-top:22px'>The referee on this desk</h3>";
+    h += "<p class='sub'>Over the last " + esc(String(R.windowDays || 14)) + " days the risk gates refused <b>" + ra.n + "</b> of this desk's picks before any money moved" +
+      (res ? " — of the <b>" + res + "</b> resolved against real candles, <b>" + (ra.good || 0) + "</b> would have lost (good call) and <b>" + (ra.missed || 0) + "</b> would have won (missed winner)" + (right != null ? ", so the gates were right <b>" + right + "%</b> of the time on this desk" : "") : " — none has resolved against real candles yet") +
+      ((ra.unresolved || 0) ? "; " + ra.unresolved + " still open" : "") + ". <span class='src'>as of " + esc(relAge(R.at) || "") + "</span></p>";
+    var bg = (R.byActorGate || {})[key] || {};
+    var gates = Object.keys(bg).sort(function (a, b) { return (bg[b].n || 0) - (bg[a].n || 0); });
+    if (gates.length) {
+      h += "<div style='overflow-x:auto'><table class='data' style='margin-bottom:10px'><tr><th>Gate</th><th>What it refuses</th><th class='rt'>Refused</th><th class='rt'>Good</th><th class='rt'>Missed</th><th class='rt'>Right</th></tr>";
+      gates.forEach(function (g) {
+        var x = bg[g], gl = GATE_GLOSS[g] || [g, ""], rs = (x.good || 0) + (x.missed || 0);
+        h += "<tr><td><b>" + esc(gl[0]) + "</b></td><td class='src'>" + esc(gl[1]) + "</td><td class='rt'>" + x.n + "</td><td class='rt up'>" + (x.good || 0) + "</td><td class='rt down'>" + (x.missed || 0) + "</td><td class='rt'>" + (rs ? Math.round((x.good || 0) / rs * 100) + "%" : "—") + "</td></tr>";
+      });
+      h += "</table></div>";
+    }
+    var rec = (R.byActorRecent || {})[key] || [];
+    if (rec.length) {
+      var VL = { GOOD_REJECT: ["good call", "up"], MISSED_WIN: ["missed winner", "down"], AMBIGUOUS: ["ambiguous", ""], UNRESOLVED: ["still open", ""], UNSCORABLE: ["unscoreable", ""] };
+      h += "<table class='data' style='margin-bottom:6px'><tr><th>When</th><th>Pick</th><th>Gate</th><th>Why</th><th class='rt'>Verdict</th></tr>";
+      rec.forEach(function (r) {
+        var vl = VL[r.verdict] || [r.verdict, ""], gl = GATE_GLOSS[r.gate] || [r.gate, ""];
+        h += "<tr><td class='src'>" + esc(relAge(r.ts) || "") + "</td><td>" + esc(r.asset) + " " + esc(r.direction) + (r.conviction != null ? " <span class='src'>c" + esc(String(r.conviction)) + "</span>" : "") + "</td><td>" + esc(gl[0]) + "</td><td class='src'>" + esc(r.detail || r.note || "") + "</td><td class='rt " + vl[1] + "'>" + esc(vl[0]) + "</td></tr>";
+      });
+      h += "</table>";
+    }
+  })();
   // latest desk note
   var note = ((d.deskNotes || []).filter(function (n) { return n.brain === key; })[0]);
   if (note) h += "<h3 style='margin-top:22px'>Latest desk note</h3><div class='box'><div class='box-b'>" + esc(note.text) + "<div class='src' style='margin-top:6px'>" + esc(relAge(note.ts)) + "</div></div></div>";
