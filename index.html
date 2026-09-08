@@ -1761,6 +1761,28 @@ function renderDeskPage(d, key) {
       h += "</table>";
     }
   })();
+  // [#375] this desk's own falsifiers, judged. Every pick carries "INVALID IF: <observable>";
+  // the bot now checks each closed one against the 1h tape (deterministic for "<tf> close
+  // above/below $X", a small judge model for the rest). Feed: standings[].falsifier + closeRec.
+  (function () {
+    var st = ((d.standings || []).filter(function (s) { return s.key === key; })[0]) || {};
+    var f = st.falsifier, c = st.closeRec;
+    if ((!f || !f.n) && (!c || !c.n)) return;
+    h += "<h3 style='margin-top:22px'>The desk's own falsifiers</h3>";
+    if (f && f.n) {
+      var lossTxt = f.losses ? "On its <b>" + f.losses + "</b> judged losses the named killer actually occurred first in <b>" + f.calledIt + "</b>" + (f.diedElsewhere ? "; the other <b>" + f.diedElsewhere + "</b> died for a reason the desk did not name" : "") : "no judged losses yet";
+      var winTxt = f.wins ? "On its <b>" + f.wins + "</b> judged wins it fired anyway in <b>" + f.overTight + "</b>" + (f.overTight ? " (a falsifier that fires on winners is too tight)" : "") : "no judged wins yet";
+      h += "<p class='sub'>Every pick names the one observable that would kill its thesis before the stop. Each closed trade's condition is then checked against the actual price path. " + lossTxt + ". " + winTxt + "." +
+        (f.unclear ? " <span class='src'>" + f.unclear + " named something the tape cannot show (funding, open interest, news) and were not judged.</span>" : "") +
+        (f.unjudged ? " <span class='src'>" + f.unjudged + " still queued.</span>" : "") + "</p>";
+      h += "<div style='overflow-x:auto'><table class='data' style='margin-bottom:10px'><tr><th></th><th class='rt'>Killer occurred</th><th class='rt'>Did not occur</th></tr>" +
+        "<tr><td><b>Losses</b></td><td class='rt up' title='The falsifier named the real risk'>" + f.calledIt + "</td><td class='rt down' title='The thesis died for a reason the desk did not name'>" + f.diedElsewhere + "</td></tr>" +
+        "<tr><td><b>Wins</b></td><td class='rt down' title='The falsifier fired on a winner: too tight'>" + f.overTight + "</td><td class='rt up' title='Consistent'>" + f.consistent + "</td></tr></table></div>";
+    }
+    if (c && c.n) {
+      h += "<p class='sub'><b>Close-recommended flags.</b> When this desk flags one of its own open positions for exit, the mark at that moment is recorded and compared with where the trade actually closed. Of <b>" + c.n + "</b> resolved flags, <b>" + c.right + "</b> were right (exiting at the flag beat the actual exit), <b>" + c.early + "</b> early (holding did better) and <b>" + c.wash + "</b> a wash" + (c.uncaptured ? "; " + c.uncaptured + " carried no flag mark" : "") + ".</p>";
+    }
+  })();
   // latest desk note
   var note = ((d.deskNotes || []).filter(function (n) { return n.brain === key; })[0]);
   if (note) h += "<h3 style='margin-top:22px'>Latest desk note</h3><div class='box'><div class='box-b'>" + esc(note.text) + "<div class='src' style='margin-top:6px'>" + esc(relAge(note.ts)) + "</div></div></div>";
