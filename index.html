@@ -3309,6 +3309,25 @@ function renderReferee(d) {
     });
     h += "</table>";
   }
+  // [#377] the bar-close gate (#344) scored the same way: a "<tf> close" watch that price touched
+  // but the bar did not confirm is HELD; from the held mark, which level came first? Feed: awaitingGate.
+  (function () {
+    var G = d.awaitingGate; if (!G || !G.total || !G.total.n) return;
+    var t = G.total, res = (t.hold_saved || 0) + (t.hold_missed || 0), later = (t.wait_paid || 0) + (t.wait_cost || 0) + (t.wait_wash || 0);
+    h += "<h4 style='margin:14px 0 4px'>The bar-close gate</h4><p class='sub' style='margin:0 0 8px'>A watch written as a <i>bar close</i> condition is not filled on the touch — the bot waits for the bar to close through the level. Over the last " + esc(String(G.windowDays || 14)) + " days it held <b>" + t.n + "</b> touched watches. " +
+      (res ? "Of the <b>" + res + "</b> never confirmed and since resolved, <b>" + (t.hold_saved || 0) + "</b> would have lost from the touch (the gate saved them) and <b>" + (t.hold_missed || 0) + "</b> would have won (the gate blocked a winner)" + (t.rightPct != null ? " — right <b>" + t.rightPct + "%</b> of the time" : "") + ". " : "None of the never-confirmed holds has resolved yet. ") +
+      (later ? "<b>" + later + "</b> confirmed on a later bar: <b>" + (t.wait_paid || 0) + "</b> at a better price than the touch, <b>" + (t.wait_cost || 0) + "</b> worse, " + (t.wait_wash || 0) + " about the same." : "") +
+      ((t.open || 0) ? " " + t.open + " still open." : "") + " <span class='src'>as of " + esc(relAge(G.at) || "") + "</span></p>";
+    var acts = Object.keys(G.byActor || {}).sort(function (a, b) { return (G.byActor[b].n || 0) - (G.byActor[a].n || 0); });
+    if (acts.length) {
+      h += "<div style='overflow-x:auto'><table class='data' style='margin-bottom:8px'><tr><th>Desk</th><th class='rt'>Held</th><th class='rt'>Saved</th><th class='rt'>Missed</th><th class='rt'>Right</th><th class='rt'>Confirmed later</th><th class='rt'>Better / worse</th></tr>";
+      acts.forEach(function (a) {
+        var x = G.byActor[a], m = ACTORS[a] || { short: a, color: "#888" }, l2 = (x.wait_paid || 0) + (x.wait_cost || 0) + (x.wait_wash || 0);
+        h += "<tr><td><span style='color:" + m.color + "'>" + esc(m.short || a) + "</span></td><td class='rt'>" + x.n + "</td><td class='rt up'>" + (x.hold_saved || 0) + "</td><td class='rt down'>" + (x.hold_missed || 0) + "</td><td class='rt'>" + (x.rightPct == null ? "<span class='src'>—</span>" : x.rightPct + "%") + "</td><td class='rt'>" + l2 + "</td><td class='rt'>" + (x.wait_paid || 0) + " / " + (x.wait_cost || 0) + "</td></tr>";
+      });
+      h += "</table></div>";
+    }
+  })();
   h += "<div class='src'>Scored by the bot once a day: from each refusal, walk the hourly candles forward and record which level was touched first. This is the save-time ledger only — shadow gates that never block a trade, and watches that simply never triggered, are counted elsewhere. Counts, not dollars: no money was placed on any of these.</div>";
   el.innerHTML = h;
 }
