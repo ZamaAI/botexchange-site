@@ -1783,6 +1783,24 @@ function renderDeskPage(d, key) {
       h += "<p class='sub'><b>Close-recommended flags.</b> When this desk flags one of its own open positions for exit, the mark at that moment is recorded and compared with where the trade actually closed. Of <b>" + c.n + "</b> resolved flags, <b>" + c.right + "</b> were right (exiting at the flag beat the actual exit), <b>" + c.early + "</b> early (holding did better) and <b>" + c.wash + "</b> a wash" + (c.uncaptured ? "; " + c.uncaptured + " carried no flag mark" : "") + ".</p>";
     }
   })();
+  // [#381] the desk's watch funnel (its AWAITING lane): registered → filled / refused by the
+  // save gates at the fill / withdrawn / expired / pending, and what its filled watches earned
+  // against its CONFIRMED entries. Feed: standings[].watch (#378 line in the desk's own prompt).
+  (function () {
+    var st = ((d.standings || []).filter(function (s) { return s.key === key; })[0]) || {};
+    var w = st.watch; if (!w || !w.registered) return;
+    var GL = { anticipation: "stop too wide for the conviction", struct_chase: "trigger at the hostile range edge", correlation_cap: "correlation group full", reentry_cooldown: "re-entry cooldown", contradiction: "opposite side held", stop_min_distance: "stop too close", stop_hard_ceiling: "stop past the hard ceiling", duplicate_open: "already held", rr_floor: "R:R under the floor at fill" };
+    var rec = function (r) { return (r.w || 0) + "W–" + (r.l || 0) + "L–" + (r.be || 0) + "BE" + (r.wr == null ? "" : " (" + r.wr + "%)") + " " + money(r.pnl || 0, 0); };
+    h += "<h3 style='margin-top:22px'>The watch-list lane</h3>";
+    h += "<p class='sub'>A watch is a trade the desk wants only at a level price has not reached. Over the season this desk registered <b>" + w.registered + "</b> watches: <b>" + w.filled + "</b> filled, <b>" + w.refused + "</b> reached the trigger but were refused by the save gates at that moment" +
+      (w.topGates && w.topGates.length ? " (" + w.topGates.map(function (g) { return esc(String(g[1])) + "× " + esc(GL[g[0]] || g[0]); }).join(", ") + ")" : "") +
+      ", <b>" + w.cancelled + "</b> withdrawn by the desk, " + w.expired + " expired untouched, " + w.pending + " pending now.</p>";
+    if (w.fills || w.confirmed) {
+      h += "<div style='overflow-x:auto'><table class='data' style='margin-bottom:8px'><tr><th>Entry lane</th><th class='rt'>Record</th></tr>" +
+        "<tr><td>Filled watches <span class='src'>(waited for the level)</span></td><td class='rt'>" + (w.fills ? rec(w.fills) : "—") + "</td></tr>" +
+        "<tr><td>Confirmed entries <span class='src'>(taken at market)</span></td><td class='rt'>" + (w.confirmed ? rec(w.confirmed) : "—") + "</td></tr></table></div>";
+    }
+  })();
   // latest desk note
   var note = ((d.deskNotes || []).filter(function (n) { return n.brain === key; })[0]);
   if (note) h += "<h3 style='margin-top:22px'>Latest desk note</h3><div class='box'><div class='box-b'>" + esc(note.text) + "<div class='src' style='margin-top:6px'>" + esc(relAge(note.ts)) + "</div></div></div>";
