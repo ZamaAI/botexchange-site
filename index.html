@@ -1801,6 +1801,25 @@ function renderDeskPage(d, key) {
         "<tr><td>Confirmed entries <span class='src'>(taken at market)</span></td><td class='rt'>" + (w.confirmed ? rec(w.confirmed) : "—") + "</td></tr></table></div>";
     }
   })();
+  // [#392] how each trade ENDED — the bot's structured exit class (#390), derived from the close
+  // notes, not from a model: did the target get hit, did the trail lock a profit, did the trail
+  // scratch it at breakeven, or did the initial stop take it. Feed: standings[].exits {n, byClass}.
+  (function () {
+    var st = ((d.standings || []).filter(function (s) { return s.key === key; })[0]) || {};
+    var ex = st.exits; if (!ex || !ex.n) return;
+    var ORDER = ["TARGET", "TRAIL_LOCK", "TRAIL_BE", "TRAIL_LOSS", "STOP_INITIAL", "STOP_SCRATCH", "PAPER_TARGET", "PAPER_STOP", "CLOSE_REC", "OPERATOR", "EXPIRED", "RETIRED", "RECONCILED", "UNKNOWN"];
+    var G = { TARGET: "target reached", TRAIL_LOCK: "trailed stop locked a profit", TRAIL_BE: "trailed stop scratched it at breakeven", TRAIL_LOSS: "stop was trailed but still closed at a loss", STOP_INITIAL: "the initial stop, never trailed", STOP_SCRATCH: "stop at breakeven without a trail", PAPER_TARGET: "paper target crossed at mark", PAPER_STOP: "paper stop crossed at mark", CLOSE_REC: "operator closed on the desk's flag", OPERATOR: "operator closed without a flag", EXPIRED: "expired unfilled", RETIRED: "retired, never executed", RECONCILED: "closed by reconciliation", UNKNOWN: "unclassifiable" };
+    var CLS = { TARGET: "up", TRAIL_LOCK: "up", PAPER_TARGET: "up", TRAIL_BE: "", STOP_SCRATCH: "", TRAIL_LOSS: "down", STOP_INITIAL: "down", PAPER_STOP: "down" };
+    var g = function (k) { return ex.byClass[k] || 0; };
+    var wins = g("TARGET") + g("TRAIL_LOCK") + g("PAPER_TARGET"), tgt = g("TARGET") + g("PAPER_TARGET"), lock = g("TRAIL_LOCK"), be = g("TRAIL_BE") + g("STOP_SCRATCH");
+    h += "<h3 style='margin-top:22px'>How each trade ended</h3>";
+    h += "<p class='sub'>Not the win rate — the exit. Classified by the bot from the close itself over <b>" + ex.n + "</b> closed trades this season." +
+      (wins >= 5 ? (lock > tgt ? " <b>" + lock + "</b> of its <b>" + wins + "</b> winners were trail locks and <b>" + tgt + "</b> reached the target: the trailing stop is this desk's exit engine, and the targets it writes are mostly out of reach." : " <b>" + tgt + "</b> of its <b>" + wins + "</b> winners reached the target.") : "") +
+      (be >= 5 ? " <b>" + be + "</b> exits scratched at breakeven after the trail armed" + (be > wins ? " — more than it has winners." : ".") : "") + "</p>";
+    h += "<div style='overflow-x:auto'><table class='data' style='margin-bottom:8px'><tr><th>Exit</th><th class='rt'>Trades</th><th>Meaning</th></tr>";
+    ORDER.forEach(function (k) { if (!g(k)) return; h += "<tr><td><b>" + esc(k) + "</b></td><td class='rt " + (CLS[k] || "") + "'>" + g(k) + "</td><td class='src'>" + esc(G[k] || k) + "</td></tr>"; });
+    h += "</table></div>";
+  })();
   // latest desk note
   var note = ((d.deskNotes || []).filter(function (n) { return n.brain === key; })[0]);
   if (note) h += "<h3 style='margin-top:22px'>Latest desk note</h3><div class='box'><div class='box-b'>" + esc(note.text) + "<div class='src' style='margin-top:6px'>" + esc(relAge(note.ts)) + "</div></div></div>";
