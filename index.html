@@ -1187,8 +1187,12 @@ function renderHero(d) {
   var gen = d.generatedAt ? new Date(d.generatedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Africa/Johannesburg" }) : "";
   var el = $("hero-ind"); if (el) el.innerHTML = "<span class='livedot'></span> LIVE · <b>" + closed + "</b> closed trades · <b>" + open + "</b> open positions" + (gen ? " · updated " + esc(gen) + " SAST" : "");
   var al = $("audit-link"); if (al) al.textContent = "Audit all " + closed + " trades →";
-  var ns = $("nav-score"), v = d.verdict;
-  if (ns && v && v.man && v.machine) ns.innerHTML = "Human <b>" + money(v.man.account, 0) + "</b> · best machine <b>" + money(v.machine.account, 0) + "</b>";
+  // [#460] prefer the NORMALISED verdict: return from each seat's own starting capital, on the
+  // realized (transfer-proof) basis. The absolute-balance figure it replaces was decided by a
+  // $20.50 head start and by picking whichever machine happened to be highest.
+  var ns = $("nav-score"), v = d.verdict, vr = (d.verdictByReturn || {}).realized;
+  if (ns && vr) ns.innerHTML = "Human <b>" + pct(vr.man.ret, 1) + "</b> · best machine <b>" + pct(vr.best.ret, 1) + "</b>";
+  else if (ns && v && v.man && v.machine) ns.innerHTML = "Human <b>" + money(v.man.account, 0) + "</b> · best machine <b>" + money(v.machine.account, 0) + "</b>";
   var sb = $("split-body"); if (!sb) return;
   var c = d.consensus, splits = ((c && c.assets) || []).filter(function (a) { return a.long.length && a.short.length; }).slice(0, 3);
   var chip = function (st, dir) { var m = ACTORS[st.actor] || { short: st.actor }; return "<span class='cs-chip " + (dir === "LONG" ? "l" : "s") + (st.kind === "watching" ? " w" : "") + "' title='" + esc(m.label || st.actor) + " " + dir + (st.kind === "watching" ? " (trigger watch)" : "") + "'>" + esc(m.short || st.actor) + " " + (dir === "LONG" ? "↑" : "↓") + "</span>"; };
@@ -1206,6 +1210,31 @@ function renderHeadline(d) {
   var v = d.verdict;
   // [T2c] the race kicker is the question now (static); the season facts live in the hero kicker once
   try { var t0 = Date.parse(d.since); if (isFinite(t0)) { var dayN = Math.max(1, Math.ceil((Date.now() - t0) / 864e5)); $("hero-kicker").textContent = "Season " + SEASON + " · day " + dayN + " · since " + new Date(t0).toLocaleDateString("en-GB", { day: "numeric", month: "long" }); } } catch (e) {}
+  // [#460] THE NORMALISED VERDICT. The old headline compared absolute end balances and called
+  // "the machine" whichever desk was highest at that moment. Three things were wrong with it:
+  // the seats did not start equal (the human's began at $518.25 against a machine mean of
+  // $497.75 — a head start larger than the margin it produced); the human's balance was the raw
+  // venue wallet, which carries deposits and withdrawals; and picking the best of six after the
+  // fact is a selection, not a result. This reports the SPREAD on return from each seat's own
+  // starting capital, realized basis, and names the best desk as the best desk.
+  var vr = (d.verdictByReturn || {}).realized;
+  if (vr) {
+    var mr = vr.man.ret, br = vr.best.ret, fm = vr.fleet.mean, n = vr.fleet.n, diff = Math.abs(mr - br);
+    var h = diff < 0.5
+      ? "Dead heat — the human and " + esc(vr.best.label) + " are " + diff.toFixed(2) + " points apart"
+      : vr.manBeatsBest ? "The human leads every machine"
+      : vr.manBeatsFleetMean ? "The human beats the fleet, trails " + esc(vr.best.label)
+      : esc(vr.best.label) + " leads the human";
+    $("race").textContent = h;
+    $("race-sub").innerHTML =
+      "Measured as return on each seat's own starting capital, closed trades only. The human is at <b class='" + cls(mr) + "'>" + pct(mr, 2) +
+      "</b> from " + money(vr.man.seat, 0) + "; the best machine, " + esc(vr.best.label) + ", is at <b class='" + cls(br) + "'>" + pct(br, 2) +
+      "</b>. Across all " + n + " machines the average is <b class='" + cls(fm) + "'>" + pct(fm, 2) + "</b>" +
+      (vr.belowMan != null ? ", and <b>" + vr.belowMan + " of " + n + "</b> sit below the human" : "") + "." +
+      "<span class='src' style='display:block;margin-top:6px'>Seats did not start equal, so absolute balances are not comparable — every figure here is return from that seat's own start. " +
+      "\"Best machine\" is named, not averaged into a single &ldquo;machine&rdquo; number.</span>";
+    return;
+  }
   if (!v) { $("race").textContent = "The race is on"; return; }
   var gap = Math.abs(v.machine.account - v.man.account);
   var h = v.tie ? "Dead heat between man and machine"
