@@ -616,6 +616,7 @@
   <div class="mkt-side"><div id="stocks-slot"></div></div>
   </div>
   <div class="mini-grid" id="desk"></div>
+  <div id="oi-panel" class="hidden" style="margin-top:16px"></div>
 
   <div class="kicker" id="whales">Smart money</div>
   <h2 class="sec">Following the whales</h2>
@@ -1418,6 +1419,24 @@ function renderBenchmark(d) {
   el.innerHTML = "<b>Benchmark:</b> " + money(d.startCapital || 500, 0) + " simply held in BTC since " + esc(since) + " would be <b>" + money(b.value, 0) + "</b> (" + (b.retPct >= 0 ? "+" : "−") + Math.abs(b.retPct).toFixed(1) + "%) — BTC $" + Math.round(b.start).toLocaleString("en-US") + " → $" + Math.round(b.now).toLocaleString("en-US") + ". A passive yardstick, not a risk-matched rival: it holds one asset, all the time, with no stop.";
   el.classList.remove("hidden");
 }
+// [#492] open-interest change — who is adding or cutting positions, measured in coins (price move stripped out), on the
+// two biggest CEXes and the two venues the desks trade. Built from the bot's own hourly history; windows fill as it grows.
+function renderOiPanel(d) {
+  var el = $("oi-panel"); if (!el) return;
+  var o = d && d.oi; if (!o || !o.majors) { el.classList.add("hidden"); return; }
+  var V = [["BINANCE", "Binance"], ["BYBIT", "Bybit"], ["HL", "Hyperliquid"], ["LIGHTER", "Lighter"]];
+  var p = function (x) { return x == null ? "<span class='src'>—</span>" : "<span class='" + cls(x) + "'>" + (x >= 0 ? "+" : "−") + Math.abs(x).toFixed(1) + "%</span>"; };
+  var h = "<div class='kicker'>Positioning</div><table class='data' aria-label='Open interest change'><tr><th>Open interest</th>" + V.map(function (v) { return "<th class='rt'>" + v[1] + "<br><span class='src'>1h · 4h · 24h</span></th>"; }).join("") + "</tr>";
+  Object.keys(o.majors).forEach(function (a) {
+    h += "<tr><td><b>" + esc(a) + "</b></td>" + V.map(function (v) { var c = o.majors[a][v[0]]; return "<td class='rt num'>" + (c ? p(c.h1) + " · " + p(c.h4) + " · " + p(c.h24) : "<span class='src'>—</span>") + "</td>"; }).join("") + "</tr>";
+  });
+  h += "</table>";
+  var one = function (x) { return esc(x.asset) + " <span class='src'>" + esc(x.venue === "HL-xyz" ? "HL stocks" : x.venue === "HL" ? "Hyperliquid" : x.venue === "LIGHTER" ? "Lighter" : x.venue) + "</span> " + p(x.pct); };
+  if ((o.builds || []).length || (o.drops || []).length) h += "<div class='src' style='margin-top:6px'><b>Biggest " + o.w + "h changes on the desks' venues:</b> building " + ((o.builds || []).map(one).join(", ") || "—") + " · cutting " + ((o.drops || []).map(one).join(", ") || "—") + "</div>";
+  if ((o.div || []).length) h += "<div class='src' style='margin-top:4px'><b>Venues disagree (" + o.w + "h):</b> " + o.div.map(function (x) { return esc(x.asset) + " — " + x.venues.map(function (v) { return esc(v.venue) + " " + p(v.pct).replace(/<[^>]+>/g, ""); }).join(" vs "); }).join(" · ") + "</div>";
+  h += "<div class='src' style='margin-top:4px'>Change in open interest counted in coins, so a price move alone does not show up — rising means traders are adding positions, falling means they are closing them. From the bot's own hourly record (as of " + esc(String(o.hour).slice(11, 13)) + ":00 UTC); a dash means that window's history has not built up yet.</div>";
+  el.innerHTML = h; el.classList.remove("hidden");
+}
 function renderStandings(d) {
   _stdData = d;
   var sk = _stdSort.key, sd = _stdSort.dir;
@@ -1486,6 +1505,7 @@ function renderStandings(d) {
   $("standings").innerHTML = h;
   try { renderBookLine(d); } catch (e) {}   // [#487-B]
   try { renderBenchmark(d); } catch (e) {}   // [#488]
+  try { renderOiPanel(d); } catch (e) {}   // [#492]
   var note = $("std-note");
   if (note) note.classList.toggle("hidden", !anySmall);
 }
