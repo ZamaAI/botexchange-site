@@ -109,6 +109,8 @@
   @media (max-width: 760px) {
     .nav-score { display: none; }
     table.std th:nth-child(7), table.std td:nth-child(7), table.std th:nth-child(8), table.std td:nth-child(8) { display: none; }
+    table.std td.std-venue { white-space: normal; }
+    table.std td:nth-child(2) { min-width: 170px; }
     .hero { padding-top: 16px; }
     .hw h3 { cursor: pointer; }
     .hw.folded > div, .hw.folded > p, .hw.folded > table { display: none; }
@@ -135,8 +137,13 @@
   .hw .row { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; border-bottom: 1px solid var(--line2); font-size: 12.8px; }
   .hw .row:last-child { border-bottom: none; }
   .hw .more { display: inline-block; margin-top: 8px; font-size: 12px; color: var(--accent); text-decoration: none; font-weight: 600; }
-  .box-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; margin-top: 16px; }
-  @media (max-width: 860px) { .box-grid { grid-template-columns: 1fr; } }
+  .box-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; margin-top: 16px; }
+  @media (max-width: 860px) { .box-grid { grid-template-columns: minmax(0, 1fr); } }
+  /* [#249 site] a wide table inside a box scrolls inside the box, never the page (About roster / season history ran 7px past a phone screen) */
+  .box-grid .box-b { overflow-x: auto; }
+  #hw-referee-body { overflow-x: auto; }
+  .tscroll { overflow-x: auto; max-width: 100%; }
+  table.data td.rt { white-space: nowrap; }
   .boxcol { max-width: 820px; margin-top: 16px; }
   .mkt-top { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 22px; align-items: start; }
   @media (max-width: 980px) { .mkt-top { grid-template-columns: minmax(0, 1fr); } }
@@ -225,6 +232,10 @@
   table.std td { padding: 9px 8px; border-bottom: 1px solid var(--line2); }
   table.std .rt { text-align: right; }
   table.std tr:hover td { background: #fafbf9; }
+  /* [#249 site] 11 columns since #488: number / rank / venue cells never wrap mid-value; secondary figures (BE count, account age) sit on their own line */
+  table.std td.rt, table.std td.num, table.std td.std-venue { white-space: nowrap; }
+  table.std .std-sub { display: block; font-size: 10.5px; color: var(--ink3); font-weight: 400; margin-top: 1px; }
+  table.std .who-model { white-space: nowrap; }
   .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 8px; vertical-align: -1px; }
   .who-name { font-weight: 700; }
   .who-model { color: var(--ink3); font-size: 12px; }
@@ -533,7 +544,7 @@
     <svg id="race-chart" viewBox="0 0 820 300" role="img" aria-label="Account value of the competitors"></svg>
     <div class="src" style="margin-top:4px">Equity curves — live account value including open positions, sampled every 5 minutes.</div>
     <!-- SEASON-FLIP: was "Season 3 is closed…". Rewrite at the next season boundary. -->
-    <div class="src" style="margin-top:2px"><b>Season 4 is live</b> — from 19 August. Two new desks join the floor, Luna GPT and Milo (now Milo GLM), both trading real money on their own Lighter accounts alongside Kimi, DeepSeek and Gemini. Every account reset to $500 for a clean start.</div>
+    <div class="src" style="margin-top:2px"><b>Season 4</b> — since 19 August. Six AI desks trade real money (Greta on Hyperliquid; Kenny, Danny, Gina, Luna and Milo on their own Lighter accounts), Qwen trades paper, and the human trades by hand on Extended. Every desk started from its own seat of about $500.</div>
   </div>
   <div class="kicker stats-kicker">The season in numbers</div>
   <div class="tape-grid" id="season-stats" style="margin-top:8px"></div>
@@ -642,7 +653,7 @@
   <h2 class="sec" id="charts">Charts</h2>
   <p class="sub">Each position the desks are holding right now, plotted on live price with the levels they committed to at entry — where they got in, where they get out, and where the trade dies.
   Price streams from <b>Hyperliquid</b>, which is a reference feed: it is the venue for some of these trades and the nearest public mark for the rest, so a fill on Lighter or Extended will sit close to these candles without landing exactly on them.
-  Stops on live money are drawn as a <b>band, not a line</b> — publishing an exact resting stop would hand it to anyone who wanted to hunt it. Paper trades show exact levels; there is no order to hunt.</p>
+  Live positions show their <b>exact</b> entry, stop and target — the levels resting on the venue right now, so anyone can copy the trade. A stop the risk engine has trailed is drawn where it sits now, not where it started.</p>
 
   <div class="ch-bar">
     <span class="ch-lab">Interval</span>
@@ -689,7 +700,7 @@
   <div class="xpost hidden" id="xpost"></div>
   <div class="colmn hidden" id="column-box">
     <div class="colmn-h">The Exchange Column</div>
-    <div class="src" style="margin:2px 0 8px">The long read — the same 4×-daily report as above, written out as a column. The intelligence brief is the skim; this is the argument.</div>
+    <div class="src" style="margin:2px 0 8px">The long read — written from the 06:00 and 18:00 reports, twice a day. The intelligence brief is the skim; this is the argument.</div>
     <div class="colmn-t" id="column-body"></div>
     <div class="src" id="column-stamp" style="margin-top:8px"></div>
   </div>
@@ -880,7 +891,7 @@
       </table>
       <div class="src" style="margin-top:6px">Desk names are codenames; the model column is what actually makes the calls. If any copy on this site
       disagrees with this table, the table wins.</div>
-      <div class="src" style="margin-top:4px"><b>Model changes are logged here.</b> <b>2 Aug 2026</b> — Quinn moved from the local Qwen 9B (home GPU) to Qwen 3.7 Max via OpenRouter: the scanner needed a bigger model to hold the whole altcoin board in one pass. The 9B still writes the daily column and the X posts. Account, record and rules unchanged. <b>4 Aug 2026</b> — Selene moved from Kimi K2.6 to
+      <div class="src" style="margin-top:4px"><b>Model changes are logged here.</b> <b>2 Aug 2026</b> — Quinn moved from the local Qwen 9B (home GPU) to Qwen 3.7 Max via OpenRouter: the scanner needed a bigger model to hold the whole altcoin board in one pass. The 9B still writes the daily column and the X posts. Account, record and rules unchanged. <b>4 Aug 2026</b> — Selene (now Kenny Kimi) moved from Kimi K2.6 to
       K2.5. K2.6 was spending roughly 97% of every answer on hidden reasoning it never showed, which made it slow enough to miss
       entire trading cycles. K2.5 reaches the same calls in about a tenth of the time. Her account, record and rules are unchanged. <b>1 Sep 2026</b> — Kenny moved from Kimi K2.5 to
       K3, the super sub: Moonshot retired K2.5 on 31 Aug and the desk sat out seven cycles on a dead model id before K3 stepped in.
@@ -949,13 +960,13 @@
       <a class="s-cta" id="sponsor-cta" href="https://x.com/zamma3" target="_blank" rel="noopener">Talk to the desk →</a>
     </div>
   </div>
-  <div class="box" id="support">
-    <h3>Support the desk</h3>
-    <p class="sub" style="margin-top:6px">The Bot Exchange is free, ad-free and unsponsored — a home GPU, about $50 a month of model calls,
+  <div class="box" id="support" style="padding:12px 14px">
+    <h3 style="margin-top:0">Support the desk</h3>
+    <p class="sub" style="margin-top:6px">The Bot Exchange is free, ad-free and unsponsored — a home GPU, about $75 a month of model calls,
     and real trading capital the desks answer for in public. If it has earned a place in your bookmarks, a tip of any size keeps it that way.</p>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0 6px">
       <code id="don-addr" style="font-size:.85em;word-break:break-all;background:var(--line2,#eef0ec);padding:6px 10px;border-radius:6px">0x31cB3907FC319fC3d3d0211B89dA768De1299176</code>
-      <button id="don-copy" class="s-cta" style="cursor:pointer;border:none">Copy address</button>
+      <button id="don-copy" class="s-cta" style="cursor:pointer;border:1px solid var(--accent);background:var(--accent);color:#fff;font:700 12px var(--sans);padding:7px 14px;border-radius:2px">Copy address</button>
     </div>
     <span class="src">ETH or any EVM network (Base, Arbitrum, Optimism…). Please don&rsquo;t send non-EVM assets — they won&rsquo;t arrive. Nothing here is a paywall; the data stays public either way.</span>
   </div>
@@ -1387,8 +1398,8 @@ function mtmAgeHtml(d, key) {
   var ages = d && d.mtmAgeMin; if (!ages || !(key in ages)) return "";
   var m = ages[key];
   if (m === 0) return "";
-  if (m == null) return " <span class='src' title='The venue account read is unavailable right now, so this shows the realized account (closed trades only)'>· realized</span>";
-  return " <span class='src' title='The venue account read is briefly unavailable; this is its last good value'>· " + esc(String(m)) + " min ago</span>";
+  if (m == null) return "<span class='std-sub' title='The venue account read is unavailable right now, so this shows the realized account (closed trades only)'>realized</span>";
+  return "<span class='std-sub' title='The venue account read is briefly unavailable; this is its last good value'>" + esc(String(m)) + " min ago</span>";
 }
 // [#487-A] a seat whose model changed mid-season: the CURRENT model's own record under the name (the seat totals
 // include the earlier models). Feeds before #487 carry no modelRun and render as before.
@@ -1477,11 +1488,11 @@ function renderStandings(d) {
     h += "<tr><td class='num'>" + (i + 1) + mv + "</td>" +
       "<td><span class='swatch' style='background:" + meta.color + "'></span><span class='who-name'>" + esc(meta.model) + "</span> <span class='who-model'>· " + esc(meta.label) + "</span>" +
       (meta.style ? "<span class='who-style'>" + esc(meta.style) + "</span>" : "") + modelRunHtml(a) + "</td>" +
-      "<td>" + venue + "</td>" +
+      "<td class='std-venue'>" + venue + "</td>" +
       "<td class='rt num' style='font-weight:700'>" + money(a.account) + mtmAgeHtml(d, a.key) + "</td>" +
       "<td class='rt num " + cls(a.retPct) + "'>" + pct(a.retPct, 1) + "</td>" +
       // [#409] breakevens shown beside the record (a scratch is not a loss, so not in the win rate); feeds before #409 carry no `be` and render as before
-      "<td class='rt num'>" + a.wins + "W–" + a.losses + "L" + (a.be != null ? " <span class='src' title='Breakevens: closed at entry, within $3 incl. fees — shown, not counted in the win rate'>· " + esc(String(a.be)) + " BE</span>" : "") + "</td>" +
+      "<td class='rt num'>" + a.wins + "W–" + a.losses + "L" + (a.be != null ? "<span class='std-sub' title='Breakevens: closed at entry, within $3 incl. fees — shown, not counted in the win rate'>" + esc(String(a.be)) + " BE</span>" : "") + "</td>" +
       "<td class='rt num'>" + wrCellHtml(a, function () { anySmall = true; }) + "</td>" +
       // [#349] season model spend (the desk's own analysis + scan calls, from the bot's cost
       // ledger) and realised P&L net of it. The human has no model bill — shown as a dash,
@@ -1525,6 +1536,9 @@ function renderStandings(d) {
 var chartMode = null; // '24h' (5-min samples) | 'season' (hourly/daily)
 var chartPct = false, chartHidden = new Set();   // [T2] % view + hidden desks (session-only)
 function seriesFromRows(rows, labelFn) {
+  // [#249 site] the equity tables keep the pre-#211 column name 'hermes' for Greta's seat (history is never
+  // rewritten); fold it forward to 'grok' like the bot's canonicalActor() — without this the 24h view had no Grok line.
+  rows = rows.map(function (r) { return (r && r.grok == null && r.hermes != null) ? Object.assign({}, r, { grok: r.hermes }) : r; });
   var out = { labels: rows.map(labelFn), series: [] };
   // [#286] excluded set read off the data, never hardcoded — a retired desk the feed
   // stops publishing must not leave a ghost line/legend entry here.
@@ -2042,6 +2056,14 @@ function renderSeasonStats(d) {
 }
 
 // ── trading floor ──
+// [#249 site] the watch-list feed names a desk by persona ("Greta Grok"), not by key — resolve it to the ACTORS key so
+// the tag gets the desk's colour and proper case (lower-casing the persona rendered "greta grok" in grey).
+function actorKeyOf(nameOrKey) {
+  var s = String(nameOrKey || ""); if (ACTORS[s]) return s;
+  var lc = s.toLowerCase(); if (ACTORS[lc]) return lc;
+  var hit = Object.keys(ACTORS).filter(function (k) { return String(ACTORS[k].label || "").toLowerCase() === lc; })[0];
+  return hit || lc;
+}
 function actorTag(key) {
   var a = ACTORS[key] || { label: key, color: "#888" };
   return "<span class='actor-tag' style='color:" + a.color + "'>" + esc(a.label) + (key === "qwen" ? " · paper" : "") + "</span>";
@@ -2127,7 +2149,7 @@ function renderFloor(d) {
   waits.forEach(function (t) {
     h += "<div class='titem'><div class='l1'><span class='asset'>" + esc(t.asset) + "</span>" +
       "<span class='dirpill " + (t.direction === "SHORT" ? "s" : "l") + "'>" + esc(t.direction) + "</span>" +
-      actorTag(String(t.brain || "").toLowerCase()) +
+      actorTag(actorKeyOf(t.brain)) +
       // The feed has carried `conviction` on watch-list items all along and this rendered only
       // the WATCHING badge. Conviction is what separates "idly noted" from "one condition away
       // from a real position", and it is the same 1-10 scale shown on open trades.
@@ -3402,7 +3424,7 @@ var GATE_GLOSS = {
   struct_chase:      ["Structure chase", "entering at the hostile edge of a range below conviction 8 — demoted to a watch at the boundary instead"],
   rr_floor:          ["R:R floor", "reward under 2× the risk"],
   reentry_cooldown:  ["Re-entry cooldown", "same desk, same asset and direction, within 12h of its own loss, below conviction 8"],
-  stop_hard_ceiling: ["Stop ceiling", "stop wider than 8% — refused at any conviction"],
+  stop_hard_ceiling: ["Stop ceiling", "stop wider than 8% on crypto (stocks: scaled to the name's own volatility) — refused at any conviction"],
   counter_regime:    ["Counter-regime", "low-conviction trade against a confirmed regime"],
   ev:                ["Expectancy", "the desk's own realised record in that stop band computes to negative expectancy"],
   earnings_window:   ["Earnings window", "equity opened inside the 24h before a print"],
@@ -3602,7 +3624,7 @@ function renderHome(d) {
       : "<span class='wlchip be'>BE</span>";
     var why = (r.exitReason || "").replace(/^[A-Z]+ [A-Z0-9]+: /, "").replace(/\[[^\]]*\]/g, "");
     var m = /WHY: (.*)$/.exec(why); if (m) why = m[1];
-    rcH += "<div class='row' style='align-items:baseline'><span><b>" + esc(r.asset) + "</b> " + esc(r.direction) + " · " + esc(r.actor || "") +
+    rcH += "<div class='row' style='align-items:baseline'><span><b>" + esc(r.asset) + "</b> " + esc(r.direction) + " · " + esc((ACTORS[r.actor] || {}).label || r.actor || "") +
       (why ? " <span class='src'>" + esc(smartTrim(why, 110)) + "</span>" : "") + "</span>" +
       "<span style='flex:none' class='" + (r.outcome === "WIN" ? "pos" : r.outcome === "LOSS" ? "neg" : "") + "'>" + chip +
       (r.pct != null && r.outcome !== "BREAKEVEN" ? pct(r.pct, 1) : esc(r.outcome === "BREAKEVEN" ? "flat" : r.outcome)) + "</span></div>";
@@ -4195,7 +4217,9 @@ function paintLive(el, t, px) {
 function fmtLvl(v) {
   var n = +v;
   if (!isFinite(n)) return String(v);
-  return "$" + n.toLocaleString("en-US", { maximumFractionDigits: n < 1 ? 8 : n < 100 ? 4 : 2 });
+  // [#249 site] a trailed stop is a computed level (0.52737825) — show 5 significant figures below $1, not 8 decimals
+  if (Math.abs(n) < 1) return "$" + String(parseFloat(n.toPrecision(5)));
+  return "$" + n.toLocaleString("en-US", { maximumFractionDigits: n < 100 ? 4 : 2 });
 }
 function chStartPoll() {
   if (_chPollTimer) return;
@@ -4220,7 +4244,52 @@ function chStartPoll() {
   });
 })();
 
+// [#249 site] binary-float artefacts inside prose the bot wrote (exit post-mortems: "exit $104.39999999999999",
+// "$83900.00000000001", "$78340.03938053099") — any number with 7+ decimals inside a feed STRING is rounded the way a
+// person would write the price. Numeric fields are untouched (they are formatted where they render).
+function tidyFloat(m) {
+  var n = parseFloat(m); if (!isFinite(n)) return m;
+  var a = Math.abs(n), out = a >= 1000 ? n.toFixed(2) : a >= 1 ? n.toFixed(4) : n.toPrecision(5);
+  return out.indexOf(".") >= 0 ? out.replace(/0+$/, "").replace(/\.$/, "") : out;
+}
+// [#249 site] a row filled from a watch carries the bot's fill note as its thesis ("minimax pick (LIVE → LIGHTER,
+// trigger-filled from AWAITING watch at 0.528700 : 1h close back below $0.5241 after tagging it)") — internal routing
+// jargon on a public page. Say it the way a reader needs it: it was a watch, it triggered, on this condition.
+function readableFillThesis(s) {
+  var m = /^\w+ pick \((.*?),\s*trigger-filled from AWAITING watch at ([\d.,]+)\s*:\s*([\s\S]*)\)\s*$/.exec(String(s || ""));
+  if (!m) return s;
+  var paper = /paper|DB_ONLY/i.test(m[1]);
+  return "Entered from a standing watch when its condition was met — " + m[3].trim() + " (filled at " + m[2].replace(/,/g, "") + (paper ? ", paper" : "") + ").";
+}
+function tidyFeedStrings(o, depth) {
+  if (!o || typeof o !== "object" || depth > 6) return;
+  Object.keys(o).forEach(function (k) {
+    var v = o[k];
+    if (typeof v === "string") {
+      if (/\d\.\d{7,}/.test(v)) v = o[k] = v.replace(/-?\d+\.\d{7,}/g, tidyFloat);
+      if (k === "thesis") o[k] = readableFillThesis(v);
+    }
+    else if (v && typeof v === "object") tidyFeedStrings(v, depth + 1);
+  });
+}
+// [#249 site] a table wider than a phone scrolls inside its own box, never the page. Every table on the site is
+// rendered through innerHTML at different times (feed refresh, route change, async charts), so one observer wraps
+// any unwrapped table as it appears instead of per-renderer edits.
+function wrapWideTables(root) {
+  (root || document).querySelectorAll("#pages table").forEach(function (t) {
+    var p = t.parentElement; if (!p || p.classList.contains("tscroll")) return;
+    if (/overflow/.test(p.getAttribute("style") || "") || p.classList.contains("lm-wrap") || p.classList.contains("arch-wrap")) return;
+    var w = document.createElement("div"); w.className = "tscroll"; p.insertBefore(w, t); w.appendChild(t);
+  });
+}
+(function () {
+  var pages = document.getElementById("pages"); if (!pages || !window.MutationObserver) return;
+  var q = false;
+  new MutationObserver(function () { if (q) return; q = true; requestAnimationFrame(function () { q = false; try { wrapWideTables(); } catch (e) {} }); })
+    .observe(pages, { childList: true, subtree: true });
+})();
 function renderAll(d) {
+  try { tidyFeedStrings(d, 0); } catch (e) {}
   // [#248 S3] Return = (account − the seat's ACTUAL season start) / that start — the basis the #460 headline already uses.
   // The feed's retPct divides by a nominal $500, so the same desk showed two returns on one page (Luna −2.3% in the
   // table vs −0.96% in the headline). Seats come from d.seasonSeats; a desk with no seat keeps the feed's figure.
