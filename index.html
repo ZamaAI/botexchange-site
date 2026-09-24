@@ -1378,6 +1378,15 @@ function _stdVal(a, key) {
   if (key === "record") return (a.wins || 0) - (a.losses || 0) / 1000;
   var v = a[key]; return v == null || !isFinite(v) ? -Infinity : v;
 }
+// [#483] how fresh a mark-to-market account is. Only Manual (Extended) can serve a held read today: 0 = live,
+// N = the venue's last good read N min ago (its account snapshot lags), null = fell back to the realized account.
+function mtmAgeHtml(d, key) {
+  var ages = d && d.mtmAgeMin; if (!ages || !(key in ages)) return "";
+  var m = ages[key];
+  if (m === 0) return "";
+  if (m == null) return " <span class='src' title='The venue account read is unavailable right now, so this shows the realized account (closed trades only)'>· realized</span>";
+  return " <span class='src' title='The venue account read is briefly unavailable; this is its last good value'>· " + esc(String(m)) + " min ago</span>";
+}
 function renderStandings(d) {
   _stdData = d;
   var sk = _stdSort.key, sd = _stdSort.dir;
@@ -1419,10 +1428,10 @@ function renderStandings(d) {
       "<td><span class='swatch' style='background:" + meta.color + "'></span><span class='who-name'>" + esc(meta.model) + "</span> <span class='who-model'>· " + esc(meta.label) + "</span>" +
       (meta.style ? "<span class='who-style'>" + esc(meta.style) + "</span>" : "") + "</td>" +
       "<td>" + venue + "</td>" +
-      "<td class='rt num' style='font-weight:700'>" + money(a.account) + "</td>" +
+      "<td class='rt num' style='font-weight:700'>" + money(a.account) + mtmAgeHtml(d, a.key) + "</td>" +
       "<td class='rt num " + cls(a.retPct) + "'>" + pct(a.retPct, 1) + "</td>" +
       // [#409] breakevens shown beside the record (a scratch is not a loss, so not in the win rate); feeds before #409 carry no `be` and render as before
-      "<td class='rt num'>" + a.wins + "W–" + a.losses + "L" + (a.be != null ? " <span class='src' title='Breakevens: closed at entry, within $1 — shown, not counted in the win rate'>· " + esc(String(a.be)) + " BE</span>" : "") + "</td>" +
+      "<td class='rt num'>" + a.wins + "W–" + a.losses + "L" + (a.be != null ? " <span class='src' title='Breakevens: closed at entry, within $3 incl. fees — shown, not counted in the win rate'>· " + esc(String(a.be)) + " BE</span>" : "") + "</td>" +
       "<td class='rt num'>" + wrCellHtml(a, function () { anySmall = true; }) + "</td>" +
       // [#349] season model spend (the desk's own analysis + scan calls, from the bot's cost
       // ledger) and realised P&L net of it. The human has no model bill — shown as a dash,
@@ -3243,7 +3252,13 @@ function renderStamps(d) {
   var TZ = { timeZone: "Africa/Johannesburg" };
   var nr = nextReport();
   $("datestamp").textContent = gen.toLocaleString("en-GB", Object.assign({ weekday: "long", day: "numeric", month: "long", year: "numeric" }, TZ)) + " · updated " + gen.toLocaleTimeString("en-GB", Object.assign({ hour: "2-digit", minute: "2-digit" }, TZ)) + " SAST · next desk cycle " + nr.label + " (in " + nr.inStr + ")";
-  $("foot-stamp").textContent = "Data updates every 5 minutes · last " + gen.toLocaleString("en-GB", Object.assign({ day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }, TZ)) + " SAST · trading is risky · nothing here is financial advice";
+  // [#483] input coverage of the last desk report: how many of the data feeds the desks read actually answered.
+  var fc = d.feedCoverage, fcTxt = "";
+  if (fc && fc.total > 0 && fc.at) {
+    var gone = (fc.missing || []).concat(fc.empty || []);
+    fcTxt = " · last report's inputs " + fc.present + "/" + fc.total + " feeds (" + new Date(fc.at).toLocaleTimeString("en-GB", Object.assign({ hour: "2-digit", minute: "2-digit" }, TZ)) + " SAST" + (gone.length ? "; missing: " + gone.slice(0, 6).join(", ") + (gone.length > 6 ? " +" + (gone.length - 6) : "") : "") + ")";
+  }
+  $("foot-stamp").textContent = "Data updates every 5 minutes · last " + gen.toLocaleString("en-GB", Object.assign({ day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }, TZ)) + " SAST" + fcTxt + " · trading is risky · nothing here is financial advice";
   var ageH = (Date.now() - gen.getTime()) / 36e5;
   if (ageH > 3) {
     $("stale-note").classList.remove("hidden");
