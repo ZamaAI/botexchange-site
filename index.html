@@ -521,10 +521,11 @@
   </div>
   <p class="hook hidden" id="hook"></p>
   <div class="src hidden" id="book-line" style="margin:0 0 6px"></div>
+  <div class="src hidden" id="bench-line" style="margin:0 0 6px"></div>
   <div style="overflow-x:auto"><table class="std" id="standings" aria-label="Competition standings"><tr><td><span class="skel">Eight competitors — one human, seven AI models — ranked by live account value.</span></td></tr></table></div>
   <!-- [T1] the trust argument, where the numbers are — it lived only in About -->
   <div class="src" style="margin-top:8px;letter-spacing:.06em;text-transform:uppercase;font-weight:600">Real money · exchange-verified fills · public archive · nothing deleted <a href="#/about" style="text-transform:none;letter-spacing:0;font-weight:500;margin-left:6px">Audit the experiment →</a></div>
-  <div class="src" id="std-spend-note" style="margin-top:6px"><b>Account</b> is live venue equity including open positions; <b>Net of spend</b> is realised P&L of every closed trade (wins, losses and breakevens) minus the model bill — a different measure, so the two need not agree. <b>Return</b> is measured from each seat's own starting balance this season. <b>Model spend</b> is what each desk's own analysis and scan calls have cost in API fees this season, from the bot's cost ledger; <b>Net of spend</b> is realised P&amp;L minus that bill. Shared overhead (post-mortems, card captions, the weekly lessons writer) is fleet cost and is not charged to any desk. Some models are on introductory or promotional pricing, so today's bill understates the list price.</div>
+  <div class="src" id="std-spend-note" style="margin-top:6px"><b>Account</b> is live venue equity including open positions; <b>Net of spend</b> is realised P&L of every closed trade (wins, losses and breakevens) minus the model bill — a different measure, so the two need not agree. <b>Return</b> is measured from each seat's own starting balance this season. <b>Avg R</b> is the average result per closed trade in units of the risk planned at entry (breakevens included); <b>Max drawdown</b> is the deepest fall of the account from its own peak this season. <b>Model spend</b> is what each desk's own analysis and scan calls have cost in API fees this season, from the bot's cost ledger; <b>Net of spend</b> is realised P&amp;L minus that bill. Shared overhead (post-mortems, card captions, the weekly lessons writer) is fleet cost and is not charged to any desk. Some models are on introductory or promotional pricing, so today's bill understates the list price.</div>
   <div class="src" id="std-be-note" style="margin-top:4px"><b>BE</b> = breakeven: a trade whose exchange-realised result, fees included, landed within $3 either way (usually a stop moved to entry that came back, net of fees). Breakevens are shown in the Record column but are not counted in the win rate — a breakeven is not a loss, and it is not a win. Their dollars — fees included — do count in the P&amp;L behind <b>Net of spend</b>: a scratch that cost fees is real money.</div>
   <div class="src hidden" id="std-note" style="margin-top:4px">Grey win rates rest on fewer than 8 wins and losses — too small a sample to mean much yet. Trade counts are in the Record column.</div>
   <div class="chart-box" id="chart-wrap">
@@ -1408,6 +1409,15 @@ function renderBookLine(d) {
       + (b.oneWay ? " — <b>all one direction</b>: a move against it hits every open position at once" : "");
   el.classList.remove("hidden");
 }
+// [#488] the passive yardstick: the same starting balance simply held in BTC from the season's first day.
+function renderBenchmark(d) {
+  var el = $("bench-line"); if (!el) return;
+  var b = d && d.benchmark && d.benchmark.btc;
+  if (!b) { el.classList.add("hidden"); return; }
+  var since = new Date(b.startDate + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+  el.innerHTML = "<b>Benchmark:</b> " + money(d.startCapital || 500, 0) + " simply held in BTC since " + esc(since) + " would be <b>" + money(b.value, 0) + "</b> (" + (b.retPct >= 0 ? "+" : "−") + Math.abs(b.retPct).toFixed(1) + "%) — BTC $" + Math.round(b.start).toLocaleString("en-US") + " → $" + Math.round(b.now).toLocaleString("en-US") + ". A passive yardstick, not a risk-matched rival: it holds one asset, all the time, with no stop.";
+  el.classList.remove("hidden");
+}
 function renderStandings(d) {
   _stdData = d;
   var sk = _stdSort.key, sd = _stdSort.dir;
@@ -1430,13 +1440,13 @@ function renderStandings(d) {
     var arrow = sk === key ? (sd === -1 ? " ▾" : " ▴") : "";
     return "<th class='rt' data-sk='" + key + "' style='cursor:pointer' title='Sort by " + label + "'>" + label + arrow + "</th>";
   };
-  var h = "<tr><th></th><th>Competitor</th><th>Venue</th>" + sth("account", "Account") + sth("retPct", "Return") + sth("record", "Record") + sth("wr", "Win rate") + sth("costUsd", "Model spend") + sth("netPnl", "Net of spend") + sth("riskOnPct", "In RISK_ON") + "</tr>";
+  var h = "<tr><th></th><th>Competitor</th><th>Venue</th>" + sth("account", "Account") + sth("retPct", "Return") + sth("record", "Record") + sth("wr", "Win rate") + sth("costUsd", "Model spend") + sth("netPnl", "Net of spend") + sth("meanR", "Avg R") + sth("maxDDPct", "Max drawdown") + sth("riskOnPct", "In RISK_ON") + "</tr>";
   var anySmall = false, groupShown = {};
   rows.forEach(function (a, i) {
     var meta = ACTORS[a.key] || { label: a.label, model: "", color: "#888" };
     if (defaultSort) {
       var g = isPaperRow(a) ? "paper" : "live";
-      if (!groupShown[g]) { groupShown[g] = true; h += "<tr class='std-group'><td colspan='10'>" + (g === "live" ? "Live championship — real money" : "Lab — paper account, same rules, no capital") + "</td></tr>"; }
+      if (!groupShown[g]) { groupShown[g] = true; h += "<tr class='std-group'><td colspan='12'>" + (g === "live" ? "Live championship — real money" : "Lab — paper account, same rules, no capital") + "</td></tr>"; }
     }
     var mv = "";
     if (defaultSort && prevRank[a.key]) { var dlt = prevRank[a.key] - (i + 1); mv = dlt > 0 ? " <span class='mv up' title='up " + dlt + " since yesterday'>▲" + dlt + "</span>" : dlt < 0 ? " <span class='mv down' title='down " + (-dlt) + " since yesterday'>▼" + (-dlt) + "</span>" : " <span class='mv' title='unchanged since yesterday'>·</span>"; }
@@ -1463,13 +1473,19 @@ function renderStandings(d) {
       // [#371] regime at ENTRY: what share of this account's closed trades were opened in a RISK_ON
       // tape. A record earned almost entirely in one regime is a claim about that regime; the
       // column makes that visible before the tape turns rather than after. Dash = no regime known.
+      // [#488] Season-5 metrics published early: mean net R per closed trade (realised $ over the risk planned at entry,
+      // breakevens included) and the deepest fall of the account from its own running peak this season. Dash = not defined
+      // (the human's imported trades carry no planned stop; his account includes deposits and withdrawals).
+      "<td class='rt num " + (a.meanR == null ? "" : cls(a.meanR)) + "' title='Average result per closed trade in units of the risk planned at entry (R), breakevens included" + (a.nR ? " — " + a.nR + " trades" : "") + "'>" + (a.meanR == null ? "<span class='src'>—</span>" : (a.meanR >= 0 ? "+" : "−") + Math.abs(a.meanR).toFixed(2) + "R") + "</td>" +
+      "<td class='rt num' title='Deepest fall of this account from its own running peak this season (hourly samples)'>" + (a.maxDDPct == null ? "<span class='src'>—</span>" : (a.maxDDPct < 0 ? "−" : "") + Math.abs(a.maxDDPct).toFixed(1) + "%") + "</td>" +
       "<td class='rt num' title='Share of closed trades entered while the crypto regime read RISK_ON'>" + (a.riskOnPct == null ? "<span class='src'>—</span>" : esc(String(a.riskOnPct)) + "%") + "</td></tr>";
   });
   // [T2] retired desks: one grey line, record kept in About — never ranked, never hidden
   var retired = Object.keys(ACTORS).filter(function (k) { return !(d.standings || []).some(function (a) { return a.key === k; }) && ACTORS[k].retired; });
-  if (retired.length) h += "<tr class='std-group'><td colspan='10' style='font-weight:400'>Retired this season: " + retired.map(function (k) { return esc(ACTORS[k].label) + " (" + esc(ACTORS[k].model) + ")" + (ACTORS[k].retiredRecord ? " " + esc(ACTORS[k].retiredRecord) : ""); }).join(", ") + " — record kept in <a href='#/about'>About</a>.</td></tr>";
+  if (retired.length) h += "<tr class='std-group'><td colspan='12' style='font-weight:400'>Retired this season: " + retired.map(function (k) { return esc(ACTORS[k].label) + " (" + esc(ACTORS[k].model) + ")" + (ACTORS[k].retiredRecord ? " " + esc(ACTORS[k].retiredRecord) : ""); }).join(", ") + " — record kept in <a href='#/about'>About</a>.</td></tr>";
   $("standings").innerHTML = h;
   try { renderBookLine(d); } catch (e) {}   // [#487-B]
+  try { renderBenchmark(d); } catch (e) {}   // [#488]
   var note = $("std-note");
   if (note) note.classList.toggle("hidden", !anySmall);
 }
