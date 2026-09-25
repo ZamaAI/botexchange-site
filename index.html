@@ -3206,20 +3206,30 @@ function renderWhaleFeed(d) {
     var s = String(sym == null ? "" : sym), m = s.match(/^xyz:(.+)$/);
     return m ? { label: m[1], stock: true } : { label: s, stock: false };
   }
-  if (wf.netFlow && wf.netFlow.length) {
+  // [#499] the bot now publishes NEW RISK (opens + adds; closing prints excluded) with the number of wallets behind each
+  // figure. Before, a single wallet closing a $10.7M gold long printed as "−$38.9M" of selling under "the followed wallets".
+  var v2 = wf.wallets != null, wh = wf.windowH || 48;
+  var wN = function (n) { return n + " wallet" + (n === 1 ? "" : "s"); };
+  if ((wf.netFlow && wf.netFlow.length) || (wf.equityNetFlow && wf.equityNetFlow.length)) {
     var groups = { coin: [], stock: [] };
-    wf.netFlow.forEach(function (e) {
+    (wf.netFlow || []).forEach(function (e) {
       var t = wfSym(e[0]);
-      groups[t.stock ? "stock" : "coin"].push({ label: t.label, v: Number(e[1]) || 0 });
+      groups[t.stock ? "stock" : "coin"].push({ label: t.label, v: Number(e[1]) || 0, w: (wf.flowWallets || {})[e[0]] });
     });
+    (wf.equityNetFlow || []).forEach(function (e) { groups.stock.push({ label: wfSym(e[0]).label, v: Number(e[1]) || 0, w: (wf.equityFlowWallets || {})[e[0]] }); });
     var f = "";
-    [["coin", "net flow · coins · last 48h · buy − sell"],
-     ["stock", "net flow · tokenized stocks on Hyperliquid · last 48h · buy − sell"]].forEach(function (g) {
+    if (v2) f += "<div class='src' style='margin:0 0 10px'>" + (wf.wallets === 1 && wf.topWallet
+      ? "<b>One followed wallet is the whole feed right now</b> (" + esc(wf.topWallet.wallet) + ") — this is one trader's book, not a consensus of smart money."
+      : "<b>" + wN(wf.wallets) + "</b> of the followed list traded in the last " + wh + "h.") +
+      (wf.closesExcluded ? " " + wf.closesExcluded + " closing trade" + (wf.closesExcluded === 1 ? "" : "s") + " left out of the totals — closing a position is not a new bet." : "") + "</div>";
+    [["coin", v2 ? "new risk · coins · last " + wh + "h · longs added − shorts added" : "net flow · coins · last 48h · buy − sell"],
+     ["stock", v2 ? "new risk · tokenized stocks on Hyperliquid · last " + wh + "h" : "net flow · tokenized stocks on Hyperliquid · last 48h · buy − sell"]].forEach(function (g) {
       var list = groups[g[0]];
       if (!list.length) return;
       f += "<div class='wire-h'>" + g[1] + "</div><div style='margin:6px 0 14px'>";
       list.forEach(function (e) {
-        f += "<span class='" + (e.v >= 0 ? "up" : "down") + "' style='font-family:var(--mono);font-size:12.5px;margin-right:14px;white-space:nowrap'>" + esc(e.label) + " " + (e.v >= 0 ? "+" : "") + usd(e.v) + "</span>";
+        f += "<span class='" + (e.v >= 0 ? "up" : "down") + "' style='font-family:var(--mono);font-size:12.5px;margin-right:14px;white-space:nowrap'>" + esc(e.label) + " " + (e.v >= 0 ? "+" : "") + usd(e.v) +
+          (v2 && e.w != null ? " <span class='src'>· " + wN(e.w) + "</span>" : "") + "</span>";
       });
       f += "</div>";
     });
