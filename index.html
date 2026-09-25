@@ -3368,7 +3368,7 @@ function renderPredictions(d) {
     var rungs = (L.rungs || []).slice().sort(function (a, b) {
       return (parseFloat(String(a.strike).replace(/[^0-9.]/g, "")) || 0) - (parseFloat(String(b.strike).replace(/[^0-9.]/g, "")) || 0);
     }).map(function (r) {
-      return "<div style='display:flex;align-items:center;justify-content:space-between;padding:2px 0;font-size:12.5px'><span>" + esc(r.strike) + "</span>" +
+      return "<div style='display:flex;align-items:center;justify-content:space-between;padding:2px 0;font-size:12.5px'><span>" + esc(String(r.strike).replace(/\$([\d,]+)\.99\b/, function (m, n) { return "$" + (Number(n.replace(/,/g, "")) + 1).toLocaleString("en-US"); })) + "</span>" +   // [#502] Kalshi's "Above $99,999.99" → "Above $100,000"
         "<span><span class='pbar'><i style='width:" + Math.max(2, Math.min(100, r.yesPct)) + "%'></i></span><b class='num'>" + r.yesPct + "%</b></span></div>";
     }).join("");
     cards += "<div class='pm-card'><div class='pm-q'><b>" + esc(L.label) + "</b></div>" + rungs + "<div class='pm-meta src'>Kalshi ladder · YES per strike</div></div>";
@@ -4276,10 +4276,12 @@ function paintLive(el, t, px) {
   var isLong = String(t.direction || "").toUpperCase() === "LONG";
   var pct = entry ? ((isLong ? px - entry : entry - px) / entry) * 100 : NaN;
   var prog = (isFinite(tgt) && tgt !== entry) ? ((px - entry) / (tgt - entry)) * 100 : NaN;
+  var stp = +t.stop, toStop = (isFinite(stp) && stp !== entry) ? ((px - entry) / (stp - entry)) * 100 : NaN;   // [#502] share of the stop distance used when behind
   var up = pct >= 0;
   el.innerHTML = '<b>' + esc(fmtLvl(px)) + '</b> <span style="color:' + (up ? "var(--up)" : "var(--down)") + '">' +
     (up ? "+" : "") + (isFinite(pct) ? pct.toFixed(2) : "–") + "%</span>" +
-    (isFinite(prog) ? '<span class="ch-prog">' + Math.max(-99, Math.min(999, Math.round(prog))) + "% to target</span>" : "");
+    // [#502] a position moving the wrong way read "−22% to target" — say it plainly: how far toward the target, or that it is behind its entry
+    (isFinite(prog) ? '<span class="ch-prog">' + (prog >= 0 ? Math.min(999, Math.round(prog)) + "% of the way to target" : "behind entry" + (isFinite(toStop) && toStop > 0 ? " — " + Math.min(100, Math.round(toStop)) + "% of the way to the stop" : "")) + "</span>" : "");
   el.title = "Live Hyperliquid mark vs entry " + fmtLvl(entry) + ". Unrealised, before fees.";
 }
 function fmtLvl(v) {
