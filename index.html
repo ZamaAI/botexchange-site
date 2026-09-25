@@ -2847,7 +2847,9 @@ function renderThisWeek(d) {
           esc(eps(e.epsActual)) + " vs " + esc(eps(e.epsConsensus != null ? e.epsConsensus : e.epsEst)) + " est" + sp + "</span>";
       }
       rows += "<div class='tw-row' title='" + esc(e.name || e.symbol) + (e.universe ? " — in the fleet’s tradeable universe" : "") + "'>" +
-        "<span class='tw-sym'>" + esc(e.symbol) + "</span> <span class='tw-meta'>" + esc(e.when || "") +
+        // [#502] a company that has already reported read "TBD" beside its BEAT/MISS; a past day with no result says so
+        "<span class='tw-sym'>" + esc(e.symbol) + "</span> <span class='tw-meta'>" + esc(e.result ? "reported" :
+          (e.date && e.date < new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Johannesburg" }) && (!e.when || /tbd/i.test(e.when)) ? "no result published yet" : (e.when || ""))) +
         (e.universe ? " · <span title='Tradeable by the fleet'>◆</span>" : "") + "</span>" +
         "<br><span class='tw-est'>est " + eps(e.epsEst) + (e.epsPrior != null ? " · yr-ago " + eps(e.epsPrior) : "") + "</span>" + res + "</div>";
     });
