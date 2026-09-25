@@ -300,6 +300,8 @@
   .ch-foot { border-top: 1px solid var(--line2); padding: 7px 12px; font-size: 11.5px; color: var(--ink3); line-height: 1.5; }
   .ch-key { display: inline-block; width: 22px; border-top: 2px solid; margin: 0 4px -3px 0; }
   .ch-none { padding: 22px 12px; font-size: 12.5px; color: var(--ink3); }
+  /* [#502] on a phone the race chart scaled down to ~4px text — hold a readable width and scroll it sideways instead */
+  @media (max-width: 700px) { .chart-box { overflow-x: auto; } #race-chart { min-width: 620px; } }
   @media (max-width: 700px) { .ch-plot { height: 240px; } .ch-meta { margin-left: 0; text-align: left; width: 100%; }
     .ch-live { margin-left: 0; width: 100%; } }
   .box { border: 1px solid var(--line); margin-bottom: 20px; }
@@ -1037,7 +1039,7 @@ var ACTORS = {
 };
 function $(id) { return document.getElementById(id); }
 function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
-function money(v, dp) { return v == null || !isFinite(v) ? "—" : "$" + Number(v).toLocaleString("en-US", { minimumFractionDigits: dp == null ? 2 : dp, maximumFractionDigits: dp == null ? 2 : dp }); }
+function money(v, dp) { return v == null || !isFinite(v) ? "—" : (Number(v) < 0 ? "−" : "") + "$" + Math.abs(Number(v)).toLocaleString("en-US", { minimumFractionDigits: dp == null ? 2 : dp, maximumFractionDigits: dp == null ? 2 : dp }); }   // [#502] a negative reads −$14.16, never $-14.16
 function pct(v, dp) { return v == null || !isFinite(v) ? "—" : (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(dp == null ? 2 : dp) + "%"; }
 function cls(v) { return v >= 0 ? "up" : "down"; }
 function signedMoney(v, dp) { return v == null || !isFinite(v) ? "—" : (v >= 0 ? "+" : "−") + money(Math.abs(v), dp); }
@@ -1819,10 +1821,22 @@ function renderDeskPage(d, key) {
   var h = "";
   // tiles
   h += "<div class='tape-grid'>" +
-    tile("Account", money(r.account, 0), pct(r.retPct, 1) + " since start") +
+    // [#502] the SAME account, return and drawdown as the standings table (live venue account, return from the seat's own start,
+    // deepest fall from its peak). The desk record's own figures are the realized LEDGER ($500 nominal + closed-trade P&L) —
+    // Greta read $546 / +9.1% here beside $539 / +7.9% in the table (funding and fees the ledger never sees). Ledger kept as a sub-line.
+    (function () {
+      var st = ((d.standings || []).filter(function (s0) { return s0.key === key; })[0]) || null;
+      if (!st || st.account == null) return tile("Account", money(r.account, 0), pct(r.retPct, 1) + " since start <span class='src'>(realized ledger)</span>");
+      var mainRet = S5_RANK && st.retNetPct != null ? pct(st.retNetPct, 1) + " net of spend" : pct(st.retPct, 1) + " since start";
+      return tile("Account", money(st.account, 0), mainRet + (r.account != null ? "<br><span class='src'>realized ledger " + money(r.account, 0) + " — closed trades only</span>" : ""));
+    })() +
     tile("Record", (r.w || 0) + "W–" + (r.l || 0) + "L–" + (r.be || 0) + "BE", r.wr == null ? "no scored closes" : r.wr + "% win rate · avg " + (r.avgR == null ? "—" : r.avgR + "R")) +
     tile("Realised P&L", money(r.pnl, 2), "best " + money(r.bestUsd, 2) + " · worst " + money(r.worstUsd, 2)) +
-    tile("Drawdown", r.ddPct == null ? "—" : pct(r.ddPct, 1), r.peak ? "from a peak of " + money(r.peak, 0) : "no daily series yet") +
+    (function () {   // [#502] the table's max drawdown (hourly account samples) — one number per seat everywhere
+      var st = ((d.standings || []).filter(function (s0) { return s0.key === key; })[0]) || null;
+      if (st && st.maxDDPct != null) return tile("Max drawdown", (st.maxDDPct < 0 ? "−" : "") + Math.abs(st.maxDDPct).toFixed(1) + "%", "deepest fall of the account from its own peak this season");
+      return tile("Drawdown", r.ddPct == null ? "—" : pct(r.ddPct, 1), r.peak ? "from a peak of " + money(r.peak, 0) + " (realized ledger)" : "no daily series yet");
+    })() +
     tile("Pick rate · 7d", a.pickRate7d == null ? "—" : a.pickRate7d + "%", (a.pickCycles7d || 0) + " of " + (a.cycles7d || 0) + " cycles produced a pick") +
     tile("Output · 7d", (a.saves7d || 0) + " saved", (a.routedSaves7d || 0) + " live · " + (a.awaiting7d || 0) + " watches") +
     tile("Model spend · 7d", money(a.cost7dUsd, 2), (a.calls7d || 0) + " calls") +
@@ -1849,7 +1863,7 @@ function renderDeskPage(d, key) {
   }
   // equity
   var svg = deskEquitySvg(d, key, color);
-  if (svg) h += "<h3 style='margin-top:22px'>Equity curve</h3>" + svg;
+  if (svg) h += "<h3 style='margin-top:22px'>Equity curve <span class='src' style='font-weight:400;font-size:12px'>— realized ledger: the season start plus each day's closed-trade P&amp;L (the live account above also carries open positions, funding and fees)</span></h3>" + svg;   // [#502]
   // bands
   if (x.bands && x.bands.some(function (b) { return b.n; })) {
     h += "<h3 style='margin-top:22px'>Record by stop distance</h3><p class='sub'>Stop distance at entry (the original stop, before any trailing). This is the table the grid experiment is about: a desk on the tight arm lives in the first two rows, a wide-arm desk in the last two.</p>";
@@ -3937,7 +3951,7 @@ function renderClosedCharts() {
           layout: { background: { color: "transparent" }, textColor: INK3, attributionLogo: false, fontFamily: tok("--sans", "sans-serif") },
           grid: { vertLines: { color: LINE }, horzLines: { color: LINE } },
           rightPriceScale: { borderColor: LINE },
-          timeScale: { borderColor: LINE, timeVisible: true, secondsVisible: false },
+          timeScale: { borderColor: LINE, timeVisible: true, secondsVisible: false, rightOffset: 3 },   // [#502] room for the last bar's marker
           crosshair: { mode: 1 }
         });
         _chLive.push(chart);
@@ -4047,7 +4061,7 @@ function renderTradeCharts(d) {
           layout: { background: { color: "transparent" }, textColor: INK3, attributionLogo: false, fontFamily: tok("--sans", "sans-serif") },
           grid: { vertLines: { color: LINE }, horzLines: { color: LINE } },
           rightPriceScale: { borderColor: LINE },
-          timeScale: { borderColor: LINE, timeVisible: true, secondsVisible: false },
+          timeScale: { borderColor: LINE, timeVisible: true, secondsVisible: false, rightOffset: 3 },   // [#502] room for the last bar's marker
           crosshair: { mode: 1 }
         });
         _chLive.push(chart);
@@ -4088,7 +4102,8 @@ function renderTradeCharts(d) {
 
         var line = function (price, color, style, title) {
           if (price == null || !isFinite(price)) return;
-          series.createPriceLine({ price: price, color: color, lineWidth: 1, lineStyle: style, axisLabelVisible: true, title: title });
+          // [#502] no axis tag: the exact levels are in the legend under the chart, and the tags sat on top of the price-axis ticks
+          series.createPriceLine({ price: price, color: color, lineWidth: 1, lineStyle: style, axisLabelVisible: false, title: title });
         };
         var SOLID = LightweightCharts.LineStyle.Solid, DASH = LightweightCharts.LineStyle.Dashed, DOT = LightweightCharts.LineStyle.Dotted;
         line(+t.entry, ACC, SOLID, "entry");
@@ -4107,7 +4122,7 @@ function renderTradeCharts(d) {
             position: isLong ? "belowBar" : "aboveBar",
             shape: isLong ? "arrowUp" : "arrowDown",
             color: ACC,
-            text: (t.actor || "") + " " + dir.toLowerCase()
+            text: ((ACTORS[t.actor] || {}).short || t.actor || "") + " " + dir.toLowerCase()   // [#502] short name — "minimax short" clipped at the edge
           }]);
         }
         chart.timeScale().fitContent();
@@ -4205,7 +4220,7 @@ function renderLevelChart() {
         autoSize: true,
         layout: { background: { color: "transparent" }, textColor: INK3, attributionLogo: false, fontFamily: tok("--sans", "sans-serif") },
         grid: { vertLines: { color: LINE }, horzLines: { color: LINE } },
-        rightPriceScale: { borderColor: LINE }, timeScale: { borderColor: LINE, timeVisible: true, secondsVisible: false },
+        rightPriceScale: { borderColor: LINE }, timeScale: { borderColor: LINE, timeVisible: true, secondsVisible: false, rightOffset: 3 },   // [#502] room for the last bar's marker
         crosshair: { mode: 1 }
       });
       _lvlChart = chart;
