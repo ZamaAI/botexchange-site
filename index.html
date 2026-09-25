@@ -2475,7 +2475,7 @@ function renderDesk(d) {
     ["BTC", "ETH", "SOL"].forEach(function (k) {
       var e = md.etf[k]; if (!e) return;
       h += "<tr><td>" + k + " ETF</td><td class='rt " + cls(e.latestM) + "'>" + (e.latestM >= 0 ? "+" : "−") + "$" + Math.abs(e.latestM).toFixed(1) + "M</td>" +
-        "<td class='rt " + cls(e.weekM) + "'>" + (e.weekM >= 0 ? "+" : "−") + "$" + Math.abs(e.weekM).toFixed(1) + "M/7d</td></tr>";
+        "<td class='rt " + cls(e.weekM) + "'>" + (e.weekM >= 0 ? "+" : "−") + "$" + Math.abs(e.weekM).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "M/7d</td></tr>";
     });
     h += "</table>";
   }
@@ -2532,8 +2532,11 @@ function renderDesk(d) {
     // Desk dials — funding temperature, crowding verdicts, macro coupling, regimes
     var dials = "";
     (mkt.funding || []).forEach(function (f) {
-      dials += "<tr><td>" + esc(f.asset) + " funding</td><td class='rt'><span class='num'>" +
-        (f.dailyPct >= 0 ? "+" : "") + Number(f.dailyPct).toFixed(3) + "%/day</span> · " + esc(f.signal) + "</td></tr>";
+      // [#499] this is Coinalyze's PREDICTED next-interval rate on Binance, not the last settled one the funding table shows
+      // as APR — so it said "+0.004%/day" beside "+11.0%" for the same coin. Labelled, and the APR equivalent printed.
+      var apr = Number(f.dailyPct) * 365;
+      dials += "<tr><td>" + esc(f.asset) + " funding <span class='src'>predicted next · Binance</span></td><td class='rt'><span class='num'>" +
+        (f.dailyPct >= 0 ? "+" : "") + Number(f.dailyPct).toFixed(3) + "%/day</span> <span class='src'>(" + (apr >= 0 ? "+" : "") + apr.toFixed(1) + "% APR)</span> · " + esc(f.signal) + "</td></tr>";
     });
     (mkt.crowding || []).forEach(function (c) {
       var read = c.verdict === "CROWDED SHORT" ? "shorts crowded — squeeze fuel above" : "longs crowded — flush risk below";
@@ -2696,10 +2699,10 @@ function renderLighterWhales(d) {
   // not see. Flow first, then positioning, then accounts: crowd → book → trader.
   if (lw.coinFlow && lw.coinFlow.length) {
     h += "<table class='data'><caption>Where the money flowed · net buy/sell per coin" +
-      (lw.totalPrints7d ? " · " + esc(lw.totalPrints7d) + " large prints over 7 days" : "") + "</caption>";
+      (lw.totalPrints7d ? " · " + esc(Number(lw.totalPrints7d).toLocaleString("en-US")) + " large prints over 7 days" : "") + "</caption>";
     lw.coinFlow.forEach(function (c) {
       h += "<tr><td>" + esc(c.coin) + "</td>" +
-        "<td class='rt'><span class='src'>" + esc(c.n) + " prints</span></td>" +
+        "<td class='rt'><span class='src'>" + esc(Number(c.n).toLocaleString("en-US")) + " prints</span></td>" +
         "<td class='rt " + cls(c.netK) + "'>" + (c.netK >= 0 ? "net bought +" : "net sold −") + kfmt(Math.abs(c.netK)) + "</td></tr>";
     });
     h += "</table><div class='src' style='margin-top:6px'>Buys minus sells across every sampled print — money <b>moving</b>, not money parked. Built from hundreds of trades per coin, so unlike the two boards below this one is a crowd reading rather than one or two accounts.</div>";
@@ -2804,11 +2807,11 @@ function renderThisWeek(d) {
     (d.calendar || []).filter(function (e) { return e.date === key; }).forEach(function (e) {
       if (e.type === "UNLOCK") {
         rows += "<div class='tw-row tw-mac'><span class='cc'>UNLOCK</span>" + esc(String(e.event).split(" — ")[0]) +
-          "<br><span class='tw-meta'>" + esc(String(e.event).split(" — ").slice(1).join(" — ").slice(0, 48)) + "</span></div>";
+          "<br><span class='tw-meta'>" + esc(smartTrim(String(e.event).split(" — ").slice(1).join(" — "), 48)) + "</span></div>";
       } else if (e.type === "CRYPTO" && e.impact === "HIGH") {
-        rows += "<div class='tw-row tw-mac'><span class='cc'>CRYPTO</span>" + esc(String(e.event).slice(0, 60)) + "</div>";
+        rows += "<div class='tw-row tw-mac'><span class='cc'>CRYPTO</span>" + esc(smartTrim(String(e.event), 60)) + "</div>";
       } else if ((e.type === "Fed" || /FOMC/i.test(String(e.event))) && !ffFomc) {
-        rows += "<div class='tw-row tw-mac'><span class='cc'>FOMC</span>" + esc(String(e.event).slice(0, 60)) + "</div>";
+        rows += "<div class='tw-row tw-mac'><span class='cc'>FOMC</span>" + esc(smartTrim(String(e.event), 60)) + "</div>";
       }
     });
     if (!rows) rows = "<div class='tw-row tw-meta'>Quiet day.</div>";
@@ -4280,6 +4283,7 @@ function tidyFeedStrings(o, depth) {
     var v = o[k];
     if (typeof v === "string") {
       if (/\d\.\d{7,}/.test(v)) v = o[k] = v.replace(/-?\d+\.\d{7,}/g, tidyFloat);
+      if (v.indexOf("$-") >= 0) v = o[k] = v.replace(/\$-(?=\d)/g, "−$");   // [#499] "realised $-25.36" → "−$25.36", the site's sign style
       if (k === "thesis") o[k] = readableFillThesis(v);
     }
     else if (v && typeof v === "object") tidyFeedStrings(v, depth + 1);
