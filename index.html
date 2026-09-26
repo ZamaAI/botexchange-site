@@ -540,6 +540,7 @@
   <div class="src" style="margin-top:8px;letter-spacing:.06em;text-transform:uppercase;font-weight:600">Real money · exchange-verified fills · public archive · nothing deleted <a href="#/about" style="text-transform:none;letter-spacing:0;font-weight:500;margin-left:6px">Audit the experiment →</a></div>
   <div class="src" id="std-spend-note" style="margin-top:6px"><b>Account</b> is live venue equity including open positions; <b>Net of spend</b> is realised P&L of every closed trade (wins, losses and breakevens) minus the model bill — a different measure, so the two need not agree. <b>Return</b> is measured from each seat's own starting balance this season. <b>Avg R</b> is the average result per closed trade in units of the risk planned at entry (breakevens included); <b>Max drawdown</b> is the deepest fall of the account from its own peak this season. <b>Model spend</b> is what each desk's own analysis and scan calls have cost in API fees this season, from the bot's cost ledger; <b>Net of spend</b> is realised P&amp;L minus that bill. Shared overhead (post-mortems, card captions, the weekly lessons writer) is fleet cost and is not charged to any desk. Some models are on introductory or promotional pricing, so today's bill understates the list price.</div>
   <div class="src" id="std-be-note" style="margin-top:4px"><b>BE</b> = breakeven: a trade whose exchange-realised result, fees included, landed within $3 either way (usually a stop moved to entry that came back, net of fees). Breakevens are shown in the Record column but are not counted in the win rate — a breakeven is not a loss, and it is not a win. Their dollars — fees included — do count in the P&amp;L behind <b>Net of spend</b>: a scratch that cost fees is real money.</div>
+  <div class="src hidden" id="xfer-line" style="margin-top:4px"></div>
   <div class="src hidden" id="std-note" style="margin-top:4px">Grey win rates rest on fewer than 8 wins and losses — too small a sample to mean much yet. Trade counts are in the Record column.</div>
   <div class="chart-box" id="chart-wrap">
     <div class="legend" id="legend"></div>
@@ -1481,6 +1482,19 @@ function renderOiPanel(d) {
   h += "<div class='src' style='margin-top:4px'>Change in open interest counted in coins, so a price move alone does not show up — rising means traders are adding positions, falling means they are closing them. From the bot's own hourly record (as of " + esc(String(o.hour).slice(11, 13)) + ":00 UTC); a dash means that window's history has not built up yet.</div>";
   el.innerHTML = h; el.classList.remove("hidden");
 }
+// [#507] every transfer into or out of a seat this season, dated — the pre-registered promise ("dated in the record, never
+// counted as return"). Hidden when there are none. Amounts are the venue's own record; direction unknown is said so.
+function renderTransferLine(d) {
+  var el = $("xfer-line"); if (!el) return;
+  var T = d.seasonTransfers || {}, rows = T.rows || [];
+  if (!rows.length) { el.classList.add("hidden"); el.innerHTML = ""; return; }
+  var name = function (k) { return (ACTORS[k] || {}).label || k; };
+  el.innerHTML = "<b>Transfers this season</b> (netted out of every return): " + rows.map(function (r) {
+    var when = String(r.ts || "").slice(0, 10), amt = r.net == null ? money(r.amount, 2) + " (direction unconfirmed — that return shows a dash)" : (r.net >= 0 ? "+" : "−") + money(Math.abs(r.net), 2);
+    return esc(when) + " " + esc(name(r.seat)) + " " + amt;
+  }).join(" · ") + ".";
+  el.classList.remove("hidden");
+}
 function renderStandings(d) {
   _stdData = d;
   var sk = _stdSort.key, sd = _stdSort.dir;
@@ -1493,8 +1507,8 @@ function renderStandings(d) {
     var sdS = d.seriesDaily || {}, bs = sdS.bySource || {}, L = (sdS.labels || []).length;
     if (L >= 2) {
       // [#501] S5: yesterday's rank on the ranking's own measure (yesterday's account vs the seat, less today's spend — spend moves cents a day)
-      var _seatOf = {}; (d.standings || []).forEach(function (a) { var st = parseFloat((d.seasonSeats || {})[a.key]); _seatOf[a.key] = { seat: st > 0 ? st : parseFloat(d.startCapital), cost: a.key === "manual" ? 0 : (parseFloat(a.costUsd) || 0) }; });
-      var yv = function (k, v) { if (!S5_RANK) return v; var o = _seatOf[k]; return (o && o.seat > 0) ? (v - o.seat - o.cost) / o.seat : v; };
+      var _seatOf = {}; (d.standings || []).forEach(function (a) { var st = parseFloat((d.seasonSeats || {})[a.key]); _seatOf[a.key] = { seat: st > 0 ? st : parseFloat(d.startCapital), cost: a.key === "manual" ? 0 : (parseFloat(a.costUsd) || 0), xnet: parseFloat(a.transfersNet) || 0 }; });
+      var yv = function (k, v) { if (!S5_RANK) return v; var o = _seatOf[k]; return (o && o.seat > 0) ? (v - o.xnet - o.seat - o.cost) / o.seat : v; };   // [#507] net of transfers
       var y = Object.keys(bs).filter(function (k) { return Array.isArray(bs[k]) && bs[k].length >= L && isFinite(bs[k][L - 2]); })
         .map(function (k) { return { k: k, v: yv(k, bs[k][L - 2]) }; }).sort(function (a, b) { return b.v - a.v; });
       y.forEach(function (o, i) { prevRank[o.k] = i + 1; });
@@ -1558,6 +1572,7 @@ function renderStandings(d) {
   try { renderOiPanel(d); } catch (e) {}   // [#492]
   var note = $("std-note");
   if (note) note.classList.toggle("hidden", !anySmall);
+  try { renderTransferLine(d); } catch (e) {}   // [#507]
 }
 // one-time click delegation (renderStandings rebuilds innerHTML each refresh)
 (function () {
@@ -4368,13 +4383,19 @@ function renderAll(d) {
   // table vs −0.96% in the headline). Seats come from d.seasonSeats; a desk with no seat keeps the feed's figure.
   try {
     var _seats = d.seasonSeats || {};
+    // [#507] money moved into / out of a seat since the season start (venue-recorded, swept hourly) is netted out of every
+    // return — a deposit is not profit, a withdrawal is not a loss. A transfer of unknown direction: the net return shows a dash.
+    var _xs = (d.seasonTransfers && d.seasonTransfers.bySeat) || {};
     (d.standings || []).forEach(function (a) {
-      var seat = parseFloat(_seats[a.key]), acct = parseFloat(a.account);
+      var x = _xs[a.key], xnet = (x && isFinite(parseFloat(x.net))) ? parseFloat(x.net) : 0, xunk = !!(x && x.unknown > 0);
+      a.transfersNet = xnet; a.transferUnknown = xunk;
+      var seat = parseFloat(_seats[a.key]), acct = parseFloat(a.account) - xnet;
       if (seat > 0 && isFinite(acct)) { a.retPctNominal = a.retPct; a.retPct = Math.round((acct - seat) / seat * 1000) / 10; }
+      if (xunk) a.retPct = null;   // [#507] never a return computed across an unconfirmed transfer
       // [#501] return NET of the desk's model spend (the Season-5 ranking): paper desks measure from the paper start capital;
       // the human has no model bill. Dash (null) when the seat or account is unknown — never ranked on an invented start.
       var seatN = seat > 0 ? seat : ((a.key === "qwen" || a.paper === true) ? parseFloat(d.startCapital) : NaN), cost = a.key === "manual" ? 0 : (parseFloat(a.costUsd) || 0);
-      a.retNetPct = (seatN > 0 && isFinite(acct)) ? Math.round((acct - seatN - cost) / seatN * 1000) / 10 : null;
+      a.retNetPct = (seatN > 0 && isFinite(acct) && !xunk) ? Math.round((acct - seatN - cost) / seatN * 1000) / 10 : null;
     });
   } catch (e) {}
   _feedLast = d;   // [#323]
