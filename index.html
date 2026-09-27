@@ -316,6 +316,21 @@
   .imp.m { color: var(--watch); background: #fdf3e0; }
   .imp.l { color: var(--ink3); background: var(--bg2); }
   .src { color: var(--ink3); font-size: 11px; }
+  /* [#516] VOLATILITY panel — BBWP state chips + a 0–100 mini meter (tick at 15, the freeze line). Colours are
+     deliberately NOT green/red: a compressed range says nothing about direction. */
+  .vol-t td, .vol-t th { white-space: nowrap; }
+  .vol-chip { font: 700 10px var(--sans); letter-spacing: .04em; padding: 1px 6px; border-radius: 2px; margin-left: 6px; border: 1px solid transparent; }
+  .vol-chip.fz { color: #1f4f9c; background: #e9f0fb; border-color: #c7d8f2; }
+  .vol-chip.co { color: var(--watch); background: #fdf3e0; border-color: #ecd9ac; }
+  .vol-chip.nm { color: var(--ink3); background: #f0efec; border-color: #ddd9d2; }
+  .vol-chip.ht { color: #9a3f14; background: #fbeee6; border-color: #efcfbd; }
+  .vol-chip.ex { color: #fff; background: var(--ink); border-color: var(--ink); margin-left: 0; margin-right: 5px; }
+  .vol-m { display: inline-block; position: relative; width: 38px; height: 5px; background: var(--line); border-radius: 3px; vertical-align: middle; margin-right: 6px; }
+  .vol-m i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--ink3); }
+  .vol-m i.fz { background: #3d6fc0; } .vol-m i.co { background: #c79a3a; } .vol-m i.ht { background: #c0673a; }
+  .vol-m b { position: absolute; left: 15%; top: -2px; width: 1px; height: 9px; background: var(--ink2); opacity: .5; }
+  .vol-stale { background: #fdf3e0; border: 1px solid #ecd9ac; color: #6b4a08; font-size: 12px; padding: 4px 10px; margin: 6px 0 8px; max-width: 900px; }
+  .vol-more { font: 600 11.5px var(--mono); padding: 3px 11px; border: 1px solid var(--line); background: #fff; cursor: pointer; color: var(--ink2); border-radius: 2px; margin: -8px 0 12px; }
   .fng-bar { position: relative; height: 8px; border-radius: 4px; margin: 12px 2px 24px; background: linear-gradient(90deg,#c5524a,#c58b4a,#a3a35c,#6aa46a,#3a9152); }
   .fng-mark { position: absolute; top: -5px; width: 3px; height: 18px; background: var(--ink); }
   .fng-lab { position: absolute; top: 18px; transform: translateX(-50%); font-size: 11px; color: var(--ink2); font-family: var(--mono); white-space: nowrap; }
@@ -632,6 +647,7 @@
   </div>
   <div class="mini-grid" id="desk"></div>
   <div id="oi-panel" class="hidden" style="margin-top:16px"></div>
+  <div id="vol-panel" class="hidden" style="margin-top:16px"></div>
 
   <div class="kicker" id="whales">Smart money</div>
   <h2 class="sec">Following the whales</h2>
@@ -1518,6 +1534,71 @@ function renderOiPanel(d) {
   if ((o.div || []).length) h += "<div class='src' style='margin-top:4px'><b>Venues disagree (" + o.w + "h):</b> " + o.div.map(function (x) { return esc(x.asset) + " — " + x.venues.map(function (v) { return esc(v.venue) + " " + p(v.pct).replace(/<[^>]+>/g, ""); }).join(" vs "); }).join(" · ") + "</div>";
   h += "<div class='src' style='margin-top:4px'>Change in open interest counted in coins, so a price move alone does not show up — rising means traders are adding positions, falling means they are closing them. From the bot's own hourly record (as of " + esc(String(o.hour).slice(11, 13)) + ":00 UTC); a dash means that window's history has not built up yet.</div>";
   el.innerHTML = h; el.classList.remove("hidden");
+}
+// [#516] VOLATILITY — how compressed each coin's range is (BBWP), from the bot's own hourly logger on CLOSED 4h and 1d
+// Binance futures bars. Context only: no desk reads it. volState absent (older feed) → hidden like every other panel;
+// null / no rows → a quiet "unavailable" line, never an empty table that would read as "nothing is coiled".
+var VOL_FREEZE = 15, VOL_COIL = 30, VOL_HOT = 85, VOL_STALE_MIN = 150, VOL_SHOW = 12, _volAll = false;   // _volAll: 'show all' survives the 5-min refresh
+function volStateOf(b, freezeMax) {
+  if (b == null || !isFinite(b)) return null;
+  if (b <= (freezeMax || VOL_FREEZE)) return { k: "fz", t: "FROZEN" };
+  if (b <= VOL_COIL) return { k: "co", t: "COILING" };
+  if (b >= VOL_HOT) return { k: "ht", t: "HOT" };
+  return { k: "nm", t: "NORMAL" };
+}
+// one row per asset {asset, h4, d1}, most compressed 4h first (ascending BBWP, unknown last, then by name)
+function volRows(v) {
+  var by = {};
+  (v.rows || []).forEach(function (r) { if (!r || !r.asset) return; (by[r.asset] = by[r.asset] || { asset: r.asset })[r.tf === "1d" ? "d1" : r.tf === "4h" ? "h4" : "_"] = r; });
+  var key = function (o) { var b = o.h4 && o.h4.bbwp; return b == null || !isFinite(b) ? Infinity : b; };
+  return Object.keys(by).map(function (k) { return by[k]; }).sort(function (a, b) { return (key(a) - key(b)) || (a.asset < b.asset ? -1 : a.asset > b.asset ? 1 : 0); });
+}
+function renderVolPanel(d) {
+  var el = $("vol-panel"); if (!el) return;
+  if (!d || !("volState" in d)) { el.classList.add("hidden"); el.innerHTML = ""; return; }
+  var v = d.volState, rows = v ? volRows(v) : [];
+  var h = "<div class='kicker'>Volatility</div>";
+  if (!rows.length) {
+    el.innerHTML = h + "<div class='src' style='margin:4px 0 24px'>Volatility data unavailable right now.</div>";
+    el.classList.remove("hidden"); return;
+  }
+  var fz = v.freezeMax || VOL_FREEZE;
+  var t = new Date(v.asOf), clientAge = isNaN(t) ? null : (Date.now() - t.getTime()) / 6e4;
+  var age = Math.max(isFinite(v.ageMin) ? v.ageMin : -1, clientAge == null ? -1 : clientAge);
+  var hm = isNaN(t) ? "—" : ("0" + t.getUTCHours()).slice(-2) + ":" + ("0" + t.getUTCMinutes()).slice(-2);
+  h += "<div class='src' style='margin:2px 0 6px'>Updated " + hm + " UTC · 4h and 1d closed bars · Binance futures</div>";
+  if (age > VOL_STALE_MIN) h += "<div class='vol-stale'>These readings are " + (age >= 120 ? Math.round(age / 60) + "h" : Math.round(age) + " min") + " old — the volatility logger has not updated since. Treat them as out of date.</div>";
+  var cell = function (r) {
+    if (!r || r.bbwp == null || !isFinite(r.bbwp)) return "<td class='rt'><span class='src'>—</span></td>";
+    var st = volStateOf(r.bbwp, fz), w = Math.max(2, Math.min(100, r.bbwp));
+    return "<td class='rt' title='BBWP " + r.bbwp.toFixed(1) + " — " + (r.lookbackN || 252) + "-bar percentile" + (r.signal != null ? " · 8-bar average " + Number(r.signal).toFixed(1) : "") + (r.barCloseAt ? " · bar closed " + esc(String(r.barCloseAt).slice(0, 16).replace("T", " ")) + " UTC" : "") + "'>" +
+      "<span class='vol-m' aria-hidden='true'><i class='" + st.k + "' style='width:" + w + "%'></i><b></b></span><span class='num'>" + r.bbwp.toFixed(1) + "</span><span class='vol-chip " + st.k + "'>" + st.t + "</span></td>";
+  };
+  var freeze = function (o) {
+    var parts = [], range = null;
+    [["h4", "4h"], ["d1", "1d"]].forEach(function (p) {
+      var r = o[p[0]]; if (!r) return;
+      var lab = p[0] === "d1" ? "1d " : "";
+      if (r.exit) { parts.push("<span class='vol-chip ex' title='The first closed bar out of a freeze of 3+ bars. Says nothing about direction.'>BREAKING OUT</span>" + lab + "leaving a " + (r.prevStreak ? r.prevStreak + "-bar " : "") + "freeze"); if (range == null && r.rangePct != null) range = r.rangePct; }
+      else if (r.streak > 0) { parts.push(lab + r.streak + (r.streak === 1 ? " bar" : " bars")); if (range == null && r.rangePct != null) range = r.rangePct; }
+    });
+    return "<td>" + (parts.length ? parts.join(" · ") : "<span class='src'>—</span>") + "</td><td class='rt'>" + (range != null && isFinite(range) ? "<span class='num'>" + Number(range).toFixed(2) + "%</span>" : "<span class='src'>—</span>") + "</td>";
+  };
+  var body = rows.map(function (o, i) {
+    return "<tr data-asset='" + esc(o.asset) + "' data-bbwp4h='" + (o.h4 && o.h4.bbwp != null ? o.h4.bbwp : "") + "'" + (i >= VOL_SHOW && !_volAll ? " class='vol-x hidden'" : "") + "><td><b>" + esc(o.asset) + "</b></td>" + cell(o.h4) + cell(o.d1) + freeze(o) + "</tr>";
+  }).join("");
+  h += "<div class='lm-wrap'><table class='data vol-t' id='vol-table' aria-label='Volatility compression by coin'><tr><th>Coin</th><th class='rt'>4h BBWP</th><th class='rt'>1d BBWP</th><th>Freeze</th><th class='rt'>Range in freeze</th></tr>" + body + "</table></div>";
+  if (rows.length > VOL_SHOW && !_volAll) h += "<button type='button' class='vol-more' id='vol-more'>Show all " + rows.length + " coins</button>";
+  h += "<details class='box' style='max-width:900px'><summary class='box-h'>What BBWP means</summary><div class='box-b' style='font-size:12.8px;color:var(--ink2)'>" +
+    "<b>Bollinger Band Width Percentile</b> measures how wide a coin&rsquo;s volatility band is now compared with its last 252 bars: 0 is the tightest in that window, 100 the widest. " +
+    "At " + fz + " or below the range is <b>frozen</b> (compressed), " + fz + "&ndash;30 is <b>coiling</b>, 85 and above is <b>hot</b> (expanded). " +
+    "A long freeze that then ends has tended to come before a larger move &mdash; it does <b>not</b> say which direction." +
+    "<br><br>Computed hourly by our own logger on closed 4h and 1d Binance futures bars (a 13-bar average &plusmn; 2 standard deviations, its width ranked against the last 252 bars). " +
+    "In our desks&rsquo; own real-money record, range (CHOP) trades entered while volatility was quiet have not worked: of 29 such trades on the five majors since July, none won (21 losses, 8 breakevens) &mdash; a small sample, measured on the same history, not tested forward. " +
+    "This panel is context, not a trade signal, and no desk reads it.</div></details>";
+  el.innerHTML = h; el.classList.remove("hidden");
+  var mb = $("vol-more");
+  if (mb) mb.onclick = function () { _volAll = true; [].slice.call(el.querySelectorAll("tr.vol-x")).forEach(function (tr) { tr.classList.remove("hidden"); }); mb.remove(); };
 }
 // [#507] every transfer into or out of a seat this season, dated — the pre-registered promise ("dated in the record, never
 // counted as return"). Hidden when there are none. Amounts are the venue's own record; direction unknown is said so.
@@ -4439,7 +4520,7 @@ function renderAll(d) {
   _feedForReveal = d;
   renderStamps(d); renderStrip(d.market); renderHeadline(d); renderFleetPnl(d); renderSeasonHistory(d); renderStandings(d); renderReferee(d); try { renderHero(d); } catch (e) {}
   try { renderHook(d); } catch (e) {}
-  renderChart(d); renderPlayers(d); renderSeasonStats(d); renderLearned(d); renderFloor(d); renderRiskIndex(d); renderDesk(d); try { if (_deskKey || location.hash === "#/desks" || location.hash.indexOf("#/desk/") === 0) renderDeskPage(d, _deskKey); } catch (e) {} try { if (location.hash.indexOf("#/t/") === 0) renderTradePage(d, location.hash.slice(4)); } catch (e) {} renderHLWhales(d); renderTopTraders(d); renderLighterWhales(d); renderCalendar(d); renderCalMonth(d); renderThisWeek(d); renderIntel(d); renderIntelRail(d);
+  renderChart(d); renderPlayers(d); renderSeasonStats(d); renderLearned(d); renderFloor(d); renderRiskIndex(d); renderDesk(d); try { renderVolPanel(d); } catch (e) {}   /* [#516] */ try { if (_deskKey || location.hash === "#/desks" || location.hash.indexOf("#/desk/") === 0) renderDeskPage(d, _deskKey); } catch (e) {} try { if (location.hash.indexOf("#/t/") === 0) renderTradePage(d, location.hash.slice(4)); } catch (e) {} renderHLWhales(d); renderTopTraders(d); renderLighterWhales(d); renderCalendar(d); renderCalMonth(d); renderThisWeek(d); renderIntel(d); renderIntelRail(d);
   // [#289] the risk-rules card reads the FEED's enforced limits — the static prose went
   // stale once already (fleet breaker 6->7 at #214, wrong on this page for a week).
   // Static text above stays as the no-JS/old-feed fallback.
