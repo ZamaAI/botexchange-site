@@ -1594,7 +1594,7 @@ function renderVolPanel(d) {
     "At " + fz + " or below the range is <b>frozen</b> (compressed), " + fz + "&ndash;30 is <b>coiling</b>, 85 and above is <b>hot</b> (expanded). " +
     "A long freeze that then ends has tended to come before a larger move &mdash; it does <b>not</b> say which direction." +
     "<br><br>Computed hourly by our own logger on closed 4h and 1d Binance futures bars (a 13-bar average &plusmn; 2 standard deviations, its width ranked against the last 252 bars). " +
-    "In our desks&rsquo; own real-money record, range (CHOP) trades entered while volatility was quiet have not worked: none of 21 such trades on the five majors since July won &mdash; a small sample, measured on the same history, not tested forward. " +
+    "In our desks&rsquo; own real-money record, range (CHOP) trades entered while volatility was quiet have not worked: of 29 such trades on the five majors since July, none won (21 losses, 8 breakevens) &mdash; a small sample, measured on the same history, not tested forward. " +
     "This panel is context, not a trade signal, and no desk reads it.</div></details>";
   el.innerHTML = h; el.classList.remove("hidden");
   var mb = $("vol-more");
