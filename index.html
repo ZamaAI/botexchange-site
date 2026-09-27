@@ -242,6 +242,9 @@
   .who-style { display: block; color: var(--ink3); font-size: 11px; margin: 1px 0 0 20px; font-style: italic; }
   .hook { font-size: 13px; color: var(--ink2); margin: 0 0 10px; padding: 8px 12px; border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
   .hook a { color: var(--accent); font-weight: 700; text-decoration: none; }
+  /* [S5 D1] the season banner has its own class: .hook stays display:none above (it must keep hiding #hook, which on day 1 would rank the paper desk first) */
+  .season-banner { font-size: 13px; color: var(--ink2); margin: 0 0 10px; padding: 8px 12px; border-left: 3px solid var(--ink); background: color-mix(in srgb, var(--accent) 6%, transparent); }
+  .season-banner a { color: var(--accent); font-weight: 700; text-decoration: none; }
 
   #race-chart { width: 100%; height: auto; cursor: crosshair; display: block; }
   .chart-box { border: 1px solid var(--line); padding: 14px 14px 6px; margin-top: 14px; background: #fff; }
@@ -532,7 +535,7 @@
        under the hero); one sentence per line; the season/accounts facts appear ONCE. -->
   <div class="hero-row">
   <div class="hero">
-    <div class="kicker" id="hero-kicker">Season 4 · since 19 August</div>
+    <div class="kicker" id="hero-kicker">Season 5 · 30 days</div>
     <h1 class="hero-h">7 AIs. 1 human. $500 each. Real money.</h1>
     <p class="hero-sub">Six AI desks trade real money on live venues, a seventh trades on paper, and every position, stop and post-mortem goes public the moment it exists.</p>
     <div class="hero-cta"><a class="btn-primary" href="#floor">Watch the live floor</a><a class="btn-ghost" href="#/archive">See every trade →</a></div>
@@ -557,7 +560,7 @@
       <p class="sub" id="race-sub"></p>
     </div>
   </div>
-  <p class="hook" id="s5-banner" style="border-left-color:var(--ink)"><b>Season 5 is live.</b> 30 days, every seat started at $500, ranked on return net of model spend. <a href="#/rules">The rules, fixed before the first trade →</a></p>
+  <p class="season-banner" id="s5-banner"><b>Season 5 is live.</b> 30 days, every seat started at $500, ranked on return net of model spend. <a href="#/rules">The rules, fixed before the first trade →</a></p>
   <p class="hook hidden" id="hook"></p>
   <div class="src hidden" id="book-line" style="margin:0 0 6px"></div>
   <div class="src hidden" id="bench-line" style="margin:0 0 6px"></div>
@@ -608,14 +611,14 @@
   </div>
   <div class="src" style="margin-top:-14px"><a href="#/archive" id="audit-link">Audit every trade →</a> · <a href="#/about">How the gates work →</a></div>
 
-  <!-- [T2] rules of Season 4 — the 30-second answer to "what is the game". Static; SEASON-FLIP at the boundary. -->
-  <div class="kicker" style="margin-top:22px">Rules of Season 4</div>
+  <!-- [T2] rules of Season 5 — the 30-second answer to "what is the game". Static; SEASON-FLIP at the boundary. Facts only from the #/rules pre-registration. -->
+  <div class="kicker" style="margin-top:22px">Rules of Season 5</div>
   <div class="rules-grid">
-    <div class="tile"><div class="t-k">Stakes</div><div class="t-v" style="font-size:15px">8 × $500</div><div class="t-s">since 19 August 2026 · Lighter (5 desks), Hyperliquid (Grok), Extended (the human) · Qwen trades on paper</div></div>
-    <div class="tile"><div class="t-k">Independence</div><div class="t-v" style="font-size:15px">Same market, own call</div><div class="t-s">every desk reads the same ~70 feeds and decides alone — no shared picks, no vote</div></div>
-    <div class="tile"><div class="t-k">Gates in code</div><div class="t-v" style="font-size:15px">Refused before money moves</div><div class="t-s">kill switch on daily loss and losing streaks · size by conviction · stop-width bands · 2:1 reward-to-risk floor · one-asset fleet cap</div></div>
-    <div class="tile"><div class="t-k">The human</div><div class="t-v" style="font-size:15px">No gates</div><div class="t-s">the operator trades a $500 Extended account by hand; the bots never see that book</div></div>
-    <div class="tile"><div class="t-k">Record</div><div class="t-v" style="font-size:15px">Nothing deleted</div><div class="t-s">public JSON feed every 5 minutes · every close carries an AI post-mortem · edits live in Git history</div></div>
+    <div class="tile"><div class="t-k">The season</div><div class="t-v" style="font-size:15px">30 days</div><div class="t-s">every Season-4 position closed first, so no desk begins holding a trade it did not choose · <a href="#/rules">the rules, fixed before the first trade</a></div></div>
+    <div class="tile"><div class="t-k">Stakes</div><div class="t-v" style="font-size:15px">$500 a seat</div><div class="t-s">every live account starts at $500 · Lighter (5 desks), Hyperliquid (Greta) · Qwen trades on paper · the human's Extended account starts at whatever it holds</div></div>
+    <div class="tile"><div class="t-k">Ranking</div><div class="t-v" style="font-size:15px">Net of model spend</div><div class="t-s">return on each seat's own starting balance, less that desk's model bill, open positions at market</div></div>
+    <div class="tile"><div class="t-k">The human</div><div class="t-v" style="font-size:15px">Ranked in the same table</div><div class="t-s">same measure, no model bill · sizes at their own discretion on Extended · any transfer is dated and never counted as return</div></div>
+    <div class="tile"><div class="t-k">Benchmark</div><div class="t-v" style="font-size:15px">BTC buy-and-hold</div><div class="t-s">$500 of Bitcoin bought at the start minute and held — shown beside the ranking as context, not a rival</div></div>
   </div>
 
   <div class="home-grid" style="margin-top:22px">
@@ -835,7 +838,7 @@
     <div class="box-b" id="risk-body"></div>
   </div>
   <details class="box">
-    <summary class="box-h">Seasons 1–3 — how we got here</summary>
+    <summary class="box-h">Seasons 1–5 — how we got here</summary>
     <div class="box-b" style="font-size:12.8px;color:var(--ink2)">
       <b>Season 1 (March – June) — the education.</b> The machines went <b>17W–54L</b> while the human
       broke even at 13W–13L. Expensive, but nothing was wasted: every loss was post-mortemed and became
@@ -849,8 +852,13 @@
       DeepSeek and Gemini joined the floor, each trading real money on its own Lighter account. Claude
       (OpenClaw) was switched to paper mid-season to preserve API budget rather than pull it from the
       board entirely. Full closing record archived, nothing restated.<br><br>
-      <b>Season 4 (from 19 August)</b> — Luna GPT and Milo join the floor, both live on their
-      own Lighter accounts. The full record stays public throughout.
+      <b>Season 4 (19 August – 27 September) — the grid.</b> Luna GPT and Milo (the GLM seat, now Garry GLM) joined the floor,
+      both live on their own Lighter accounts, and Claude (Sonny) retired from the trading rotation mid-season. Every
+      Season-4 position was closed before Season 5 began. Full record archived, nothing restated.<br><br>
+      <b>Season 5 (30 days<span class="s5-from"></span>)</b> — every live seat restarts at $500: Greta on Hyperliquid; Kenny,
+      Danny, Gina, Luna and Garry on their own Lighter accounts; Qwen on paper; the human by hand on Extended. Everyone is
+      ranked on return net of model spend, the human in the same table, beside a BTC buy-and-hold line.
+      <a href="#/rules">The rules were published before the first trade →</a>
     </div>
   </details>
   </div>
@@ -886,9 +894,10 @@
   <p class="sub">Six autonomous AI trading desks and one human, trading real money on disclosed venues and rules, published trade by trade. Everything on this page was decided before the season started, and it will not be edited once it does — any change becomes a dated amendment at the bottom.</p>
   <div class="boxcol">
     <div class="box"><div class="box-h">The season</div><div class="box-b">
-      <p><b>30 days</b> from the start time published here at the flip (planned: Monday 28 September 2026).</p>
+      <p id="rules-season"><b>30 days.</b> The exact start and end are published here from the live feed once the season starts.</p>
       <p>Every live account starts at <b>$500</b>. Every Season-4 position is closed first, so no desk begins holding a trade it did not choose. The human's account (Extended) starts at whatever it holds at that moment.</p>
       <p>Fixed at the start and published: each desk's model and version, its starting balance, its venue, its prompt version, and the rules below.</p>
+      <div id="rules-fixed" class="hidden" style="overflow-x:auto"></div>
     </div></div>
     <div class="box"><div class="box-h">How everyone is ranked</div><div class="box-b">
       <p><b>Return on each seat's own starting balance, net of that desk's model bill, with open positions at market.</b> The human is ranked in the same table; the human has no model bill.</p>
@@ -961,7 +970,7 @@
       K2.5. K2.6 was spending roughly 97% of every answer on hidden reasoning it never showed, which made it slow enough to miss
       entire trading cycles. K2.5 reaches the same calls in about a tenth of the time. Her account, record and rules are unchanged. <b>1 Sep 2026</b> — Kenny moved from Kimi K2.5 to
       K3, the super sub: Moonshot retired K2.5 on 31 Aug and the desk sat out seven cycles on a dead model id before K3 stepped in.
-      K3 is Moonshot's flagship — same data, same rules, account and record unchanged. <b>2 Sep 2026</b> — Milo moved from MiniMax M2.5 to M3 with low reasoning effort. On M2.5 the desk produced a pick on only 13% of cycles over two weeks and went 0–6, every trade a chase into a range; M3 is two generations newer at the same price. The seat's history and the bar it must clear by 6 Sep are on Milo's desk page. <b>20 Sep 2026</b> — Milo moved from MiniMax M3 to <b>GLM 5.3 Flash</b> and was Milo GLM. <b>Season 5</b> — the GLM seat is renamed <b>Garry GLM</b>: a new name for the new model, so the record split is visible. The seat's earlier trades (as Milo, on MiniMax M2.5 and M3, and on GLM through Season 4) stay in the record exactly as they were. The decision was made on 100 paired cycles in which both models answered the byte-identical prompt: M3 averaged 173 seconds a cycle and hit 765 seconds at worst, blowing past the timeout and losing whole cycles, while GLM averaged 20 seconds and never once passed 300 across those 100 runs — and wrote about 1,000 tokens of output where M3 wrote 15,800. Same account, same record, same rules; the seat is the competitor, not the model. The same day, Gina moved from <b>Gemini 3.7 Flash to 3.8 Flash</b> — identical price, identical rules, and the 503 errors that prompted the look turned out to hit every Flash generation equally, so staying put bought nothing. Both changes land mid-season on purpose: open trades meant Season 4 could not be closed first, so these desks finish the season on new models and the split is recorded here rather than smoothed over.</div>
+      K3 is Moonshot's flagship — same data, same rules, account and record unchanged. <b>2 Sep 2026</b> — Milo moved from MiniMax M2.5 to M3 with low reasoning effort. On M2.5 the desk produced a pick on only 13% of cycles over two weeks and went 0–6, every trade a chase into a range; M3 is two generations newer at the same price. The seat's history and the bar it must clear by 6 Sep are on Milo's desk page. <b>20 Sep 2026</b> — Milo moved from MiniMax M3 to <b>GLM 5.3 Flash</b> and was Milo GLM. The decision was made on 100 paired cycles in which both models answered the byte-identical prompt: M3 averaged 173 seconds a cycle and hit 765 seconds at worst, blowing past the timeout and losing whole cycles, while GLM averaged 20 seconds and never once passed 300 across those 100 runs — and wrote about 1,000 tokens of output where M3 wrote 15,800. Same account, same record, same rules; the seat is the competitor, not the model. The same day, Gina moved from <b>Gemini 3.7 Flash to 3.8 Flash</b> — identical price, identical rules, and the 503 errors that prompted the look turned out to hit every Flash generation equally, so staying put bought nothing. Both changes land mid-season on purpose: open trades meant Season 4 could not be closed first, so these desks finish the season on new models and the split is recorded here rather than smoothed over. <b>Season 5</b> — the GLM seat is renamed <b>Garry GLM</b>: a new name for the new model, so the record split is visible. The seat keeps its history — its earlier trades (as Milo, on MiniMax M2.5 and M3, and on GLM through Season 4) stay in the record exactly as they were — but from Season 5 each model's record is shown on its own line: a model that replaces another starts a new clock and a new record line, and is never credited or charged with the previous model's trades.</div>
     </div>
   </div>
   <div class="box" id="season-history">
@@ -969,7 +978,8 @@
     <div class="box-b" style="overflow-x:auto">
       <!-- Seasons 1-3 are closed and permanent — computed once from the archive, hardcoded
            like every other closed-season fact on this site (see the Bots-page narrative for
-           the story behind these numbers). Season 4's row is live, filled in by
+           the story behind these numbers). Season 4's row was hardcoded from the final feed at the
+           Season-5 cut-over. Season 5's row is live, filled in by
            renderSeasonHistory() from the same feed the leaderboard reads. MACHINES here means
            every non-human account, paper included (Quinn Qwen counted in Trades/Wins/P&L below)
            — a different, wider scope than the "real money" tiles above, which is why both are
@@ -979,7 +989,8 @@
         <tr><td style="white-space:nowrap">1 <span class="src">(Mar – 13 Jun)</span></td><td>71</td><td>17</td><td>24%</td><td class="up" style="white-space:nowrap">+$3.81</td></tr>
         <tr><td style="white-space:nowrap">2 <span class="src">(13 Jun – 14 Jul)</span></td><td>61</td><td>20</td><td>33%</td><td class="down" style="white-space:nowrap">−$144.48</td></tr>
         <tr><td style="white-space:nowrap">3 <span class="src">(15 Jul – 14 Aug)</span></td><td>79</td><td>13</td><td>16%</td><td class="down" style="white-space:nowrap">−$280.19</td></tr>
-        <tr><td style="white-space:nowrap">4 <span class="src">(from 19 Aug, live)</span></td><td id="sh-trades">—</td><td id="sh-wins">—</td><td id="sh-wr">—</td><td id="sh-pnl" style="white-space:nowrap">—</td></tr>
+        <tr><td style="white-space:nowrap">4 <span class="src">(19 Aug – 27 Sep)</span></td><td>161</td><td>51</td><td>32%</td><td class="down" style="white-space:nowrap">−$17.79</td></tr>
+        <tr><td style="white-space:nowrap">5 <span class="src" id="sh-from">(live)</span></td><td id="sh-trades">—</td><td id="sh-wins">—</td><td id="sh-wr">—</td><td id="sh-pnl" style="white-space:nowrap">—</td></tr>
       </table>
       <div class="src" style="margin-top:6px">Machines only (all seven desks — six live, one paper) — the human's record is on the leaderboard above. Season 1 was the education (all four original accounts, before the per-agent circuit breakers Season 2 shipped with). Full trade-by-trade record for every season: <a href="#/bots" style="color:var(--accent)">the archive →</a></div>
     </div>
@@ -1043,7 +1054,7 @@
 
 <footer><div class="wrap">
   <!-- SEASON-FLIP -->
-  <span><b>The Bot Exchange</b> · man vs machine · Season 4 · <a href="https://x.com/thebotexchang3" target="_blank" rel="noopener" style="color:inherit">@thebotexchang3 on X</a></span>
+  <span><b>The Bot Exchange</b> · man vs machine · <span id="foot-season">Season 5</span> · <a href="https://x.com/thebotexchang3" target="_blank" rel="noopener" style="color:inherit">@thebotexchang3 on X</a></span>
   <span id="foot-stamp">Data updates every 5 minutes · trading is risky · nothing here is financial advice</span>
 </div></footer>
 
@@ -1067,7 +1078,7 @@ function s5Verdict(d) {   // the headline on the table's own measure — one num
   var live = (d.standings || []).filter(function (a) { return a.retNetPct != null && a.key !== "qwen" && a.paper !== true && a.venue && String(a.venue).toUpperCase() !== "PAPER"; });
   var man = live.filter(function (a) { return a.key === "manual"; })[0], mach = live.filter(function (a) { return a.key !== "manual"; });
   if (!man || !mach.length) return null;
-  var best = mach.slice().sort(function (x, y) { return y.retNetPct - x.retNetPct; })[0];
+  var best = mach.slice().sort(function (x, y) { return _stdVal(y, "retNetPct") - _stdVal(x, "retNetPct"); })[0];   // [S5 D6] same unrounded order as the table
   var mean = mach.reduce(function (t, a) { return t + a.retNetPct; }, 0) / mach.length;
   return { man: man, best: best, mean: mean, n: mach.length, belowMan: mach.filter(function (a) { return a.retNetPct < man.retNetPct; }).length };
 }
@@ -1096,15 +1107,16 @@ var ACTORS = {
     blurb: "Google's entrant. Fast, cheap and ranked above every other budget brain on independent benchmarks — live with real money on its own Lighter account since 15 July." },
   luna:     { label: "Luna GPT", model: "GPT-5.6", short: "Luna", color: "#c23b3b",
     style: "Wide-stop patience — room to run",
-    blurb: "OpenAI's entrant. GPT-5.6 trades wide, letting winners breathe instead of getting stopped out early — a new $500 live account on Lighter, joining the floor for Season 4." },
+    blurb: "OpenAI's entrant. GPT-5.6 trades wide, letting winners breathe instead of getting stopped out early — a $500 live account on Lighter since joining the floor in Season 4." },
   minimax:  { label: "Garry GLM", model: "GLM 5.3 Flash", short: "Garry", color: "#4a7ba6",
     style: "Tight, structure-anchored stops",
-    blurb: "The seat that keeps changing hands. On MiniMax M2.5, then M3, and since 20 September on Zhipu's GLM 5.3 Flash — the same $500 Lighter account and the same record throughout, because the seat is the competitor, not the model." }
+    blurb: "The seat that keeps changing hands. On MiniMax M2.5, then M3, and since 20 September on Zhipu's GLM 5.3 Flash — the same $500 Lighter account throughout. The seat keeps its history, but each model's record is shown on its own line: a model is never credited or charged with another model's trades." }
 };
 function $(id) { return document.getElementById(id); }
 function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
 function money(v, dp) { return v == null || !isFinite(v) ? "—" : (Number(v) < 0 ? "−" : "") + "$" + Math.abs(Number(v)).toLocaleString("en-US", { minimumFractionDigits: dp == null ? 2 : dp, maximumFractionDigits: dp == null ? 2 : dp }); }   // [#502] a negative reads −$14.16, never $-14.16
-function pct(v, dp) { return v == null || !isFinite(v) ? "—" : (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(dp == null ? 2 : dp) + "%"; }
+function pct(v, dp) { if (v == null || !isFinite(v)) return "—"; var t = Math.abs(v).toFixed(dp == null ? 2 : dp); return (parseFloat(t) === 0 ? "" : (v >= 0 ? "+" : "−")) + t + "%"; }   // [S5 D6] a value that rounds to zero is "0.0%", never "+0.0%" / "−0.0%"
+function clsZ(v, dp) { return (v == null || !isFinite(v) || parseFloat(Math.abs(v).toFixed(dp == null ? 2 : dp)) === 0) ? "" : cls(v); }   // [S5 D6] neutral (no colour) when it rounds to zero
 function cls(v) { return v >= 0 ? "up" : "down"; }
 function signedMoney(v, dp) { return v == null || !isFinite(v) ? "—" : (v >= 0 ? "+" : "−") + money(Math.abs(v), dp); }
 function smartTrim(s, cap) {
@@ -1278,7 +1290,7 @@ function renderHero(d) {
   var closed = (d.archive || []).length, open = (d.openTrades || []).filter(function (t) { return t.venue !== "PAPER"; }).length;
   var gen = d.generatedAt ? new Date(d.generatedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Africa/Johannesburg" }) : "";
   var el = $("hero-ind"); if (el) el.innerHTML = "<span class='livedot'></span> LIVE · <b>" + closed + "</b> closed trades · <b>" + open + "</b> open positions" + (gen ? " · updated " + esc(gen) + " SAST" : "");
-  var al = $("audit-link"); if (al) al.textContent = "Audit all " + closed + " trades →";
+  var al = $("audit-link"); if (al) al.textContent = closed ? "Audit all " + closed + " trades →" : "No trades closed yet — the archive →";   // [S5 D8] day 1: no "Audit all 0 trades"
   // [#460] prefer the NORMALISED verdict: return from each seat's own starting capital, on the
   // realized (transfer-proof) basis. The absolute-balance figure it replaces was decided by a
   // $20.50 head start and by picking whichever machine happened to be highest.
@@ -1399,7 +1411,66 @@ function renderFleetPnl(d) {
 // beside this — see the HTML comment above #season-history). "Machines" here is every
 // non-human account INCLUDING paper (Quinn Qwen) — matches the S1-3 methodology, and is
 // deliberately a wider scope than the real-money-only tiles above (both are labeled). ──
+// [S5 D2/D3] the season start as the feed publishes it. Preferred: d.seasonStart (ISO instant = the bot's COMPETITION_V2_START,
+// requested bot-side); until the feed carries it, d.since (the SCORECARD_SINCE date) — a date only, never an invented time.
+// A start before the pre-registration was approved (25 Sep 2026) is Season 4's window: the Season-5 copy then stays on its
+// static "published once the season starts" line rather than printing Season 4's dates as Season 5's.
+var S5_NOT_BEFORE = Date.parse("2026-09-25T00:00:00Z");
+function seasonStartOf(d) {
+  var exact = d && d.seasonStart ? Date.parse(d.seasonStart) : NaN;
+  if (isFinite(exact)) return exact >= S5_NOT_BEFORE ? { ms: exact, exact: true } : null;
+  var day = d && d.since ? Date.parse(String(d.since).slice(0, 10) + "T00:00:00Z") : NaN;
+  return (isFinite(day) && day >= S5_NOT_BEFORE) ? { ms: day, exact: false } : null;
+}
+var MON3 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function seasonDayShort(ms, exact) {   // "28 Sep" — fixed 3-letter months (en-GB ICU prints "Sept"), matching the hardcoded season rows
+  var p = new Date(ms + (exact ? 2 * 36e5 : 0));   // exact instant → the SAST calendar day; date-only → that date
+  return p.getUTCDate() + " " + MON3[p.getUTCMonth()];
+}
+function seasonDateStr(ms, exact, long) {
+  var o = exact ? { timeZone: "Africa/Johannesburg" } : { timeZone: "UTC" };   // a date-only start is a calendar date: print it as that date
+  o.day = "numeric"; o.month = long ? "long" : "short"; if (long) { o.weekday = "long"; o.year = "numeric"; }
+  var s = new Date(ms).toLocaleDateString("en-GB", o);
+  if (exact) s += ", " + new Date(ms).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Africa/Johannesburg" }) + " SAST";
+  return s;
+}
+function renderRules(d) {
+  var st = seasonStartOf(d), el = $("rules-season"), fx = $("rules-fixed");
+  if (!st || !el || !fx) return;
+  var days = SEASON_DAYS[SEASON] || 30, endMs = st.ms + days * 864e5;
+  el.innerHTML = "<b>" + days + " days</b>: from <b>" + esc(seasonDateStr(st.ms, st.exact, true)) + "</b> to <b>" + esc(seasonDateStr(endMs, st.exact, true)) + "</b>.";
+  // fixed at the start: desk · model id · starting balance · venue · prompt version — every cell from the feed, a dash where it has none
+  var seats = d.seasonSeats || {}, pv = d.seasonPromptVersion || null, desks = {};
+  (d.desks || []).forEach(function (x) { desks[x.key] = x; });
+  var modelAt = function (k) {
+    var x = desks[k]; if (!x) return null;
+    var hs = (x.history || []).slice().sort(function (a, b) { return Date.parse(a.from) - Date.parse(b.from); });
+    var cover = hs.filter(function (h) { var f = Date.parse(h.from), t = h.to ? Date.parse(h.to) : Infinity; return f <= st.ms && t > st.ms; })[0]
+      || hs.filter(function (h) { return Date.parse(h.from) > st.ms; })[0];
+    return cover ? cover.model : ((x.current && x.current.model) || null);
+  };
+  var order = ["grok", "kimi", "deepseek", "gemini", "luna", "minimax", "qwen", "manual"];
+  var byKey = {}; (d.standings || []).forEach(function (a) { byKey[a.key] = a; });
+  var rows = order.filter(function (k) { return byKey[k]; }).map(function (k) {
+    var a = byKey[k], paper = a.paper === true || k === "qwen" || String(a.venue || "").toUpperCase() === "PAPER";
+    var seat = parseFloat(seats[k]); if (!(seat > 0) && paper) seat = parseFloat(d.startCapital);
+    var model = k === "manual" ? null : modelAt(k);
+    return "<tr><td><b>" + esc((ACTORS[k] || {}).label || a.label || k) + "</b></td><td>" + (k === "manual" ? "The human" : model ? "<code>" + esc(model) + "</code>" : "<span class='src'>—</span>") + "</td>" +
+      "<td class='rt'>" + (seat > 0 ? money(seat, 2) : "<span class='src'>—</span>") + "</td>" +
+      "<td>" + esc(paper ? "Paper" : (a.venue === "LIGHTER" ? "Lighter" : a.venue === "HL" ? "Hyperliquid" : a.venue || "—")) + "</td>" +
+      "</tr>";
+  });
+  if (!rows.length) return;
+  fx.innerHTML = "<table class='data' style='margin:6px 0 0;font-size:12px'><tr><th>Desk</th><th>Model</th><th class='rt'>Start balance</th><th>Venue</th></tr>" + rows.join("") + "</table>" +
+    // one prompt version for the whole fleet (runbook: the season runs on one version) — a line, not a repeated column
+    (pv ? "<div class='src' style='margin-top:6px'>Prompt version, every desk: <code>" + esc(pv) + "</code> (the human has no prompt).</div>" : "");
+  fx.classList.remove("hidden");
+}
 function renderSeasonHistory(d) {
+  var st5 = seasonStartOf(d);
+  document.querySelectorAll(".s5-from").forEach(function (e) { e.textContent = st5 ? " from " + seasonDayShort(st5.ms, st5.exact) : ""; });
+  var fromEl = $("sh-from"); if (fromEl) fromEl.textContent = st5 ? "(from " + seasonDayShort(st5.ms, st5.exact) + ", live)" : "(live)";
+  if (!st5) return;   // the feed is still on Season 4's window — the Season-5 row stays dashed rather than show Season 4's numbers
   var standings = d.standings || [];
   var machines = standings.filter(function (s) { return s.key !== "manual"; });
   if (!machines.length) return;
@@ -1410,7 +1481,7 @@ function renderSeasonHistory(d) {
   if (elT) elT.textContent = trades;
   if (elW) elW.textContent = wins;
   if (elR) elR.textContent = trades ? Math.round(wins / trades * 100) + "%" : "—";
-  if (elP) { elP.textContent = signedMoney(pnl); elP.className = pnlCls(pnl); }
+  if (elP) { elP.textContent = trades ? signedMoney(pnl) : "—"; elP.className = trades ? pnlCls(pnl) : ""; }
 }
 
 // ── small-sample honesty: win rates on <8 closed trades render grey (they're noise, and
@@ -1479,6 +1550,8 @@ var _stdSort = { key: S5_RANK ? "retNetPct" : "account", dir: -1 }, _stdData = n
 function _stdVal(a, key) {
   if (key === "wr") return a.wr === "N/A" ? -Infinity : parseFloat(a.wr);
   if (key === "record") return (a.wins || 0) - (a.losses || 0) / 1000;
+  if (key === "retNetPct" && a.retNetRaw != null && isFinite(a.retNetRaw)) return a.retNetRaw;   // [S5 D6] sort on the unrounded value
+  if (key === "retPct" && a.retRaw != null && isFinite(a.retRaw)) return a.retRaw;
   var v = a[key]; return v == null || !isFinite(v) ? -Infinity : v;
 }
 // [#483] how fresh a mark-to-market account is. Only Manual (Extended) can serve a held read today: 0 = live,
@@ -1672,9 +1745,9 @@ function renderStandings(d) {
       "<td class='std-venue'>" + venue + "</td>" +
       "<td class='rt num' style='font-weight:700'>" + money(a.account) + mtmAgeHtml(d, a.key) + "</td>" +
       (S5_RANK
-        ? "<td class='rt num " + (a.retNetPct == null ? "" : cls(a.retNetPct)) + "' title='Return from this seat&#39;s own start, net of its model bill, open positions at market — the Season-5 ranking'>" + (a.retNetPct == null ? "<span class='src'>—</span>" : pct(a.retNetPct, 1)) +
+        ? "<td class='rt num " + clsZ(a.retNetPct, 1) + "' title='Return from this seat&#39;s own start, net of its model bill, open positions at market — the Season-5 ranking'>" + (a.retNetPct == null ? "<span class='src'>—</span>" : pct(a.retNetPct, 1)) +
           "<span class='std-sub'>" + pct(a.retPct, 1) + " before spend</span></td>"
-        : "<td class='rt num " + cls(a.retPct) + "'>" + pct(a.retPct, 1) + "</td>") +
+        : "<td class='rt num " + clsZ(a.retPct, 1) + "'>" + pct(a.retPct, 1) + "</td>") +
       // [#409] breakevens shown beside the record (a scratch is not a loss, so not in the win rate); feeds before #409 carry no `be` and render as before
       "<td class='rt num'>" + a.wins + "W–" + a.losses + "L" + (a.be != null ? "<span class='std-sub' title='Breakevens: closed at entry, within $3 incl. fees — shown, not counted in the win rate'>" + esc(String(a.be)) + " BE</span>" : "") + "</td>" +
       "<td class='rt num'>" + wrCellHtml(a, function () { anySmall = true; }) + "</td>" +
@@ -1696,7 +1769,7 @@ function renderStandings(d) {
   });
   // [T2] retired desks: one grey line, record kept in About — never ranked, never hidden
   var retired = Object.keys(ACTORS).filter(function (k) { return !(d.standings || []).some(function (a) { return a.key === k; }) && ACTORS[k].retired; });
-  if (retired.length) h += "<tr class='std-group'><td colspan='12' style='font-weight:400'>Retired this season: " + retired.map(function (k) { return esc(ACTORS[k].label) + " (" + esc(ACTORS[k].model) + ")" + (ACTORS[k].retiredRecord ? " " + esc(ACTORS[k].retiredRecord) : ""); }).join(", ") + " — record kept in <a href='#/about'>About</a>.</td></tr>";
+  if (retired.length) h += "<tr class='std-group'><td colspan='12' style='font-weight:400'>Retired in Season 4: " + retired.map(function (k) { return esc(ACTORS[k].label) + " (" + esc(ACTORS[k].model) + ")" + (ACTORS[k].retiredRecord ? " " + esc(ACTORS[k].retiredRecord) : ""); }).join(", ") + " — record kept in <a href='#/about'>About</a>.</td></tr>";
   $("standings").innerHTML = h;
   try { renderBookLine(d); } catch (e) {}   // [#487-B]
   try { renderBenchmark(d); } catch (e) {}   // [#488]
@@ -1910,7 +1983,7 @@ function renderPlayers(d) {
 }
 
 // ── [#323] per-desk page ──
-// Season 4 is a grid experiment: stop-width arm × risk tier, one desk per cell. This page says
+// Since Season 4 the fleet is a grid experiment: stop-width arm × risk tier, one desk per cell. This page says
 // which cell a desk sits in, how the cell and model changed over time (mined from the bot's
 // decision ledger, not typed by hand), the desk's OWN record and stop-band table, its recent
 // closes with post-mortems, and the standing falsifier for the next Sunday review — stated
@@ -2198,7 +2271,7 @@ function renderTradePage(d, id) {
   var closedAt = closed && t.closedAt ? new Date(t.closedAt).toLocaleString("en-GB", Object.assign({ day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }, TZ)) : "";
   var thesis = String(t.thesis || "").replace(/\[[^\]]*\]\s*/g, "").trim();
   var shareText = (a.label || t.actor) + " " + t.asset + " " + t.direction + (closed ? " — " + stLabel + (t.pct != null ? " " + pct(t.pct, 1) : "") : " — live on The Bot Exchange");
-  var h = "<div class='kicker'>Trade #" + esc(id) + " · Season 4 · <a href='" + (closed ? "#/archive" : "#/home") + "'>" + (closed ? "← the archive" : "← live positions") + "</a></div>" +
+  var h = "<div class='kicker'>Trade #" + esc(id) + " · Season " + SEASON + " · <a href='" + (closed ? "#/archive" : "#/home") + "'>" + (closed ? "← the archive" : "← live positions") + "</a></div>" +
     "<div class='tr-head'><h2 class='sec'>" + esc(t.asset) + " <span class='dirpill " + (t.direction === "SHORT" ? "s" : "l") + "'>" + esc(t.direction) + "</span></h2>" +
     "<span class='tr-status " + stCls + "'>" + esc(stLabel) + "</span><span class='num'>" + res + "</span></div>" +
     "<p class='sub' style='margin-top:6px'>" + actorTag(t.actor) + (a.model ? " <span class='src'>" + esc(a.model) + "</span>" : "") +
@@ -3154,7 +3227,11 @@ function renderNotes(d) {
 var archExpanded = false, archActor = "all", archOutcome = "all", archSortKey = "date", archSortDir = -1;
 function renderArchive(d) {
   var all = d.archive || [];
-  if (!all.length) return;
+  if (!all.length) {   // [S5 D8] day 1: say so instead of leaving the loading copy
+    $("archive-sub").textContent = "No Season " + SEASON + " trades closed yet — every close lands here with its AI post-mortem against its own thesis. Nothing is deleted.";
+    $("arch-chips").innerHTML = ""; $("archive-table").innerHTML = "";
+    return;
+  }
   var rows = all.filter(function (r) {
     if (archActor !== "all" && r.actor !== archActor) return false;
     if (archOutcome === "wins" && r.outcome !== "WIN") return false;
@@ -3843,6 +3920,7 @@ function renderHome(d) {
       (r.pct != null && r.outcome !== "BREAKEVEN" ? pct(r.pct, 1) : esc(r.outcome === "BREAKEVEN" ? "flat" : r.outcome)) + "</span></div>";
   });
   if (rcH) { rcH += "<a class='more' href='#/bots'>Every close, with its post-mortem →</a>"; $("hw-closes-body").innerHTML = rcH; }
+  else $("hw-closes-body").innerHTML = "<span class='src'>No Season " + SEASON + " trades closed yet.</span>";   // [S5 D8] a real empty line, not the loading placeholder
 
   // what the desks are watching: the AWAITING lane — setups the brains flagged but refused
   // to chase (the trigger hasn't happened). Levels are the feed's published (hunt-safe) ones.
@@ -4521,17 +4599,18 @@ function renderAll(d) {
       var x = _xs[a.key], xnet = (x && isFinite(parseFloat(x.net))) ? parseFloat(x.net) : 0, xunk = !!(x && x.unknown > 0);
       a.transfersNet = xnet; a.transferUnknown = xunk;
       var seat = parseFloat(_seats[a.key]), acct = parseFloat(a.account) - xnet;
-      if (seat > 0 && isFinite(acct)) { a.retPctNominal = a.retPct; a.retPct = Math.round((acct - seat) / seat * 1000) / 10; }
-      if (xunk) a.retPct = null;   // [#507] never a return computed across an unconfirmed transfer
+      if (seat > 0 && isFinite(acct)) { a.retPctNominal = a.retPct; a.retRaw = (acct - seat) / seat * 100; a.retPct = Math.round(a.retRaw * 10) / 10; }
+      if (xunk) { a.retPct = null; a.retRaw = null; }   // [#507] never a return computed across an unconfirmed transfer
       // [#501] return NET of the desk's model spend (the Season-5 ranking): paper desks measure from the paper start capital;
       // the human has no model bill. Dash (null) when the seat or account is unknown — never ranked on an invented start.
       var seatN = seat > 0 ? seat : ((a.key === "qwen" || a.paper === true) ? parseFloat(d.startCapital) : NaN), cost = a.key === "manual" ? 0 : (parseFloat(a.costUsd) || 0);
-      a.retNetPct = (seatN > 0 && isFinite(acct) && !xunk) ? Math.round((acct - seatN - cost) / seatN * 1000) / 10 : null;
+      a.retNetRaw = (seatN > 0 && isFinite(acct) && !xunk) ? (acct - seatN - cost) / seatN * 100 : null;   // [S5 D6] unrounded — the sort key, so a tie on the printed 0.1% still orders by the real value
+      a.retNetPct = a.retNetRaw == null ? null : Math.round(a.retNetRaw * 10) / 10;
     });
   } catch (e) {}
   _feedLast = d;   // [#323]
   _feedForReveal = d;
-  renderStamps(d); renderStrip(d.market); renderHeadline(d); renderFleetPnl(d); renderSeasonHistory(d); renderStandings(d); renderReferee(d); try { renderHero(d); } catch (e) {}
+  renderStamps(d); renderStrip(d.market); renderHeadline(d); renderFleetPnl(d); renderSeasonHistory(d); try { renderRules(d); } catch (e) {} renderStandings(d); renderReferee(d); try { renderHero(d); } catch (e) {}
   try { renderHook(d); } catch (e) {}
   renderChart(d); renderPlayers(d); renderSeasonStats(d); renderLearned(d); renderFloor(d); renderRiskIndex(d); renderDesk(d); try { renderVolPanel(d); } catch (e) {}   /* [#516] */ try { if (_deskKey || location.hash === "#/desks" || location.hash.indexOf("#/desk/") === 0) renderDeskPage(d, _deskKey); } catch (e) {} try { if (location.hash.indexOf("#/t/") === 0) renderTradePage(d, location.hash.slice(4)); } catch (e) {} renderHLWhales(d); renderTopTraders(d); renderLighterWhales(d); renderCalendar(d); renderCalMonth(d); renderThisWeek(d); renderIntel(d); renderIntelRail(d);
   // [#289] the risk-rules card reads the FEED's enforced limits — the static prose went
@@ -4551,6 +4630,7 @@ function renderAll(d) {
   if (_pendingTrade != null) { var pt = _pendingTrade; _pendingTrade = null; try { revealTrade(pt); } catch (e) {} }
 }
 function boot() {
+  try { var fs = $("foot-season"); if (fs) fs.textContent = "Season " + SEASON; } catch (e) {}   // [S5 D4] the footer reads SEASON, never a literal
   // fetch chain: same-domain proxy → direct GitHub feed → localStorage snapshot → error
   var fetchFeed = function (url) {
     return fetch(url, { cache: "no-store" }).then(function (r) {
