@@ -1287,8 +1287,10 @@ function renderHero(d) {
   // $20.50 head start and by picking whichever machine happened to be highest.
   var ns = $("nav-score"), v = d.verdict, vr = (d.verdictByReturn || {}).realized, s5v = S5_RANK ? s5Verdict(d) : null;
   if (ns && s5v) ns.innerHTML = "Human <b>" + pct(s5v.man.retNetPct, 1) + "</b> · best machine <b>" + pct(s5v.best.retNetPct, 1) + "</b> <span class='src'>net of spend</span>";   // [#501]
-  else if (ns && vr) ns.innerHTML = "Human <b>" + pct(vr.man.ret, 1) + "</b> · best machine <b>" + pct(vr.best.ret, 1) + "</b>";
-  else if (ns && v && v.man && v.machine) ns.innerHTML = "Human <b>" + money(v.man.account, 0) + "</b> · best machine <b>" + money(v.machine.account, 0) + "</b>";
+  // [#254] name the basis: the nav figure is REALIZED (closed trades), while the standings table marks open positions to market —
+  // unlabelled, the two read as the same number disagreeing.
+  else if (ns && vr) ns.innerHTML = "Human <b>" + pct(vr.man.ret, 1) + "</b> · best machine <b>" + pct(vr.best.ret, 1) + "</b> <span class='src' title='Return on closed trades only, from each seat&#39;s starting capital. The standings table also counts open positions at the current price.'>realized</span>";
+  else if (ns && v && v.man && v.machine) ns.innerHTML = "Human <b>" + money(v.man.account, 0) + "</b> · best machine <b>" + money(v.machine.account, 0) + "</b> <span class='src'>account</span>";
   var sb = $("split-body"); if (!sb) return;
   var c = d.consensus, splits = ((c && c.assets) || []).filter(function (a) { return a.long.length && a.short.length; }).slice(0, 3);
   var chip = function (st, dir) { var m = ACTORS[st.actor] || { short: st.actor }; return "<span class='cs-chip " + (dir === "LONG" ? "l" : "s") + (st.kind === "watching" ? " w" : "") + "' title='" + esc(m.label || st.actor) + " " + dir + (st.kind === "watching" ? " (trigger watch)" : "") + "'>" + esc(m.short || st.actor) + " " + (dir === "LONG" ? "↑" : "↓") + "</span>"; };
