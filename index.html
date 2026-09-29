@@ -971,6 +971,11 @@
     <p class="sub" id="ml-ops-sub"></p>
     <div class="ml-wrap"><table class="data ml-table" id="ml-ops"></table></div>
   </div>
+  <div id="ml-track-box" class="hidden">
+    <h3 class="ml-h3" id="ml-track-h">Track record: every pick the live desks made</h3>
+    <p class="sub" id="ml-track-sub"></p>
+    <div class="ml-wrap"><table class="data ml-table" id="ml-track"></table></div>
+  </div>
   <div class="ml-foot src" id="ml-foot"></div>
 </div>
 <div class="page" data-page="about">
@@ -4744,6 +4749,29 @@ function mlRender() {
         "<td class='rt'>" + (o.W == null ? "—" : o.W + " / " + o.L + " / " + o.BE) + "</td></tr>";
     });
     $("ml-ops").innerHTML = oh;
+  }
+  // [#254c] track record (optional): every pick the live seats wrote, walked on candles — ideas, not trades; confounded
+  var tr = d.track && Array.isArray(d.track.rows) ? d.track : null;
+  $("ml-track-box").classList.toggle("hidden", !(tr && tr.rows.length));
+  if (tr && tr.rows.length) {
+    var tSince = mlDate(tr.since), tLast = tr.rows.reduce(function (m, r) { return r.last > m ? r.last : m; }, "");
+    $("ml-track-h").textContent = "Track record: every pick the live desks made, " + tSince + "–" + mlDate(tLast);
+    $("ml-track-sub").innerHTML = "Each desk's own picks (" + tr.rows.reduce(function (s, r) { return s + (r.picks || 0); }, 0) + " distinct ideas, a restated pick counted once), walked against real 1-hour candles the same way as the benchmark. " +
+      "These are the desks' <b>ideas</b>, not their trades: a watch that the gates refused or that never filled still counts here, and the trailing stop is not modelled. " +
+      "CONFOUNDED: each model ran one desk, with its own prompt, lessons, stop rule and dates, so this is a track record, not a head-to-head.";
+    var th2 = "<tr><th>Model</th><th>Desk</th><th class='rt'>Cycles</th><th class='rt'>Pick rate</th><th class='rt'>Picks (decided)</th><th class='rt'>Hit</th><th class='rt'>Avg R</th><th class='rt'>Longs</th><th class='rt'>Shorts</th><th class='rt'>$ on $10k</th></tr>";
+    tr.rows.forEach(function (r) {
+      var small = (r.decided || 0) < 20, ci = (r.avgRci90 || []).length === 2 ? " <span class='ml-ci'>[" + r.avgRci90[0].toFixed(2) + ", " + r.avgRci90[1].toFixed(2) + "]</span>" : "";
+      var dir = function (x) { return x && x.avgR != null ? "<span class='" + (x.avgR > 0 ? "up" : x.avgR < 0 ? "down" : "") + "'>" + (x.avgR > 0 ? "+" : "") + x.avgR.toFixed(2) + "</span> <span class='ml-ci'>(" + x.decided + ")</span>" : "—"; };
+      var dk = (r.desks || []).map(function (k) { var a = (typeof ACTORS !== "undefined" && ACTORS[k]) || {}; return esc(a.short || a.label || k); }).join(", ");
+      th2 += "<tr><td class='ml-model'>" + esc(mlShort(r.model)) + (small ? " <span class='pill ml-small' title='Fewer than 20 decided picks — the average is noise at this size'><span class='ml-s-long'>SMALL SAMPLE</span><span class='ml-s-short'>n&lt;20</span></span>" : "") + "</td><td>" + dk + "</td>" +
+        "<td class='rt'>" + (r.prompts == null ? "—" : r.prompts) + "</td><td class='rt'>" + mlFmt(r.pickRatePct, 0, "%") + "</td>" +
+        "<td class='rt'>" + (r.picks || 0) + " <span class='ml-ci'>(" + (r.decided || 0) + ")</span></td><td class='rt'>" + mlFmt(r.hitPct, 0, "%") + "</td>" +
+        "<td class='rt " + (r.avgR == null ? "" : r.avgR > 0 ? "up" : r.avgR < 0 ? "down" : "") + "'>" + (r.avgR == null ? "—" : (r.avgR > 0 ? "+" : "") + r.avgR.toFixed(2)) + ci + "</td>" +
+        "<td class='rt'>" + dir((r.byDirection || [])[0]) + "</td><td class='rt'>" + dir((r.byDirection || [])[1]) + "</td>" +
+        "<td class='rt " + (r.sim10kUsd == null ? "" : r.sim10kUsd > 0 ? "up" : "down") + "'>" + (r.sim10kUsd == null ? "—" : money(r.sim10kUsd, 0)) + "</td></tr>";
+    });
+    $("ml-track").innerHTML = th2;
   }
   $("ml-foot").innerHTML = "<b>Method.</b> " + esc(d.method || "") + ". Each model gets the identical prompt text a live desk received, one prompt per market moment (six desks in one cycle see nearly the same market, so they count once), " +
     "rotating which desk's prompt represents each moment. A pick marked CONFIRMED fills at its entry on the next bar; an AWAITING pick fills only if price touches its entry within " + esc(d.watchWindowD || 5) + " days. " +
