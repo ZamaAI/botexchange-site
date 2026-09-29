@@ -485,6 +485,43 @@
   th.sortable:hover { color: var(--accent); }
   .skel { color: transparent !important; background: linear-gradient(90deg, var(--bg2) 25%, #edefe9 37%, var(--bg2) 63%); background-size: 400% 100%; animation: sk 1.3s ease infinite; border-radius: 3px; }
   @keyframes sk { 0% { background-position: 100% 0 } 100% { background-position: 0 0 } }
+  /* [#254c] Model Lab */
+  .ml-wrap { overflow-x: auto; border: 1px solid var(--line2); margin-bottom: 8px; -webkit-overflow-scrolling: touch; }
+  .ml-wrap table.data { margin: 0; min-width: 760px; }
+  table.ml-table th.sk { cursor: pointer; user-select: none; vertical-align: bottom; padding-top: 14px; }
+  table.ml-table th.sk:hover { color: var(--accent); }
+  table.ml-table th.sk-on { color: var(--ink); }
+  table.ml-table th .sk-l { position: relative; display: inline-block; }
+  table.ml-table th .sa { position: absolute; top: -12px; right: 0; font-size: 10px; line-height: 12px; visibility: hidden; color: var(--accent); }
+  table.ml-table th .sa.on { visibility: visible; }
+  table.ml-table th.sk:hover .sa:not(.on) { visibility: visible; opacity: .35; }
+  table.ml-table td.ml-model { white-space: nowrap; font-weight: 600; }
+  table.ml-table tr > :first-child { text-align: left; }
+  .pill.ml-small .ml-s-short { display: none; }
+  table.ml-table td.ml-model .ml-vendor { color: var(--ink3); font-weight: 400; }
+  table.ml-table tr.ml-base td { background: var(--bg2); }
+  table.ml-table tr.ml-base td.ml-model { border-left: 3px solid var(--accent); }
+  .ml-ci { color: var(--ink3); font-size: 10.5px; margin-left: 4px; white-space: nowrap; }
+  .pill.ml-small { color: var(--ink3); border: 1px solid var(--line); background: var(--bg2); font-weight: 600; }
+  .pill.ml-baseline { color: var(--accent); border: 1px solid var(--accent); background: var(--bg); }
+  .ml-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin: 6px 0 14px; }
+  .ml-tile { border: 1px solid var(--line); padding: 10px 12px; }
+  .ml-tile .t-k { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink3); font-weight: 700; }
+  .ml-tile .t-v { font: 700 18px var(--mono); margin-top: 2px; }
+  .ml-tile .t-s { font-size: 11.5px; color: var(--ink2); }
+  .ml-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; margin: 18px 0; }
+  .ml-chart { border: 1px solid var(--line); padding: 10px 10px 4px; min-width: 0; }
+  .ml-chart h4 { margin: 0 0 4px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
+  .ml-chart svg { width: 100%; height: auto; display: block; }
+  .ml-chart .ax { stroke: var(--line); } .ml-chart .zero { stroke: var(--ink3); stroke-dasharray: 3 3; }
+  .ml-chart text { font: 10px var(--mono); fill: var(--ink3); }
+  .ml-chart text.lab { fill: var(--ink2); }
+  .ml-chart circle { fill: var(--accent); fill-opacity: .8; }
+  .ml-chart circle.base { fill: var(--watch); }
+  .ml-h3 { font-family: var(--serif); font-size: 17px; margin: 18px 0 2px; }
+  .ml-foot { margin-top: 18px; line-height: 1.6; max-width: 880px; }
+  @media (max-width: 760px) { .ml-charts { grid-template-columns: 1fr; } .ml-tile .t-v { font-size: 16px; } .ml-wrap table.data { min-width: 620px; }
+    table.ml-table td.ml-model .ml-vendor { display: none; } .pill.ml-small .ml-s-long { display: none; } .pill.ml-small .ml-s-short { display: inline; } }
 </style>
 </head>
 <body>
@@ -518,6 +555,7 @@
   <a href="#/calendar" data-page="calendar">Calendar</a>
   <a href="#/bots" data-page="bots">The Bots</a>
   <a href="#/desks" data-page="desks">Desks</a>
+  <a href="#/models" data-page="models">Model Lab</a>
   <a href="#/archive" data-page="archive">Archive</a>
   <a href="#/about" data-page="about">About</a>
   <span class="nav-score" id="nav-score"></span>
@@ -917,6 +955,23 @@
       <p class="src">None yet. Any change after the start is added here with its date and reason; nothing above is edited.</p>
     </div></div>
   </div>
+</div>
+<div class="page" data-page="models">
+  <!-- [#254c] MODEL LAB: every model answers the SAME frozen set of real desk prompts; picks walked on real 1h candles.
+       Data: static data/model_board.json (committed with the page, never the live feed). Prompts/answers are NEVER rendered. -->
+  <div class="kicker">Model Lab · benchmark</div>
+  <h2 class="sec" id="models">Which AI model trades best on the same inputs?</h2>
+  <p class="sub" id="ml-method">Loading the benchmark…</p>
+  <div class="ml-tiles" id="ml-tiles"></div>
+  <div class="ml-wrap"><table class="data ml-table" id="ml-table"></table></div>
+  <div class="src" id="ml-legend"></div>
+  <div class="ml-charts" id="ml-charts"></div>
+  <div id="ml-ops-box" class="hidden">
+    <h3 class="ml-h3">Live fleet operations</h3>
+    <p class="sub" id="ml-ops-sub"></p>
+    <div class="ml-wrap"><table class="data ml-table" id="ml-ops"></table></div>
+  </div>
+  <div class="ml-foot src" id="ml-foot"></div>
 </div>
 <div class="page" data-page="about">
   <div class="kicker">The experiment</div>
@@ -4594,10 +4649,144 @@ function boot() {
 }
 boot();
 
+// ── [#254c] MODEL LAB (#/models) — static data/model_board.json, fetched on first visit. Prompts and raw answers are never
+// in the file and never rendered (they can carry paid feed text). ──
+var _ml = { data: null, loading: false, sk: "avgR", sd: -1 };
+function mlLoad() {
+  if (_ml.data) { mlRender(); return; }
+  if (_ml.loading) return; _ml.loading = true;
+  fetch("data/model_board.json?cb=" + Math.floor(Date.now() / 300000), { cache: "no-store" })
+    .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+    .then(function (j) { _ml.data = j; _ml.loading = false; mlRender(); })
+    .catch(function (e) { _ml.loading = false; var m = $("ml-method"); if (m) m.textContent = "The benchmark file could not be loaded (" + e.message + "). Refresh to retry."; });
+}
+function mlShort(model) { var m = String(model || ""); if (/live fleet/i.test(m)) return "Live fleet"; m = m.split("/").pop(); return m.replace(/@.*/, "").replace(/-(instruct|preview)$/i, ""); }
+function mlFmt(v, dp, suf) { return v == null || !isFinite(v) ? "—" : Number(v).toFixed(dp) + (suf || ""); }
+function mlDate(iso) { try { return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }); } catch (e) { return String(iso || ""); } }   // UTC: the set bounds are UTC dates
+function mlRender() {
+  var d = _ml.data; if (!d) return;
+  var rows = (d.board || []).slice();
+  var until = d.until ? new Date(Date.parse(d.until) - 1).toISOString() : null;
+  $("ml-method").innerHTML = "Every model answers the <b>same " + esc(d.moments) + " real desk prompts</b> — one per market moment, " + esc(mlDate(d.since)) + "–" + esc(mlDate(until)) +
+    " — at a stated reasoning effort, and each pick it writes is walked against real 1-hour candles: entry touched, then stop or target first. " +
+    "This is an <b>idea-quality read</b>: no risk gates, no trailing stop, no fees or slippage. The $10k column is R × $100 (1% risk per trade, no compounding). " +
+    "Samples are small — read the interval, not the rank.";
+  // tiles: best avg R with >= 20 decided, cheapest per call, fastest median, the live fleet baseline
+  var eligible = rows.filter(function (r) { return r.avgR != null && r.decided >= 20 && !r.liveFleet; });
+  var best = eligible.slice().sort(function (a, b) { return b.avgR - a.avgR; })[0];
+  var priced = rows.filter(function (r) { return r.costPerCall != null && !r.liveFleet && r.formatOkPct >= 80; });
+  var cheap = priced.slice().sort(function (a, b) { return a.costPerCall - b.costPerCall; })[0];
+  var timed = rows.filter(function (r) { return r.medianSec != null && !r.liveFleet && r.formatOkPct >= 80; });
+  var fast = timed.slice().sort(function (a, b) { return a.medianSec - b.medianSec; })[0];
+  var base = rows.filter(function (r) { return r.liveFleet; })[0];
+  var tile = function (k, v, s) { return "<div class='ml-tile'><div class='t-k'>" + k + "</div><div class='t-v'>" + v + "</div><div class='t-s'>" + s + "</div></div>"; };
+  $("ml-tiles").innerHTML =
+    tile("Best avg R (≥20 decided)", best ? mlFmt(best.avgR, 2, "R") : "—", best ? esc(mlShort(best.model)) + " · " + best.decided + " decided" : "No model has 20 decided picks yet") +
+    tile("Cheapest usable call", cheap ? "$" + cheap.costPerCall.toFixed(4) : "—", cheap ? esc(mlShort(cheap.model)) + " · format OK " + mlFmt(cheap.formatOkPct, 0, "%") : "") +
+    tile("Fastest median", fast ? mlFmt(fast.medianSec, 1, "s") : "—", fast ? esc(mlShort(fast.model)) : "") +
+    tile("Live fleet baseline", base && base.avgR != null ? mlFmt(base.avgR, 2, "R") : "—", base ? base.decided + " decided of " + base.picks + " picks" : "");
+  // leaderboard
+  var sk = _ml.sk, sd = _ml.sd;
+  var val = function (r, k) { var v = k === "model" ? mlShort(r.model).toLowerCase() : r[k]; return v == null || (typeof v === "number" && !isFinite(v)) ? null : v; };
+  rows.sort(function (a, b) {
+    var x = val(a, sk), y = val(b, sk);
+    if (x == null && y == null) return 0; if (x == null) return 1; if (y == null) return -1;   // nulls always last
+    return (x < y ? -1 : x > y ? 1 : 0) * sd;
+  });
+  var th = function (key, label, cls) {
+    var on = sk === key;
+    return "<th class='" + (cls || "rt") + " sk" + (on ? " sk-on" : "") + "' data-sk='" + key + "' aria-sort='" + (on ? (sd === -1 ? "descending" : "ascending") : "none") +
+      "' title='Sort by " + label + "'><span class='sk-l'>" + label + "<span class='sa" + (on ? " on" : "") + "' aria-hidden='true'>" + (on && sd !== -1 ? "▴" : "▾") + "</span></span></th>";
+  };
+  var h = "<tr>" + th("model", "Model", "") + th("answeredPct", "Answered") + th("formatOkPct", "Format OK") + th("pickRatePct", "Pick rate") +
+    th("decided", "Picks (decided)") + th("hitPct", "Hit") + th("avgR", "Avg R") + th("sim10kUsd", "$ on $10k") + th("costPerCall", "$/call") + th("medianSec", "Median") + "</tr>";
+  rows.forEach(function (r) {
+    var parts = String(r.model || "").split("/"), vendor = parts.length > 1 ? parts[0] : "";
+    var eff = /@/.test(r.model) ? String(r.model).split("@").pop() : "";
+    var name = r.liveFleet ? "Live fleet <span class='pill ml-baseline'>BASELINE</span>"
+      : esc(mlShort(r.model)) + (vendor ? " <span class='ml-vendor'>· " + esc(vendor) + (eff ? " · " + esc(eff) : "") + "</span>" : "");
+    var small = r.decided < 20 ? " <span class='pill ml-small' title='Fewer than 20 decided picks — the average is noise at this size'><span class='ml-s-long'>SMALL SAMPLE</span><span class='ml-s-short'>n&lt;20</span></span>" : "";
+    var ci = r.avgRci90 && r.avgRci90.length === 2 && r.avgRci90[0] != null ? "<span class='ml-ci'>[" + mlFmt(r.avgRci90[0], 2) + ", " + mlFmt(r.avgRci90[1], 2) + "]</span>" : "";
+    var rcls = r.avgR == null ? "" : r.avgR > 0 ? " up" : r.avgR < 0 ? " down" : "";
+    var ucls = r.sim10kUsd == null ? "" : r.sim10kUsd > 0 ? " up" : r.sim10kUsd < 0 ? " down" : "";
+    h += "<tr" + (r.liveFleet ? " class='ml-base'" : "") + "><td class='ml-model'>" + name + small + "</td>" +
+      "<td class='rt'>" + mlFmt(r.answeredPct, 0, "%") + "</td><td class='rt'>" + mlFmt(r.formatOkPct, 0, "%") + "</td><td class='rt'>" + mlFmt(r.pickRatePct, 0, "%") + "</td>" +
+      "<td class='rt'>" + (r.picks == null ? "—" : r.picks) + " <span class='ml-ci'>(" + (r.decided == null ? "—" : r.decided) + ")</span></td>" +
+      "<td class='rt'>" + mlFmt(r.hitPct, 0, "%") + "</td>" +
+      "<td class='rt" + rcls + "'>" + mlFmt(r.avgR, 2) + ci + "</td>" +
+      "<td class='rt" + ucls + "'>" + (r.sim10kUsd == null ? "—" : money(r.sim10kUsd, 0)) + "</td>" +
+      "<td class='rt'>" + (r.costPerCall == null ? "—" : "$" + Number(r.costPerCall).toFixed(4)) + "</td>" +
+      "<td class='rt'>" + mlFmt(r.medianSec, 1, "s") + "</td></tr>";
+  });
+  var tbl = $("ml-table"); tbl.innerHTML = h;
+  Array.prototype.forEach.call(tbl.querySelectorAll("th.sk"), function (el) {
+    el.addEventListener("click", function () { var k = el.getAttribute("data-sk"); if (_ml.sk === k) _ml.sd = -_ml.sd; else { _ml.sk = k; _ml.sd = k === "model" || k === "costPerCall" || k === "medianSec" ? 1 : -1; } mlRender(); });
+  });
+  $("ml-legend").textContent = "Answered = returned any text · Format OK = a usable decision (a pick or an explicit NO SIGNALS) · Pick rate = share of answers with at least one pick · " +
+    "decided = picks that hit stop or target (the rest are still open, never touched, or have no candle data) · Avg R in brackets = 90% bootstrap interval · SMALL SAMPLE = fewer than 20 decided picks.";
+  // charts
+  var pts = (d.board || []).filter(function (r) { return r.avgR != null && isFinite(r.avgR); });
+  $("ml-charts").innerHTML = pts.length
+    ? mlScatter(pts, "costPerCall", "Cost per call (log scale) vs avg R", true, function (v) { return "$" + (v < 0.01 ? v.toFixed(4) : v.toFixed(3)); }) +
+      mlScatter(pts, "medianSec", "Median seconds vs avg R", false, function (v) { return v.toFixed(0) + "s"; })
+    : "<p class='src'>Charts appear once a model has decided picks.</p>";
+  // ops (optional)
+  var ops = Array.isArray(d.ops) ? d.ops : null;
+  $("ml-ops-box").classList.toggle("hidden", !(ops && ops.length));
+  if (ops && ops.length) {
+    $("ml-ops-sub").textContent = "Every model that has held a live seat, from the desk call log. These records are CONFOUNDED — each model ran one desk, with its own stop rule, lessons and dates — so they are not a fair head-to-head; the benchmark above is.";
+    var oh = "<tr><th>Model</th><th class='rt'>Cycles</th><th class='rt'>Dates</th><th class='rt'>Median</th><th class='rt'>$/call</th><th class='rt'>Picked</th><th class='rt'>Lost</th><th class='rt'>Live closes</th><th class='rt'>W / L / BE</th></tr>";
+    ops.forEach(function (o) {
+      oh += "<tr><td class='ml-model'>" + esc(mlShort(o.model)) + "</td><td class='rt'>" + (o.cycles == null ? "—" : o.cycles) + "</td>" +
+        "<td class='rt'>" + esc(mlDate(o.first)) + "–" + esc(mlDate(o.last)) + "</td><td class='rt'>" + mlFmt(o.medianSec, 1, "s") + "</td>" +
+        "<td class='rt'>" + (o.avgCost == null ? "—" : "$" + Number(o.avgCost).toFixed(4)) + "</td><td class='rt'>" + mlFmt(o.pickCyclePct, 0, "%") + "</td>" +
+        "<td class='rt'>" + mlFmt(o.lostPct, 1, "%") + "</td><td class='rt'>" + (o.liveCloses == null ? "—" : o.liveCloses) + "</td>" +
+        "<td class='rt'>" + (o.W == null ? "—" : o.W + " / " + o.L + " / " + o.BE) + "</td></tr>";
+    });
+    $("ml-ops").innerHTML = oh;
+  }
+  $("ml-foot").innerHTML = "<b>Method.</b> " + esc(d.method || "") + ". Each model gets the identical prompt text a live desk received, one prompt per market moment (six desks in one cycle see nearly the same market, so they count once), " +
+    "rotating which desk's prompt represents each moment. A pick marked CONFIRMED fills at its entry on the next bar; an AWAITING pick fills only if price touches its entry within " + esc(d.watchWindowD || 5) + " days. " +
+    "Stop and target inside one candle = ambiguous, not scored. Models run through OpenRouter at the effort shown; cost is what the provider billed. " +
+    "The live fleet row is what our desks actually answered to the same prompts, at their real cost and speed.<br><b>Caveats.</b> One market week; a few dozen picks per model; " +
+    "the real bot would have refused some picks at its gates and trailed others to breakeven. Treat this as a screen for which models deserve a live seat, not as a forecast of returns.<br>" +
+    "Last scored " + esc(d.scoredAt ? new Date(d.scoredAt).toLocaleString("en-GB", { timeZone: "Africa/Johannesburg", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) + " SAST" : "—") + " · set " + esc(d.set || "") + ".";
+}
+function mlScatter(pts, key, title, logX, fmtX) {
+  var narrow = window.innerWidth < 760, W = narrow ? 360 : 520, H = narrow ? 260 : 300, L = 40, R = 10, T = 12, B = 34;   // narrow: a smaller viewBox keeps the 10px text legible at phone width
+  var xs = pts.map(function (p) { return p[key]; }).filter(function (v) { return v != null && isFinite(v) && (!logX || v > 0); });
+  if (!xs.length) return "";
+  var P = pts.filter(function (p) { return p[key] != null && isFinite(p[key]) && (!logX || p[key] > 0); });
+  var tx = function (v) { return logX ? Math.log10(v) : v; };
+  var x0 = Math.min.apply(null, xs.map(tx)), x1 = Math.max.apply(null, xs.map(tx));
+  if (x1 - x0 < 1e-9) { x0 -= 0.5; x1 += 0.5; } var xp = (x1 - x0) * 0.08; x0 -= xp; x1 += xp;
+  var ys = P.map(function (p) { return p.avgR; }).concat([0]);
+  var y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys); if (y1 - y0 < 0.2) { y0 -= 0.1; y1 += 0.1; } var yp = (y1 - y0) * 0.12; y0 -= yp; y1 += yp;
+  var sx = function (v) { return L + (tx(v) - x0) / (x1 - x0) * (W - L - R); }, sy = function (v) { return T + (y1 - v) / (y1 - y0) * (H - T - B); };
+  var g = "<line class='ax' x1='" + L + "' y1='" + (H - B) + "' x2='" + (W - R) + "' y2='" + (H - B) + "'/><line class='ax' x1='" + L + "' y1='" + T + "' x2='" + L + "' y2='" + (H - B) + "'/>" +
+    "<line class='zero' x1='" + L + "' y1='" + sy(0) + "' x2='" + (W - R) + "' y2='" + sy(0) + "'/><text x='" + (L - 4) + "' y='" + (sy(0) + 3) + "' text-anchor='end'>0R</text>";
+  [y0 + yp, y1 - yp].forEach(function (v) { g += "<text x='" + (L - 4) + "' y='" + (sy(v) + 3) + "' text-anchor='end'>" + v.toFixed(2) + "</text>"; });
+  var xt = logX ? (function () { var out = []; for (var e = Math.ceil(x0); e <= Math.floor(x1); e++) out.push(Math.pow(10, e)); return out.length ? out : [Math.pow(10, x0 + xp), Math.pow(10, x1 - xp)]; })() : [x0 + xp, (x0 + x1) / 2, x1 - xp];
+  xt.forEach(function (v) { g += "<text x='" + sx(v) + "' y='" + (H - B + 14) + "' text-anchor='middle'>" + fmtX(v) + "</text>"; });
+  var placed = [];   // label boxes already drawn — an overlapping label is skipped (the dot keeps its tooltip)
+  P.slice().sort(function (a, b) { return (b.decided || 0) - (a.decided || 0); }).forEach(function (p) {
+    var cx = sx(p[key]), cy = sy(p.avgR), lab = mlShort(p.model);
+    g += "<circle class='" + (p.liveFleet ? "base" : "") + "' cx='" + cx.toFixed(1) + "' cy='" + cy.toFixed(1) + "' r='" + (p.decided >= 20 ? 5 : 3.5) + "'><title>" + esc(lab) + " · " + p.avgR.toFixed(2) + "R · " + fmtX(p[key]) + " · " + p.decided + " decided</title></circle>" +
+      (function () {
+        var t = lab.length > 18 ? lab.slice(0, 17) + "…" : lab, w = t.length * 6.1, right = cx > W - 110;
+        var bx = right ? cx - 7 - w : cx + 7, box = { x0: bx - 2, x1: bx + w + 2, y0: cy - 8, y1: cy + 5 };
+        if (placed.some(function (q) { return box.x0 < q.x1 && box.x1 > q.x0 && box.y0 < q.y1 && box.y1 > q.y0; })) return "";
+        placed.push(box);
+        return "<text class='lab' x='" + (cx + (right ? -7 : 7)).toFixed(1) + "' y='" + (cy + 3).toFixed(1) + "'" + (right ? " text-anchor='end'" : "") + ">" + esc(t) + "</text>";
+      })();
+  });
+  return "<div class='ml-chart'><h4>" + esc(title) + "</h4><svg viewBox='0 0 " + W + " " + H + "' role='img' aria-label='" + esc(title) + "'>" + g + "</svg><div class='src'>Bigger dot = 20+ decided picks · amber = live fleet baseline · hover a dot for its name</div></div>";
+}
+
 // ── Site pages: hash router (#/markets), legacy-anchor map, per-page nav state ──
 (function () {
   document.body.classList.add("paged");   // no-JS renders all pages stacked
-  var PAGES = { home: 1, markets: 1, charts: 1, news: 1, calendar: 1, bots: 1, about: 1, desks: 1, archive: 1, trade: 1, rules: 1 };   // [#503] rules = the Season-5 pre-registration   // [T2] archive is its own room; [#359] trade = one room per trade, reached by link only
+  var PAGES = { home: 1, markets: 1, charts: 1, news: 1, calendar: 1, bots: 1, about: 1, desks: 1, archive: 1, trade: 1, rules: 1, models: 1 };   // [#254c] models = the Model Lab benchmark   // [#503] rules = the Season-5 pre-registration   // [T2] archive is its own room; [#359] trade = one room per trade, reached by link only
   var INTEL_PAGES = { markets: 1, charts: 1, news: 1, calendar: 1 };   // [T2] the terminal — one nav item, four rooms
   // old deep links (#race, #wire, #rules…) land on the right page, scrolled to the element
   var LEGACY = { race: "home", players: "bots", floor: "bots", desknotes: "bots", tape: "bots",
@@ -4625,6 +4814,8 @@ boot();
                 d: "Six AI models vs one human, real money: live standings, equity curves, open positions, trade tape and every post-mortem." },
     desks:    { t: "Desks — The Bot Exchange",
                 d: "Every AI trading desk, one tab each: its grid cell, its history, its own record by stop distance, its closes and the standing falsifier for the next review." },
+    models:   { t: "Model Lab — The Bot Exchange",
+                d: "Every AI model answers the same real trading-desk prompts; each pick is walked against real candles. Pick quality, cost, speed and reliability, side by side." },
     about:    { t: "About — The Bot Exchange",
                 d: "Why we run seven real-money trading accounts in public: the rules, the risk enforcement and the audit trail." }
   };
@@ -4644,6 +4835,7 @@ boot();
     // Repaint if charts already exist; otherwise (first visit, empty book, failed build)
     // a full render is cheap and is the only thing that can recover the page.
     if (name === "charts") { try { (_chSeries.length ? chRefresh : renderTradeCharts)(null); chStartPoll(); } catch (e) {} }
+    if (name === "models") { try { mlLoad(); } catch (e) {} }   // [#254c] the benchmark file loads on first visit
     if (anchorId) {
       var el = document.getElementById(anchorId);
       // offsetParent guard: a duplicate/hidden id (e.g. an element on an inactive page) must
