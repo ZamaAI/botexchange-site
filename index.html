@@ -600,6 +600,16 @@
   .ml-sb .ml-mid { position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--bg); }
   .ml-sv { grid-area: sc; font: 700 20px var(--sans); text-align: right; }
   .ml-sx { grid-area: sx; font-size: 10.5px; color: var(--ink3); margin-top: 2px; } .ml-sx b { color: var(--ink2); font-weight: 600; }
+  .ml-st { font: 700 9.5px var(--mono); letter-spacing: .08em; padding: 1px 5px; border-radius: 3px; margin-right: 8px; border: 1px solid var(--line); color: var(--ink2); background: var(--bg); }
+  .ml-st.st-qualified { color: #fff; background: var(--accent); border-color: var(--accent); } .ml-st.st-losing { color: #a61b19; border-color: #e7b4b3; background: #fdf1f1; }
+  .ml-g { margin-right: 8px; white-space: nowrap; } .ml-g.ok { color: var(--ink3); } .ml-g.no { color: #a61b19; font-weight: 700; }
+  .ml-ne { color: var(--ink3); font-style: italic; white-space: nowrap; }
+  .ml-sx { line-height: 1.7; display: flex; flex-wrap: wrap; align-items: center; min-width: 0; }
+  .ml-bf.off { opacity: .35; }
+  .ml-svg circle.hollow { fill: var(--bg) !important; stroke-width: 2.5; } .ml-svg circle.hollow.k-cand { stroke: var(--k-cand); } .ml-svg circle.hollow.k-seat { stroke: var(--k-seat); } .ml-svg circle.hollow.k-ref { stroke: var(--k-ref); }
+  .ml-gate { position: absolute; top: -5px; bottom: -5px; width: 2px; background: var(--ink); z-index: 1; }
+  .ml-x2 { color: #a61b19; font-weight: 700; margin-left: 5px; font-size: 12px; font-style: normal; }
+  .ml-nd { margin: 10px 0 2px; }
   .ml-more { margin: 8px 0 0; border: 1px solid var(--line); background: var(--bg); color: var(--accent); font: 600 12px var(--sans); padding: 5px 11px; border-radius: 4px; cursor: pointer; }
   .ml-sq rect.q-frame { fill: none; stroke: var(--line); } .ml-sq rect.q-good { fill: #114e3c; fill-opacity: .07; }
   .ml-sq line.q-mid { stroke: var(--ink3); stroke-width: 1; } .ml-sq line.q-base { stroke: var(--k-ref); stroke-width: 1; opacity: .7; }
@@ -1067,7 +1077,7 @@
   <div class="ml-verdict" id="ml-verdict"></div>
   <div class="ml-detail hidden" id="ml-detail"></div>
   <details class="ml-sec" open>
-    <summary>Each measure on its own: result, reliability, speed, cost</summary>
+    <summary>The evidence and the four gates, one chart each</summary>
     <div id="ml-legend-kind"></div>
     <div class="ml-grid" id="ml-high"></div>
   </details>
@@ -4773,7 +4783,7 @@ boot();
 // in the file and never rendered (they can carry paid feed text); the per-pick detail is the model's own structured numbers only.
 // [#255] rebuilt around readable charts: one filter row (basis), ranked bars with direction in every subtitle, colour = what the
 // model IS to us (candidate / holds a live seat / reference) and never its rank, every value reachable in the table. ──
-var _ml = { data: null, loading: false, sk: "rank", sd: -1, basis: "live", open: null, set: "desk", allScores: false };
+var _ml = { data: null, loading: false, sk: "rank", sd: -1, basis: "live", open: null, set: "desk", allScores: false, view: "all" };
 // two benchmarks share the page: "desk" = our real 25k-token desk prompts; "price" = candles only, asset and dates hidden (data.price)
 function mlD() { var d = _ml.data; return _ml.set === "price" && d && d.price ? d.price : d; }
 function mlIsP() { return _ml.set === "price" && _ml.data && !!_ml.data.price; }
@@ -4810,23 +4820,41 @@ function mlM(r) {
   return L ? { avgR: L.avgR, decided: L.decided, ci: L.avgRci90c, hit: L.hitPct, netR: L.netR, usd: L.sim10kUsd, r100: L.rPer100, ideas: L.ideas }
            : { avgR: r.avgR, decided: r.decided, ci: r.avgRci90c, hit: r.hitPct, netR: r.netR, usd: r.sim10kUsd, r100: r.rPer100, ideas: r.ideas };
 }
-// SEAT SCORE, 0–100 — "would we give this model a live seat?" Two halves, which are also the two axes of the square:
-//   TRADE (40%): 50 = break-even. Average R per decided pick, pulled toward zero when picks are few (× n/(n+30)), so an
-//                unproven model sits at 50 and only a result that holds over many picks moves it. +0.5R → 100, −0.5R → 0.
-//   RUN   (60%): reliability counts double (an answer a desk cannot use is a lost cycle), then speed and cost on fixed log
-//                scales — 5 s → 100, 240 s (our timeout) → 0; $1 → 100, $100 → 0 per 1,000 desk decisions ($0.10 / $10 on the
-//                short chart prompt). Fixed anchors, so a score never moves because another model joined the board.
+// [#255, after three outside reviews] GATES, THEN EVIDENCE.
+// A seat needs four things before its trading is looked at — each is PASS/FAIL, never points, because while no model has a
+// proven edge any points for speed or cost decide the ranking (the cheapest model won the first version of this score):
+//   answers   — a usable decision on at least 95% of prompts
+//   speed     — 95% of answers inside 120 s (half our timeout; a timeout counts at its full length)
+//   cost      — at most $100 per 1,000 desk decisions, failed calls included (≈ $24 a month per seat, what our dearest seat costs);
+//               $10 on the short chart prompt
+//   discipline— at least 75% of its picks would be accepted by our risk rules (a refused pick is a failed decision)
+// Thresholds sit at what our live desks actually tolerate, NOT at round numbers: a $10 / 30 s gate would fail three live seats.
+// Every model keeps its numbers and its score either way; clearing all four puts it on the SEAT SHORTLIST.
+var ML_GATES = { usable: 95, p95: 120, cost: 100, costPrice: 10, legal: 75 };   // legal 75: operator ruling 2 Oct (80 proposed)
+function mlGates(r) {
+  if (r.baseline) return null;
+  var cMax = mlIsP() ? ML_GATES.costPrice : ML_GATES.cost, c = r.cost1kAll != null ? r.cost1kAll : mlPer1k(r);
+  var g = [
+    { k: "answers", ok: (r.formatOkPct || 0) >= ML_GATES.usable, v: mlFmt(r.formatOkPct, 0, "%"), need: "≥ " + ML_GATES.usable + "% usable" },
+    { k: "speed", ok: r.p95Sec != null && r.p95Sec <= ML_GATES.p95, v: r.p95Sec == null ? "—" : r.p95Sec.toFixed(0) + " s", need: "95% within " + ML_GATES.p95 + " s" },
+    { k: "cost", ok: c != null && c <= cMax, v: mlUsd1k(c), need: "≤ $" + cMax + " per 1,000" },
+    { k: "discipline", ok: r.legalPct == null || r.legalPct >= ML_GATES.legal, v: r.legalPct == null ? "no picks" : mlFmt(r.legalPct, 0, "%"), need: "≥ " + ML_GATES.legal + "% of picks accepted" }
+  ];
+  return { list: g, ok: g.every(function (x) { return x.ok; }), fails: g.filter(function (x) { return !x.ok; }) };
+}
+// THE SCORE, 0–100 — trading evidence only. 50 = break-even. Average R per decided pick, pulled toward zero while picks are few
+// (× n/(n+30)): an unproven model sits at 50 and only a result that holds over many picks moves it. +0.5R → 100, −0.5R → 0.
+// The STATUS is the decision, the number is the estimate: qualified = 20+ decided picks AND the whole interval above zero.
 function mlClamp(v) { return Math.max(0, Math.min(100, v)); }
 function mlScore(r) {
-  var m = mlM(r), n = m.decided || 0, shr = m.avgR == null ? 0 : m.avgR * n / (n + 30), trade = mlClamp(50 + 100 * shr);
-  if (r.baseline) return { trade: trade, run: null, total: null };
-  var rel = r.formatOkPct || 0;
-  var speed = r.medianSec == null || !(r.answeredPct > 0) ? 0 : mlClamp(100 * (1 - Math.log(Math.max(r.medianSec, 5) / 5) / Math.log(240 / 5)));
-  var c = mlPer1k(r), lo = mlIsP() ? 0.1 : 1, hi = mlIsP() ? 10 : 100;
-  var cost = c == null || !(r.answeredPct > 0) ? 0 : mlClamp(100 * (1 - Math.log(Math.max(c, lo) / lo) / Math.log(hi / lo)));
-  var run = (2 * rel + speed + cost) / 4;
-  return { trade: trade, rel: rel, speed: speed, cost: cost, run: run, total: 0.4 * trade + 0.6 * run };
+  var m = mlM(r), n = m.decided || 0, shr = m.avgR == null ? 0 : m.avgR * n / (n + 30);
+  var c = m.ci && m.ci.length === 2 && m.ci[0] != null ? m.ci : null;
+  var status = n >= ML_MIN_N && c && c[0] > 0 ? "qualified" : n >= ML_MIN_N && c && c[1] < 0 ? "losing" : "unproven";
+  var acted = r.profile && r.prompts ? 100 * (r.profile.confirmed + r.profile.watch) / r.prompts : (r.pickRatePct || 0);
+  return { total: mlClamp(50 + 100 * shr), status: status, acted: acted, gates: mlGates(r) };
 }
+var ML_STATUS = { qualified: "QUALIFIED", losing: "LOSING", unproven: "UNPROVEN" };
+function mlSkill(r) { var f = r.flip ? (_ml.basis === "live" ? r.flip.live : r.flip.idea) : null; return f && f.skill != null ? f : null; }
 function mlPer1k(r) { return r.costPerCall == null ? null : r.costPerCall * 1000; }
 function mlUsd1k(v) { return v == null ? "—" : "$" + (v >= 10 ? v.toFixed(0) : v.toFixed(2)); }
 function mlTipAttr(html) { return " data-tip=\"" + esc(html) + "\" tabindex='0'"; }
@@ -4840,15 +4868,17 @@ function mlBars(items, o) {
   if (!items.length) return "<p class='src'>No data yet.</p>";
   var lo = 0, hi = 0;
   items.forEach(function (it) { if (it.divider) return; [it.v, o.signed ? it.lo : null, o.signed ? it.hi : null].forEach(function (x) { if (x != null && isFinite(x)) { lo = Math.min(lo, x); hi = Math.max(hi, x); } }); });
+  if (o.gate != null) hi = Math.max(hi, o.gate * 1.04);
   if (hi - lo < 1e-9) hi = lo + 1;
   var pos = function (x) { return 100 * (x - lo) / (hi - lo); };
-  var h = "<div class='ml-bars" + (o.signed ? " signed" : "") + "'>";
+  var h = "<div class='ml-bars" + (o.signed ? " signed" : "") + (o.gate != null ? " gated" : "") + "'>";
+  var gateEl = o.gate != null ? "<i class='ml-gate' style='left:" + pos(o.gate).toFixed(2) + "%'></i>" : "";
   items.forEach(function (it) {
     if (it.divider) { h += "<div class='ml-bd'>" + esc(it.divider) + "</div>"; return; }
     var a = pos(Math.min(it.v, 0)), w = Math.abs(pos(it.v) - pos(0));
     var ci = o.signed && it.lo != null && it.hi != null ? "<i class='ml-wh' style='left:" + pos(it.lo).toFixed(2) + "%;width:" + Math.max(0.4, pos(it.hi) - pos(it.lo)).toFixed(2) + "%'></i>" : "";
     h += "<div class='ml-br" + (it.faded ? " faded" : "") + "'" + mlTipAttr(it.tip || esc(it.name)) + "><div class='ml-bn'>" + esc(it.name) + (it.sub ? "<span>" + esc(it.sub) + "</span>" : "") + "</div>" +
-      "<div class='ml-bt'>" + (o.signed ? "<i class='ml-z' style='left:" + pos(0).toFixed(2) + "%'></i>" : "") +
+      "<div class='ml-bt'>" + (o.signed ? "<i class='ml-z' style='left:" + pos(0).toFixed(2) + "%'></i>" : "") + gateEl +
       "<i class='ml-bf k-" + it.kind + (it.v < 0 ? " neg" : "") + "' style='left:" + a.toFixed(2) + "%;width:" + Math.max(0.6, w).toFixed(2) + "%'></i>" + ci + "</div>" +
       "<div class='ml-bv'>" + it.label + "</div></div>";
   });
@@ -4874,6 +4904,9 @@ function mlRender() {
   $("ml-filters").innerHTML = (_ml.data.price ? "<span class='ml-fl'>Benchmark</span>" +
     "<button type='button' class='ml-tab" + (isP ? "" : " on") + "' data-set='desk' aria-pressed='" + (!isP) + "'>Desk prompts · " + esc(_ml.data.moments) + "</button>" +
     "<button type='button' class='ml-tab" + (isP ? " on" : "") + "' data-set='price' aria-pressed='" + isP + "'>Price action · " + esc(_ml.data.price.moments) + "</button><span class='ml-gap'></span>" : "") +
+    "<span class='ml-fl'>Show</span>" +
+    "<button type='button' class='ml-tab" + (_ml.view === "all" ? " on" : "") + "' data-view='all' aria-pressed='" + (_ml.view === "all") + "'>All models tested</button>" +
+    "<button type='button' class='ml-tab" + (_ml.view === "short" ? " on" : "") + "' data-view='short' aria-pressed='" + (_ml.view === "short") + "'>Seat shortlist</button><span class='ml-gap'></span>" +
     "<span class='ml-fl'>Score picks by</span>" +
     "<button type='button' class='ml-tab" + (live ? " on" : "") + "' data-basis='live' aria-pressed='" + live + "'>Our live rules</button>" +
     "<button type='button' class='ml-tab" + (live ? "" : " on") + "' data-basis='idea' aria-pressed='" + (!live) + "'>Idea quality</button>" +
@@ -4881,7 +4914,7 @@ function mlRender() {
       ? "As our bot would have traded it: picks under 2:1 reward-to-risk or conviction 5 are refused, a watch fills only on a 1-hour close through its entry, and the stop moves to breakeven once the trade is 0.75R in profit (a scratch = 0R)."
       : "The raw idea: a pick fills when price touches its entry, then stop or target, whichever comes first. No gates, no trailing stop, no fees.") + "</span>";
   Array.prototype.forEach.call($("ml-filters").querySelectorAll("button"), function (b) { b.addEventListener("click", function () {
-    if (b.getAttribute("data-set")) { _ml.set = b.getAttribute("data-set"); _ml.open = null; } else _ml.basis = b.getAttribute("data-basis");
+    if (b.getAttribute("data-set")) { _ml.set = b.getAttribute("data-set"); _ml.open = null; } else if (b.getAttribute("data-view")) _ml.view = b.getAttribute("data-view"); else _ml.basis = b.getAttribute("data-basis");
     mlRender(); }); });
 
   // ── what this set says, in words ──
@@ -4894,9 +4927,12 @@ function mlRender() {
   var costs = usable.map(mlPer1k).filter(function (v) { return v != null; }).sort(function (a, b) { return a - b; });
   var baseTxt = bases.map(function (b) { var m = mlM(b); return mlName(b).replace(/^A/, "a") + " " + mlSigned(m.avgR) + "R over " + m.decided; }).join(", ");
   var scored = models.concat(fleet ? [fleet] : []).map(function (r) { return { r: r, s: mlScore(r) }; }).sort(function (a, b) { return b.s.total - a.s.total; });
-  var topM = scored.filter(function (x) { return !x.r.liveFleet; })[0];
-  $("ml-verdict").innerHTML = "<b>What this set says.</b> " + (topM ? "Top seat score: <b>" + esc(mlName(topM.r)) + " (" + Math.round(topM.s.total) + ")</b>" + (Math.abs(topM.s.trade - 50) < 8 ? " — earned on reliability, speed and cost, not on trading. " : ". ") : "") +
-    (won.length ? "<b>" + won.map(function (r) { return esc(mlName(r)); }).join(", ") + "</b> finished clearly ahead (interval above zero). " : "<b>No model shows a trading edge here.</b> ") +
+  var elig = scored.filter(function (x) { return !x.r.liveFleet && x.s.gates.ok; }), qual = elig.filter(function (x) { return x.s.status === "qualified"; });
+  scored.sort(function (a, b) { return (b.s.gates.ok - a.s.gates.ok) || (b.s.total - a.s.total); });   // the shortlist first, then the rest — a model that cannot answer never tops the list
+  if (_ml.view === "short") scored = scored.filter(function (x) { return x.s.gates.ok; });
+  $("ml-verdict").innerHTML = "<b>What this set says.</b> " + "<b>" + elig.length + " of " + models.length + " models clear all four gates</b> (usable answers, speed, cost, discipline) and make the seat shortlist. " +
+    (qual.length ? "<b>Qualified on trading: " + qual.map(function (x) { return esc(mlName(x.r)); }).join(", ") + ".</b> " : "<b>None has qualified on trading yet</b> — that takes 20 or more decided picks with the whole interval above zero. ") +
+    (won.length ? "" : "") +
     (judged.length ? (judged.length === models.length ? "All " + models.length + " models" : judged.length + " of " + models.length + " models") + " produced enough decided picks to judge (" + ML_MIN_N + "+)" +
                      (lost.length ? "; " + lost.map(function (r) { return esc(mlName(r)); }).join(", ") + " clearly lost" : "") +
                      (judged.length === models.length ? (judged.length - lost.length - won.length ? (lost.length || won.length ? "; the others" : ", and none") + " can" + (lost.length || won.length ? "not" : "") + " be told apart from zero. " : ". ")
@@ -4921,15 +4957,21 @@ function mlRender() {
   scored.forEach(function (x, i) {
     var r = x.r, s = x.s;
     if (cut && i >= SHOWN && _ml.open !== r.model) return;
+    if (_ml.view !== "short" && !s.gates.ok && (i === 0 || scored[i - 1].s.gates.ok)) sh += "<div class='ml-bd ml-nd'>Tested, not on the seat shortlist (fails a gate)</div>";
+    if (_ml.view !== "short" && s.gates.ok && i === 0) sh += "<div class='ml-bd ml-nd'>Seat shortlist — clears all four gates</div>";
     sh += "<div class='ml-sr" + (_ml.open === r.model ? " on" : "") + "' data-model=\"" + esc(r.model) + "\" tabindex='0' role='button' title='Show this model’s detail'>" +
-      "<div class='ml-rk'>" + (i + 1) + "</div><div class='ml-snm'><b>" + esc(mlName(r)) + "</b><span>" + esc(mlVendor(r)) + (mlEffort(r) ? " · " + esc(mlEffort(r)) + " effort" : "") + "</span></div>" +
-      "<div class='ml-sb'><i class='ml-bf k-" + mlKind(r) + "' style='left:0;width:" + Math.max(1, s.total).toFixed(1) + "%'></i><i class='ml-mid'></i></div>" +
+      "<div class='ml-rk'>" + (s.gates.ok ? (i + 1) : "–") + "</div><div class='ml-snm'><b>" + esc(mlName(r)) + "</b><span>" + esc(mlVendor(r)) + (mlEffort(r) ? " · " + esc(mlEffort(r)) + " effort" : "") + "</span></div>" +
+      "<div class='ml-sb'><i class='ml-bf k-" + mlKind(r) + (s.gates.ok ? "" : " off") + "' style='left:0;width:" + Math.max(1, s.total).toFixed(1) + "%'></i><i class='ml-mid'></i></div>" +
       "<div class='ml-sv'>" + Math.round(s.total) + "</div>" +
-      "<div class='ml-sx'>trading <b>" + Math.round(s.trade) + "</b> · reliability <b>" + Math.round(s.rel) + "</b> · speed <b>" + Math.round(s.speed) + "</b> · cost <b>" + Math.round(s.cost) + "</b></div></div>";
+      "<div class='ml-sx'><span class='ml-st st-" + s.status + "'>" + ML_STATUS[s.status] + "</span>" +
+      s.gates.list.map(function (g) { return "<span class='ml-g " + (g.ok ? "ok" : "no") + "' title='" + esc(g.k + ": " + g.v + " (needs " + g.need + ")") + "'>" + (g.ok ? "✓" : "✗") + " " + g.k + (g.ok ? "" : " " + esc(g.v)) + "</span>"; }).join("") +
+      "</div></div>";
   });
   sh += "</div>" + (scored.length > SHOWN + 2 ? "<button type='button' class='ml-more' id='ml-more'>" + (cut ? "Show all " + scored.length + " ▾" : "Show the top " + SHOWN + " only ▴") + "</button>" : "");
-  $("ml-scores").innerHTML = mlCard("Seat score", "Would we give this model a live trading seat? 0–100 · Higher is better", sh,
-    "<b>40% trading result</b> (50 = break-even; a model with few decided picks stays near 50 until it proves otherwise) · <b>30% reliability</b> · <b>15% speed</b> · <b>15% cost</b>. Click a model for its picks.");
+  $("ml-scores").innerHTML = mlCard(_ml.view === "short" ? "Seat shortlist" : "Trading score", (_ml.view === "short" ? "Models that clear all four gates, ranked by trading score" : "Every model tested, ranked by trading score") + " · 0–100 · 50 = break-even",
+    sh || "<p class='src'>No model clears all four gates on this set.</p>",
+    "<b>The score is trading evidence only</b>: average R per decided pick, held near 50 until a model has enough picks to prove otherwise. <b>The four gates are pass or fail</b>: usable answers ≥ " + ML_GATES.usable + "%, 95% of answers within " + ML_GATES.p95 + " s, ≤ $" + (isP ? ML_GATES.costPrice : ML_GATES.cost) +
+    " per 1,000 decisions, ≥ " + ML_GATES.legal + "% of picks accepted by our risk rules. Speed and cost earn no points: fast and cheap enough is enough. Click a model for its picks.");
   Array.prototype.forEach.call($("ml-scores").querySelectorAll(".ml-sr"), function (el) {
     var go = function () { var k = el.getAttribute("data-model"); _ml.open = _ml.open === k ? null : k; mlRender(); if (_ml.open) { var x = $("ml-detail"); if (x && x.scrollIntoView) x.scrollIntoView({ block: "nearest", behavior: "smooth" }); } };
     el.addEventListener("click", go); el.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
@@ -4960,25 +5002,44 @@ function mlRender() {
   var relItems = models.slice().sort(function (a, b) { return (b.formatOkPct || 0) - (a.formatOkPct || 0) || (b.answeredPct || 0) - (a.answeredPct || 0); }).map(function (r) {
     var o = nm(r); o.v = r.formatOkPct || 0; o.tip = tipOf(r); o.label = "<b>" + mlFmt(r.formatOkPct, 0, "%") + "</b>"; return o;
   });
-  var spdItems = models.concat(fleet ? [fleet] : []).filter(function (r) { return r.medianSec != null && r.answeredPct > 0; }).sort(function (a, b) { return a.medianSec - b.medianSec; }).map(function (r) {
-    var o = nm(r); o.v = r.medianSec; o.faded = r.formatOkPct < 80; o.tip = tipOf(r); o.label = "<b>" + mlFmt(r.medianSec, r.medianSec < 10 ? 1 : 0, " s") + "</b>"; return o;
+  var mark = function (ok) { return ok ? "" : "<span class='ml-x2'>✗</span>"; };
+  relItems.forEach(function (o) { o.label = o.label + mark(o.v >= ML_GATES.usable); });
+  var spdItems = models.concat(fleet ? [fleet] : []).filter(function (r) { return r.p95Sec != null; }).sort(function (a, b) { return a.p95Sec - b.p95Sec; }).map(function (r) {
+    var o = nm(r); o.v = r.p95Sec; o.tip = tipOf(r) + "<br>95% of answers within " + r.p95Sec.toFixed(0) + " s (median " + mlFmt(r.medianSec, 1, " s") + ")"; o.label = "<b>" + mlFmt(r.p95Sec, r.p95Sec < 10 ? 1 : 0, " s") + "</b>" + mark(r.p95Sec <= ML_GATES.p95); return o;
   });
-  var costItems = models.concat(fleet ? [fleet] : []).filter(function (r) { return mlPer1k(r) != null; }).sort(function (a, b) { return mlPer1k(a) - mlPer1k(b); }).map(function (r) {
-    var o = nm(r); o.v = mlPer1k(r); o.faded = r.formatOkPct < 80; o.tip = tipOf(r); o.label = "<b>" + mlUsd1k(mlPer1k(r)) + "</b>"; return o;
+  var cOf = function (r) { return r.cost1kAll != null ? r.cost1kAll : mlPer1k(r); }, cMax = isP ? ML_GATES.costPrice : ML_GATES.cost;
+  var costItems = models.concat(fleet ? [fleet] : []).filter(function (r) { return cOf(r) != null; }).sort(function (a, b) { return cOf(a) - cOf(b); }).map(function (r) {
+    var o = nm(r); o.v = cOf(r); o.tip = tipOf(r); o.label = "<b>" + mlUsd1k(cOf(r)) + "</b>" + mark(cOf(r) <= cMax); return o;
   });
+  var disItems = models.concat(fleet ? [fleet] : []).filter(function (r) { return r.legalPct != null; }).sort(function (a, b) { return b.legalPct - a.legalPct; }).map(function (r) {
+    var o = nm(r); o.v = r.legalPct; o.tip = tipOf(r) + "<br>" + mlFmt(r.legalPct, 0, "%") + " of its " + r.picks + " pick(s) would be accepted by our risk rules"; o.label = "<b>" + mlFmt(r.legalPct, 0, "%") + "</b>" + mark(r.legalPct >= ML_GATES.legal); return o;
+  });
+  var skAll = all.filter(function (r) { return mlSkill(r); }).sort(function (a, b) { return mlSkill(b).skill - mlSkill(a).skill; });
+  var skOf = function (r) { var f = mlSkill(r), o = nm(r), c = f.ci90 && f.ci90.length === 2 ? f.ci90 : null;
+    o.v = f.skill; o.lo = c ? c[0] : null; o.hi = c ? c[1] : null; o.faded = f.n < ML_MIN_N;
+    o.tip = "<b>" + esc(mlName(r)) + "</b><br>Its picks averaged " + mlSigned(mlM(r).avgR) + "R over " + f.n + "; the same trades the other way averaged " + mlSigned(f.mirrorAvgR) + "R over " + f.nMirror + "<br>Direction skill " + mlSigned(f.skill) + "R a pick" + (c ? " (90% interval " + mlSigned(c[0]) + " to " + mlSigned(c[1]) + ")" : "");
+    o.label = "<b>" + mlSigned(f.skill) + "R</b><span>n " + f.n + "</span>"; return o; };
+  var skBig = skAll.filter(function (r) { return mlSkill(r).n >= ML_MIN_N; }), skThin = skAll.filter(function (r) { return mlSkill(r).n < ML_MIN_N; });
+  var skItems = (skBig.length ? [{ divider: "Enough picks to judge (" + ML_MIN_N + "+ decided)" }] : []).concat(skBig.map(skOf)).concat(skThin.length ? [{ divider: "Too few picks to rank — shown for completeness" }] : []).concat(skThin.map(skOf));
   $("ml-legend-kind").innerHTML = mlLegend([["sw k-cand", "Candidate model"], ["sw k-seat", "Holds one of our live seats today"], ["sw k-ref", isP ? "Reference: two naive rules, no model" : "Reference: our fleet as it traded, and two naive rules"], ["sw k-cand fade", "Faded = small sample or unreliable"]]);
   $("ml-high").innerHTML =
     mlCard("Trading result", "Average R per decided pick · Higher is better · line = 90% interval", mlBars(resItems, { signed: true }),
       "n = decided picks. " + (noRes.length ? " No decided pick yet: " + esc(noRes.join(", ")) + "." : "")) +
-    mlCard("Reliability", "Share of prompts answered in a usable format · Higher is better", mlBars(relItems),
+    mlCard("Direction skill", "R gained per pick over a coin flip on the same trades · Higher is better · line = 90% interval", mlBars(skItems, { signed: true }),
+      "Every pick is also played the other way: same entry, same stop and target distance, same candles. A coin flipped on direction earns the average of the two, so what is left is the value of the model's direction call. In a rally a model that is simply long scores above zero here — compare it with the always-long rule.") +
+    mlCard("Gate 1 · Usable answers", "Share of prompts answered in a usable format · line = the " + ML_GATES.usable + "% gate · Higher is better", mlBars(relItems, { gate: ML_GATES.usable }),
       "Usable = a parseable pick or an explicit no-trade. An empty, cut-off or unreadable answer counts against the model: a desk cannot trade it.") +
-    mlCard("Speed", "Median seconds for one decision · Lower is better", mlBars(spdItems), "End to end, including the model's thinking time. Our desks give a model up to several minutes; a slow model risks losing the cycle.") +
-    mlCard("Cost", "US dollars per 1,000 decisions · Lower is better", mlBars(costItems), isP ? "What the provider actually billed for the ~2,200-token chart prompt plus the answer, through OpenRouter. Most of the bill is the model's own thinking." : "What the provider actually billed for the ~25,000-token prompt plus the answer, through OpenRouter. Our desks make about 240 decisions a month each.");
+    mlCard("Gate 2 · Speed", "Seconds within which 95% of answers arrive · line = the " + ML_GATES.p95 + " s gate · Lower is better", mlBars(spdItems, { gate: ML_GATES.p95 }), "End to end, including the model's thinking time; a timeout counts at its full length. The gate is on the slow tail, not the average: a model that is usually fast and sometimes hangs is the one that loses a cycle.") +
+    mlCard("Gate 3 · Cost", "US dollars per 1,000 decisions, failed calls included · line = the $" + cMax + " gate · Lower is better", mlBars(costItems, { gate: cMax }), (isP ? "" : "The gate is about $24 a month per seat at our cadence — what our dearest live seat costs. ") +
+      "Below the line, cheaper earns nothing: affordable is enough. ") +
+    mlCard("Gate 4 · Discipline", "Share of picks our risk rules would accept · line = the " + ML_GATES.legal + "% gate · Higher is better", mlBars(disItems, { gate: ML_GATES.legal }),
+      "Our live desks refuse a pick with under 2:1 reward-to-risk or conviction below 5. A named trade the rules would refuse is a failed decision, the same as an unreadable answer.") +
+    "<span class='hidden'>" + mlCard("", "", "", "") + "</span>";
 
   // ── leaderboard ──
-  var rows = all.slice(), sk = _ml.sk, sd = _ml.sd;
+  var rows = all.filter(function (r) { return _ml.view !== "short" || r.baseline || mlGates(r).ok; }), sk = _ml.sk, sd = _ml.sd;
   var val = function (r, k) {
-    var m = mlM(r), v = k === "model" ? mlName(r).toLowerCase() : k === "rank" ? (m.avgR == null ? null : (r.baseline || r.liveFleet ? -100 : m.decided >= ML_MIN_N ? 100 : 0) + m.avgR) : k === "avgR" ? m.avgR : k === "decided" ? m.decided : k === "hitPct" ? m.hit : k === "rPer100" ? m.r100 : k === "per1k" ? mlPer1k(r) : r[k];
+    var m = mlM(r), v = k === "model" ? mlName(r).toLowerCase() : k === "rank" ? (m.avgR == null ? null : (r.baseline || r.liveFleet ? -100 : m.decided >= ML_MIN_N ? 100 : 0) + m.avgR) : k === "avgR" ? m.avgR : k === "decided" ? m.decided : k === "hitPct" ? m.hit : k === "rPer100" ? m.r100 : k === "per1k" ? (r.cost1kAll != null ? r.cost1kAll : mlPer1k(r)) : k === "score" ? (r.baseline ? null : mlScore(r).total) : k === "skill" ? (mlSkill(r) ? mlSkill(r).skill : null) : r[k];
     return v == null || (typeof v === "number" && !isFinite(v)) ? null : v;
   };
   rows.sort(function (a, b) {
@@ -4991,11 +5052,13 @@ function mlRender() {
     return "<th class='" + (cls || "rt") + " sk" + (on ? " sk-on" : "") + "' data-sk='" + key + "' aria-sort='" + (on ? (sd === -1 ? "descending" : "ascending") : "none") +
       "' title='" + esc(tip || ("Sort by " + label)) + "'><span class='sk-l'>" + label + "<span class='sa" + (on ? " on" : "") + "' aria-hidden='true'>" + (on && sd !== -1 ? "▴" : "▾") + "</span></span></th>";
   };
-  var h = "<tr>" + th("model", "Model", "") + th("formatOkPct", "Usable", "rt", "Share of prompts answered in a usable format") + th("pickRatePct", "Pick rate", "rt", "Share of answers with at least one pick") +
+  var h = "<tr>" + th("model", "Model", "") + th("score", "Score", "rt", "Trading score, 0–100, 50 = break-even") + th("formatOkPct", "Usable", "rt", "Share of prompts answered in a usable format") + th("pickRatePct", "Pick rate", "rt", "Share of answers with at least one pick") +
+    th("legalPct", "Accepted", "rt", "Share of picks our risk rules would accept") +
     th("decided", "Picks (decided)", "rt", "Picks written, and how many reached their stop or target") + th("hitPct", "Hit", "rt", "Share of decided picks that reached the target") +
     th("avgR", "Avg R", "rt", "Average result per decided pick, in units of risk; brackets = 90% interval") +
+    th("skill", "vs coin flip", "rt", "R gained per pick over a coin flip on the same trades") +
     th("rPer100", "R / 100 prompts", "rt", "Net R per 100 prompts — rewards a model for being right AND for acting often enough to matter") +
-    th("per1k", "$ / 1k", "rt", "Cost of 1,000 decisions") + th("medianSec", "Median", "rt", "Median seconds per decision") + "</tr>";
+    th("per1k", "$ / 1k", "rt", "Cost of 1,000 decisions, failed calls included") + th("p95Sec", "95% within", "rt", "Seconds within which 95% of answers arrive") + "</tr>";
   rows.forEach(function (r) {
     var m = mlM(r), kind = mlKind(r), seat = ML_SEATS[mlShort(r.model)];
     var name = "<i class='sw k-" + kind + "'></i>" + esc(mlName(r)) +
@@ -5006,17 +5069,20 @@ function mlRender() {
     var ci = hasCi(r) ? "<span class='ml-ci'>[" + mlFmt(m.ci[0], 2) + ", " + mlFmt(m.ci[1], 2) + "]</span>" : "";
     var rc = function (v) { return v == null ? "" : v > 0 ? " up" : v < 0 ? " down" : ""; };
     h += "<tr class='ml-row" + (r.liveFleet || r.baseline ? " ml-base" : "") + (_ml.open === r.model ? " on" : "") + "' data-model=\"" + esc(r.model) + "\" tabindex='0' title='Show this model’s picks'><td class='ml-model'>" + name + small + "</td>" +
+      "<td class='rt'><b>" + (r.baseline ? "—" : Math.round(mlScore(r).total)) + "</b></td>" +
       "<td class='rt'>" + (r.baseline ? "—" : mlFmt(r.formatOkPct, 0, "%")) + "</td><td class='rt'>" + (r.baseline ? "—" : mlFmt(r.pickRatePct, 0, "%")) + "</td>" +
+      "<td class='rt'>" + (r.baseline ? "—" : mlFmt(r.legalPct, 0, "%")) + "</td>" +
       "<td class='rt'>" + (r.picks == null ? "—" : r.picks) + " <span class='ml-ci'>(" + (m.decided == null ? "—" : m.decided) + ")</span></td>" +
       "<td class='rt'>" + mlFmt(m.hit, 0, "%") + "</td>" +
       "<td class='rt" + rc(m.avgR) + "'>" + mlSigned(m.avgR) + ci + "</td>" +
+      "<td class='rt" + rc(mlSkill(r) ? mlSkill(r).skill : null) + "'>" + (mlSkill(r) ? mlSigned(mlSkill(r).skill) : "—") + "</td>" +
       "<td class='rt" + rc(m.r100) + "'>" + mlSigned(m.r100, 1) + "</td>" +
-      "<td class='rt'>" + (r.baseline ? "—" : mlUsd1k(mlPer1k(r))) + "</td>" +
-      "<td class='rt'>" + (r.baseline ? "—" : mlFmt(r.medianSec, 1, "s")) + "</td></tr>";
+      "<td class='rt'>" + (r.baseline ? "—" : mlUsd1k(r.cost1kAll != null ? r.cost1kAll : mlPer1k(r))) + "</td>" +
+      "<td class='rt'>" + (r.baseline ? "—" : mlFmt(r.p95Sec, 0, "s")) + "</td></tr>";
   });
   var tbl = $("ml-table"); tbl.innerHTML = h;
   Array.prototype.forEach.call(tbl.querySelectorAll("th.sk"), function (el) {
-    el.addEventListener("click", function () { var k = el.getAttribute("data-sk"); if (_ml.sk === k) _ml.sd = -_ml.sd; else { _ml.sk = k; _ml.sd = k === "model" || k === "per1k" || k === "medianSec" ? 1 : -1; } mlRender(); });
+    el.addEventListener("click", function () { var k = el.getAttribute("data-sk"); if (_ml.sk === k) _ml.sd = -_ml.sd; else { _ml.sk = k; _ml.sd = k === "model" || k === "per1k" || k === "p95Sec" ? 1 : -1; } mlRender(); });
   });
   Array.prototype.forEach.call(tbl.querySelectorAll("tr.ml-row"), function (el) {
     var go = function () { var k = el.getAttribute("data-model"); _ml.open = _ml.open === k ? null : k; mlRender(); if (_ml.open) { var x = $("ml-detail"); if (x && x.scrollIntoView) x.scrollIntoView({ block: "nearest", behavior: "smooth" }); } };
@@ -5099,45 +5165,51 @@ function mlDetail(all) {
   box.innerHTML = "<div class='ml-dh'><h3 class='ml-h3'><i class='sw k-" + mlKind(r) + "'></i>" + esc(mlName(r)) + (mlVendor(r) ? " <span class='ml-vendor'>· " + esc(mlVendor(r)) + (mlEffort(r) ? " · effort " + esc(mlEffort(r)) : "") + "</span>" : "") +
     "</h3><button type='button' class='ml-x' aria-label='Close'>Close ✕</button></div>" +
     "<div class='ml-tiles'>" +
-    (r.baseline ? "" : (function () { var s = mlScore(r); return card("Seat score", Math.round(s.total), "trading " + Math.round(s.trade) + " · runs a desk " + Math.round(s.run) + (r.liveFleet ? "" : " · " + rank(function (x) { return mlScore(x).total; }, false))); })()) +
+    (r.baseline ? "" : (function () { var s = mlScore(r); return card("Trading score", Math.round(s.total), ML_STATUS[s.status].toLowerCase() + (r.liveFleet ? "" : " · " + rank(function (x) { return mlScore(x).total; }, false))); })()) +
     card("Result", mlSigned(m.avgR) + (m.avgR == null ? "" : "R"), (m.decided || 0) + " decided · " + rank(function (x) { return mlM(x).avgR; }, false)) +
     (r.baseline ? "" : card("Pick rate", mlFmt(r.pickRatePct, 0, "%"), (r.picks || 0) + " picks from " + r.prompts + " prompts") +
       card("Speed", mlFmt(r.medianSec, 1, " s"), "median · " + rank(function (x) { return x.medianSec; }, true)) +
       card("Cost", mlUsd1k(mlPer1k(r)), "per 1,000 decisions · " + rank(mlPer1k, true))) + "</div>" +
     "<p class='ml-words'>" + esc(words.filter(Boolean).join("; ")) + (words.length ? ". " : "") + esc(res) + esc(ops) + "</p>" +
+    (r.baseline ? "" : (function () { var g = mlGates(r), f = mlSkill(r);
+      return "<p class='ml-words'><b>" + (g.ok ? "On the seat shortlist." : "Not on the seat shortlist.") + "</b> " + g.list.map(function (x) { return (x.ok ? "✓ " : "✗ ") + x.k + " " + esc(x.v) + " <span class='ml-ci'>(" + esc(x.need) + ")</span>"; }).join(" · ") +
+        (f ? "<br><b>Against a coin flip</b> on its own trades (same entry, stop and target, other direction): " + mlSigned(f.skill) + "R a pick" + (f.ci90 && f.ci90.length === 2 ? " (interval " + mlSigned(f.ci90[0]) + " to " + mlSigned(f.ci90[1]) + ")" : "") + " — its picks averaged " + mlSigned(mlM(r).avgR) + "R, the mirror trades " + mlSigned(f.mirrorAvgR) + "R." : "") + "</p>"; })()) +
     "<p class='src ml-style'>" + style + "</p>" +
     (picks.length ? "<div class='ml-wrap ml-picks'><table class='data ml-table'>" + ph + "</table></div>" : "<p class='src'>This model wrote no picks on this set.</p>");
   box.querySelector(".ml-x").addEventListener("click", function () { _ml.open = null; mlRender(); });
 }
 
-// THE SQUARE — the seat score's two halves as two axes. Right = runs a desk well (reliable, fast, cheap); up = its picks made
-// money. A model with few decided picks sits on the break-even line by construction, so the square shows what is PROVEN.
+// THE SQUARE — up = its picks made money (the trading score), right = how often it acts. Solid dot = on the seat shortlist,
+// hollow = fails a gate. A model with few decided picks sits near the break-even line, so the square shows what is PROVEN.
 function mlSquare(scored, bases) {
   var narrow = window.innerWidth < 760, W = narrow ? 360 : 560, H = narrow ? 380 : 540, L = 46, R = 14, T = 16, B = 44;
   var sx = function (v) { return L + v / 100 * (W - L - R); }, sy = function (v) { return T + (100 - v) / 100 * (H - T - B); };
-  var g = "<rect class='q-good' x='" + sx(50) + "' y='" + sy(100) + "' width='" + (sx(100) - sx(50)) + "' height='" + (sy(50) - sy(100)) + "'/>" +
+  var g = "<rect class='q-good' x='" + sx(0) + "' y='" + sy(100) + "' width='" + (sx(100) - sx(0)) + "' height='" + (sy(50) - sy(100)) + "'/>" +
     "<rect class='q-frame' x='" + sx(0) + "' y='" + sy(100) + "' width='" + (sx(100) - sx(0)) + "' height='" + (sy(0) - sy(100)) + "'/>" +
     "<line class='q-mid' x1='" + sx(50) + "' y1='" + sy(100) + "' x2='" + sx(50) + "' y2='" + sy(0) + "'/><line class='q-mid' x1='" + sx(0) + "' y1='" + sy(50) + "' x2='" + sx(100) + "' y2='" + sy(50) + "'/>" +
-    "<text class='q-lab' x='" + (sx(100) - 8) + "' y='" + (sy(100) + 16) + "' text-anchor='end'>SEAT-READY</text><text class='q-sub' x='" + (sx(100) - 8) + "' y='" + (sy(100) + 29) + "' text-anchor='end'>makes money, runs well</text>" +
-    "<text class='q-lab dim' x='" + (sx(0) + 8) + "' y='" + (sy(100) + 16) + "'>EDGE, BUT HARD TO RUN</text><text class='q-sub' x='" + (sx(0) + 8) + "' y='" + (sy(100) + 29) + "'>makes money; slow, dear or unreliable</text>" +
-    "<text class='q-lab dim' x='" + (sx(100) - 8) + "' y='" + (sy(0) - 20) + "' text-anchor='end'>RUNS WELL, NO EDGE</text><text class='q-sub' x='" + (sx(100) - 8) + "' y='" + (sy(0) - 7) + "' text-anchor='end'>reliable and cheap; loses money</text>" +
-    "<text class='q-lab dim' x='" + (sx(0) + 8) + "' y='" + (sy(0) - 20) + "'>NOT READY</text><text class='q-sub' x='" + (sx(0) + 8) + "' y='" + (sy(0) - 7) + "'>loses money and hard to run</text>" +
+    "<text class='q-lab' x='" + (sx(100) - 8) + "' y='" + (sy(100) + 16) + "' text-anchor='end'>ACTIVE AND PROFITABLE</text><text class='q-sub' x='" + (sx(100) - 8) + "' y='" + (sy(100) + 29) + "' text-anchor='end'>trades often, makes money</text>" +
+    "<text class='q-lab' x='" + (sx(0) + 8) + "' y='" + (sy(100) + 16) + "'>SELECTIVE AND PROFITABLE</text><text class='q-sub' x='" + (sx(0) + 8) + "' y='" + (sy(100) + 29) + "'>trades rarely, makes money</text>" +
+    "<text class='q-lab dim' x='" + (sx(100) - 8) + "' y='" + (sy(0) - 20) + "' text-anchor='end'>ACTIVE AND LOSING</text><text class='q-sub' x='" + (sx(100) - 8) + "' y='" + (sy(0) - 7) + "' text-anchor='end'>trades often, loses money</text>" +
+    "<text class='q-lab dim' x='" + (sx(0) + 8) + "' y='" + (sy(0) - 20) + "'>SELECTIVE AND LOSING</text><text class='q-sub' x='" + (sx(0) + 8) + "' y='" + (sy(0) - 7) + "'>trades rarely, loses money</text>" +
     "<text x='" + (L - 6) + "' y='" + (sy(50) + 3) + "' text-anchor='end'>even</text><text x='" + (L - 6) + "' y='" + (sy(100) + 9) + "' text-anchor='end'>100</text><text x='" + (L - 6) + "' y='" + (sy(0)) + "' text-anchor='end'>0</text>" +
-    "<text x='" + sx(0) + "' y='" + (H - B + 14) + "'>0</text><text x='" + sx(50) + "' y='" + (H - B + 14) + "' text-anchor='middle'>50</text><text x='" + sx(100) + "' y='" + (H - B + 14) + "' text-anchor='end'>100</text>" +
-    "<text class='q-ax' x='" + ((sx(0) + sx(100)) / 2) + "' y='" + (H - 8) + "' text-anchor='middle'>RUNS A DESK WELL → reliability, speed, cost</text>" +
-    "<text class='q-ax' transform='translate(12 " + ((sy(0) + sy(100)) / 2) + ") rotate(-90)' text-anchor='middle'>TRADING RESULT →</text>";
-  (bases || []).forEach(function (b) {   // the no-model rules: a level a model's picks have to clear
-    var s = mlScore(b); if (mlM(b).avgR == null) return;
-    g += "<line class='q-base' x1='" + sx(0) + "' y1='" + sy(s.trade).toFixed(1) + "' x2='" + sx(100) + "' y2='" + sy(s.trade).toFixed(1) + "'/><text class='q-bl' x='" + (sx(0) + 6) + "' y='" + (sy(s.trade) - 4).toFixed(1) + "'>" + esc(mlName(b).toLowerCase()) + " (no model)</text>";
-  });
-  var P = scored.map(function (x) { return { r: x.r, s: x.s, cx: sx(x.s.run), cy: sy(x.s.trade) }; });
+    "<text x='" + sx(0) + "' y='" + (H - B + 14) + "'>never</text><text x='" + sx(50) + "' y='" + (H - B + 14) + "' text-anchor='middle'>half the prompts</text><text x='" + sx(100) + "' y='" + (H - B + 14) + "' text-anchor='end'>every prompt</text>" +
+    "<text class='q-ax' x='" + ((sx(0) + sx(100)) / 2) + "' y='" + (H - 8) + "' text-anchor='middle'>HOW OFTEN IT TRADES →</text>" +
+    "<text class='q-ax' transform='translate(12 " + ((sy(0) + sy(100)) / 2) + ") rotate(-90)' text-anchor='middle'>TRADING SCORE →</text>";
+  var P = scored.map(function (x) { return { r: x.r, s: x.s, cx: sx(mlClamp(x.s.acted)), cy: sy(x.s.total) }; });
   var placed = P.map(function (p) { return { x0: p.cx - 8, x1: p.cx + 8, y0: p.cy - 8, y1: p.cy + 8, own: p }; });
+  (bases || []).forEach(function (b, bi) {   // the no-model rules: a level a model's picks have to clear; their labels sit mid-chart and are obstacles for the model labels
+    var s = mlScore(b); if (mlM(b).avgR == null) return;
+    var t = mlName(b).replace(/^A/, "a") + " (no model)", y = sy(s.total), lx = sx(50) + 6, ly = s.total >= 50 ? y - 4 : y + 11;
+    g += "<line class='q-base' x1='" + sx(0) + "' y1='" + y.toFixed(1) + "' x2='" + sx(100) + "' y2='" + y.toFixed(1) + "'/><text class='q-bl' x='" + lx + "' y='" + ly.toFixed(1) + "'>" + esc(t) + "</text>";
+    placed.push({ x0: lx - 2, x1: lx + t.length * 5.2, y0: ly - 9, y1: ly + 3 });
+  });
   P.slice().sort(function (a, b) { return b.s.total - a.s.total; }).forEach(function (p) {
-    var m = mlM(p.r), big = (m.decided || 0) >= ML_MIN_N, lab = mlName(p.r);
-    g += "<circle class='k-" + mlKind(p.r) + (big ? "" : " faded") + "' cx='" + p.cx.toFixed(1) + "' cy='" + p.cy.toFixed(1) + "' r='" + (big ? 7 : 5.5) + "'/>" +
-      "<circle class='hit' cx='" + p.cx.toFixed(1) + "' cy='" + p.cy.toFixed(1) + "' r='14'" + mlTipAttr("<b>" + esc(lab) + "</b> · seat score " + Math.round(p.s.total) +
-        "<br>Trading " + Math.round(p.s.trade) + " (avg " + mlSigned(m.avgR) + "R over " + (m.decided || 0) + " decided)" +
-        "<br>Runs a desk " + Math.round(p.s.run) + " (reliability " + Math.round(p.s.rel) + ", speed " + Math.round(p.s.speed) + ", cost " + Math.round(p.s.cost) + ")") + "/>" +
+    var m = mlM(p.r), lab = mlName(p.r), fails = p.s.gates.fails;
+    g += "<circle class='k-" + mlKind(p.r) + (p.s.gates.ok ? "" : " hollow") + "' cx='" + p.cx.toFixed(1) + "' cy='" + p.cy.toFixed(1) + "' r='6.5'/>" +
+      "<circle class='hit' cx='" + p.cx.toFixed(1) + "' cy='" + p.cy.toFixed(1) + "' r='14'" + mlTipAttr("<b>" + esc(lab) + "</b> · trading score " + Math.round(p.s.total) + " · " + ML_STATUS[p.s.status].toLowerCase() +
+        "<br>Avg " + mlSigned(m.avgR) + "R over " + (m.decided || 0) + " decided pick(s)" +
+        "<br>Acts on " + Math.round(p.s.acted) + "% of prompts" +
+        "<br>" + (p.s.gates.ok ? "On the seat shortlist" : "Not on the shortlist: " + fails.map(function (x) { return esc(x.k + " " + x.v); }).join(", "))) + "/>" +
       (function () {
         var t = lab.length > 22 ? lab.slice(0, 21) + "…" : lab, w = t.length * 5.9;
         var side = [[p.cx + 11, p.cy + 3, "start"], [p.cx - 11, p.cy + 3, "end"]], off = [[p.cx, p.cy - 12, "middle"], [p.cx, p.cy + 19, "middle"], [p.cx + 11, p.cy - 9, "start"], [p.cx - 11, p.cy - 9, "end"], [p.cx + 11, p.cy + 15, "start"], [p.cx - 11, p.cy + 15, "end"], [p.cx, p.cy - 24, "middle"], [p.cx, p.cy + 31, "middle"]];
@@ -5153,9 +5225,9 @@ function mlSquare(scored, bases) {
         return "";
       })();
   });
-  return mlCard("Where each model lands", "The seat score's two halves · up = its picks made money · right = it runs a desk well",
-    "<svg class='ml-svg ml-sq' viewBox='0 0 " + W + " " + H + "' role='img' aria-label='Each model placed by trading result and by how well it runs a desk'>" + g + "</svg>",
-    "A model with only a few decided picks sits on the break-even line: the square shows what is proven, not what one lucky trade suggests. Bigger dot = " + ML_MIN_N + "+ decided picks. Hover or tap a dot.");
+  return mlCard("Where each model lands", "Up = its picks made money · right = it trades more often · solid dot = on the seat shortlist, hollow = fails a gate",
+    "<svg class='ml-svg ml-sq' viewBox='0 0 " + W + " " + H + "' role='img' aria-label='Each model placed by trading score and by how often it trades'>" + g + "</svg>",
+    "A model with only a few decided picks sits near the break-even line: the square shows what is proven, not what one lucky trade suggests. The grey lines are the two rules with no model behind them. Hover or tap a dot.");
 }
 
 // The market that week: BTC, the moments the prompts were taken, and the two naive rules.
@@ -5369,7 +5441,8 @@ function mlMethod(d) {
       "<li><b>Honest intervals.</b> Five coins move together, so all picks in one direction on one day count as a single idea when the interval is drawn.</li>" +
     "</ol></div></details>" +
     "<details class='box' open><summary class='box-h'>What this does not tell you</summary><div class='box-b ml-prose'><ul>" +
-      "<li><b>The seat score is ours.</b> 40% result, 30% reliability, 15% speed, 15% cost, on fixed scales; every ingredient is on this page.</li>" +
+      "<li><b>The gates are ours</b>, set at what our live desks tolerate; every number is on the page so you can draw them elsewhere.</li>" +
+      "<li><b>Direction skill includes the trend call.</b> In a rally, being long is a correct direction call and scores above a coin flip. Compare each model with the always-long rule to see what is left.</li>" +
       "<li><b>One month, one market.</b> A model that suits this stretch may not suit the next. Compare each model with the two naive rules first.</li>" +
       "<li><b>Chart-reading is not desk work.</b> Our live desks also weigh funding, flows, news and their own record. This isolates one skill; the desk benchmark tests the whole job.</li>" +
       "<li><b>One run per prompt</b>, low effort only, no fees, slippage or position sizing.</li>" +
@@ -5382,7 +5455,7 @@ function mlMethod(d) {
       "<li><b>Scored on real candles.</b> A pick marked CONFIRMED fills at its entry on the next 1-hour bar; a watch fills only if price reaches its entry within " + esc(d.watchWindowD || 5) + " days. Stop or target, whichever is touched first, decides. Both inside one candle = unclear, not scored.</li>" +
     "</ol></div></details>" +
     "<details class='box' open><summary class='box-h'>What this does not tell you</summary><div class='box-b ml-prose'><ul>" +
-      "<li><b>The seat score is ours.</b> It weighs what a trading desk needs — 40% result, 30% reliability, 15% speed, 15% cost — on fixed scales. Change the weights and the order changes; every ingredient is on this page so you can.</li>" +
+      "<li><b>The gates are ours.</b> They sit at what our own live desks tolerate (" + ML_GATES.usable + "% usable answers, 95% of answers inside " + ML_GATES.p95 + " seconds, $" + ML_GATES.cost + " per 1,000 decisions, " + ML_GATES.legal + "% of picks accepted). A desk with a tighter deadline or budget would draw them elsewhere; every number is on the page so you can.</li>" +
       "<li><b>One market week.</b> " + esc(d.moments) + " prompts from " + esc(mlDate(d.since)) + " onward. A model that suits a choppy week may not suit a trend.</li>" +
       "<li><b>Small samples.</b> A few dozen picks per model, and picks repeat: the interval resamples whole ideas for that reason. Under " + ML_MIN_N + " decided picks, read nothing into the average.</li>" +
       "<li><b>One run per prompt.</b> Asked the same prompt twice, a model gives the same decision only about half to three-quarters of the time. A single run cannot separate skill from that noise.</li>" +
@@ -5396,7 +5469,7 @@ function mlMethod(d) {
       d.providersTable.slice(0, 14).map(function (p) { return "<tr><td class='ml-model'>" + esc(p.provider) + "</td><td class='rt'>" + p.calls + "</td><td class='rt'>" + mlFmt(p.medianSec, 1, "s") + "</td><td class='rt'>" + (p.outPerSec || "—") + "</td><td>" + p.models.map(function (x) { return esc(ML_NAMES[x] || x); }).join(", ") + "</td></tr>"; }).join("") +
       "</table></div>" + (d.providersTable.length > 14 ? "…and " + (d.providersTable.length - 14) + " more with a handful of answers each. " : "") + "A failed call names no provider, so this table shows who served, not who failed.</div></details>" : "") +
     "<details class='box'><summary class='box-h'>Changelog</summary><div class='box-b ml-prose'><ul>" +
-      "<li><b>2 Oct 2026</b> — seat score (0–100) and the square added; the page leads with them and the detail charts fold away.</li><li><b>2 Oct 2026</b> — price-action benchmark added: candle-only prompts with the coin and dates hidden, first set September 2026.</li><li><b>2 Oct 2026</b> — five models added on the same 36 prompts (GPT-5.6 Luna, DeepSeek V4 Pro, MiniMax M3, Gemini 3.7 Flash, Claude Haiku 4.5). Re-scored with five more days of candles (picks that were still open have now resolved). Added: the live-rules basis, naive BTC baselines, the interval that resamples whole ideas, R per 100 prompts, per-model picks, behaviour and token charts. Earlier interval figures are not comparable.</li>" +
+      "<li><b>2 Oct 2026</b> — <b>scoring method v2, frozen for the next set.</b> After reviews by three outside models: speed, cost, usable answers and discipline became pass-or-fail gates and stopped earning points (the first score let the cheapest model win); the score is trading evidence only, with a status beside it; every model tested stays on the board and the seat shortlist is the ones that clear all four gates; a coin-flip comparison was added (each pick is also played the other way).</li><li><b>2 Oct 2026</b> — score (0–100) and the square added; the page leads with them and the detail charts fold away.</li><li><b>2 Oct 2026</b> — price-action benchmark added: candle-only prompts with the coin and dates hidden, first set September 2026.</li><li><b>2 Oct 2026</b> — five models added on the same 36 prompts (GPT-5.6 Luna, DeepSeek V4 Pro, MiniMax M3, Gemini 3.7 Flash, Claude Haiku 4.5). Re-scored with five more days of candles (picks that were still open have now resolved). Added: the live-rules basis, naive BTC baselines, the interval that resamples whole ideas, R per 100 prompts, per-model picks, behaviour and token charts. Earlier interval figures are not comparable.</li>" +
       "<li><b>29 Sep 2026</b> — set v1 published: 13 models on 36 prompts from 24–27 Sep, plus the September track record.</li></ul>" +
       "A new set is frozen each month once its picks have had time to resolve.</div></details>" +
     "</div>" +
