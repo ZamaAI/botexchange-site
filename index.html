@@ -517,6 +517,7 @@
   .ml-tab:hover { border-color: var(--ink3); color: var(--ink); }
   .ml-tab.on { background: var(--accent); border-color: var(--accent); color: #fff; }
   .ml-fn { flex: 1 1 320px; line-height: 1.45; }
+  .ml-gap { width: 14px; }
   .ml-verdict { border-left: 3px solid var(--accent); background: var(--bg2); padding: 10px 14px; font-size: 13.5px; line-height: 1.55; margin: 0 0 14px; max-width: 980px; }
   .ml-leg { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 11.5px; color: var(--ink2); margin: 0 0 8px; }
   .ml-leg i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
@@ -4742,7 +4743,10 @@ boot();
 // in the file and never rendered (they can carry paid feed text); the per-pick detail is the model's own structured numbers only.
 // [#255] rebuilt around readable charts: one filter row (basis), ranked bars with direction in every subtitle, colour = what the
 // model IS to us (candidate / holds a live seat / reference) and never its rank, every value reachable in the table. ──
-var _ml = { data: null, loading: false, sk: "rank", sd: -1, basis: "live", open: null };
+var _ml = { data: null, loading: false, sk: "rank", sd: -1, basis: "live", open: null, set: "desk" };
+// two benchmarks share the page: "desk" = our real 25k-token desk prompts; "price" = candles only, asset and dates hidden (data.price)
+function mlD() { var d = _ml.data; return _ml.set === "price" && d && d.price ? d.price : d; }
+function mlIsP() { return _ml.set === "price" && _ml.data && !!_ml.data.price; }
 var ML_SEATS = { "gemini-3.8-flash": "Gina", "glm-5.3-flash": "Milo", "gpt-6-luna": "Luna", "deepseek-v4.1-flash": "Danny", "deepseek-flash": "Danny", "grok-4.7": "Greta", "kimi-k3": "Kenny" };
 var ML_MIN_N = 20;   // decided picks below this = SMALL SAMPLE (the bar fades, the verdict says so)
 function mlLoad() {
@@ -4758,7 +4762,7 @@ function mlFmt(v, dp, suf) { return v == null || !isFinite(v) ? "—" : Number(v
 function mlSigned(v, dp) { return v == null || !isFinite(v) ? "—" : (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(dp == null ? 2 : dp); }
 function mlDate(iso) { try { return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }); } catch (e) { return String(iso || ""); } }   // UTC: the set bounds are UTC dates
 function mlKind(r) { return r.baseline || r.liveFleet ? "ref" : ML_SEATS[mlShort(r.model)] ? "seat" : "cand"; }
-function mlName(r) { return r.baseline ? (/long/.test(r.model) ? "Always long BTC" : "Always short BTC") : r.liveFleet ? "Live fleet (as traded)" : mlShort(r.model); }
+function mlName(r) { return r.baseline ? (/long/.test(r.model) ? "Always long" : "Always short") + (mlIsP() ? "" : " BTC") : r.liveFleet ? "Live fleet (as traded)" : mlShort(r.model); }
 function mlVendor(r) { var p = String(r.model || "").split("/"); return r.baseline ? "naive rule" : r.liveFleet ? "our six desks" : p.length > 1 ? p[0] : ""; }
 function mlEffort(r) { return r.baseline || r.liveFleet ? "" : (r.effort || (/@/.test(r.model) ? String(r.model).split("@").pop() : "") || "default"); }
 // the metrics under the selected basis: "idea" = touch fill, stop or target first; "live" = the bot's gates, close-confirm fills, breakeven trail
@@ -4797,23 +4801,32 @@ function mlBars(items, o) {
 function mlLegend(parts) { return "<div class='ml-leg'>" + parts.map(function (p) { return "<span><i class='" + p[0] + "'></i>" + p[1] + "</span>"; }).join("") + "</div>"; }
 
 function mlRender() {
-  var d = _ml.data; if (!d) return;
+  var d = mlD(); if (!d) return;
+  var isP = mlIsP();
   var all = (d.board || []).slice();
   var models = all.filter(function (r) { return !r.baseline && !r.liveFleet; });
   var fleet = all.filter(function (r) { return r.liveFleet; })[0], bases = all.filter(function (r) { return r.baseline; });
   var until = d.until ? new Date(Date.parse(d.until) - 1).toISOString() : null;
   var live = _ml.basis === "live";
-  $("ml-method").innerHTML = "Every model gets the <b>same " + esc(d.moments) + " real prompts</b> our trading desks received (" + esc(mlDate(d.since)) + "–" + esc(mlDate(until)) +
-    "): about 25,000 tokens of live market data and one job — name a trade with an entry, a stop and a target, or say <b>no trade</b>. " +
+  $("ml-method").innerHTML = (isP
+    ? "Every model gets the <b>same " + esc(d.moments) + " price charts</b> (" + esc(mlDate(d.since)) + "–" + esc(mlDate(until)) + ", " + esc((d.assets || []).join(", ")) +
+      "): two weeks of candles for one coin, with its <b>name and the dates hidden</b> and prices rescaled, and one job — name a trade with an entry, a stop and a target, or say <b>no trade</b>. No news, no indicators, nothing to remember: can the model read a chart? "
+    : "Every model gets the <b>same " + esc(d.moments) + " real prompts</b> our trading desks received (" + esc(mlDate(d.since)) + "–" + esc(mlDate(until)) +
+      "): about 25,000 tokens of live market data and one job — name a trade with an entry, a stop and a target, or say <b>no trade</b>. ") +
     "Every pick is then played forward on real 1-hour candles. Results are in <b>R</b>: +2R means the pick made twice what it risked, −1R means the stop was hit.";
   // ── filter row: one basis switch scopes every result chart and table ──
-  $("ml-filters").innerHTML = "<span class='ml-fl'>Score picks by</span>" +
+  $("ml-filters").innerHTML = (_ml.data.price ? "<span class='ml-fl'>Benchmark</span>" +
+    "<button type='button' class='ml-tab" + (isP ? "" : " on") + "' data-set='desk' aria-pressed='" + (!isP) + "'>Desk prompts · " + esc(_ml.data.moments) + "</button>" +
+    "<button type='button' class='ml-tab" + (isP ? " on" : "") + "' data-set='price' aria-pressed='" + isP + "'>Price action · " + esc(_ml.data.price.moments) + "</button><span class='ml-gap'></span>" : "") +
+    "<span class='ml-fl'>Score picks by</span>" +
     "<button type='button' class='ml-tab" + (live ? " on" : "") + "' data-basis='live' aria-pressed='" + live + "'>Our live rules</button>" +
     "<button type='button' class='ml-tab" + (live ? "" : " on") + "' data-basis='idea' aria-pressed='" + (!live) + "'>Idea quality</button>" +
     "<span class='src ml-fn'>" + (live
       ? "As our bot would have traded it: picks under 2:1 reward-to-risk or conviction 5 are refused, a watch fills only on a 1-hour close through its entry, and the stop moves to breakeven once the trade is 0.75R in profit (a scratch = 0R)."
       : "The raw idea: a pick fills when price touches its entry, then stop or target, whichever comes first. No gates, no trailing stop, no fees.") + "</span>";
-  Array.prototype.forEach.call($("ml-filters").querySelectorAll("button"), function (b) { b.addEventListener("click", function () { _ml.basis = b.getAttribute("data-basis"); mlRender(); }); });
+  Array.prototype.forEach.call($("ml-filters").querySelectorAll("button"), function (b) { b.addEventListener("click", function () {
+    if (b.getAttribute("data-set")) { _ml.set = b.getAttribute("data-set"); _ml.open = null; } else _ml.basis = b.getAttribute("data-basis");
+    mlRender(); }); });
 
   // ── what this set says, in words ──
   var judged = models.filter(function (r) { return mlM(r).decided >= ML_MIN_N; });
@@ -4826,11 +4839,20 @@ function mlRender() {
   var baseTxt = bases.map(function (b) { var m = mlM(b); return mlName(b).replace(/^A/, "a") + " " + mlSigned(m.avgR) + "R over " + m.decided; }).join(", ");
   $("ml-verdict").innerHTML = "<b>What this set says.</b> " +
     (won.length ? "<b>" + won.map(function (r) { return esc(mlName(r)); }).join(", ") + "</b> finished clearly ahead (interval above zero). " : "<b>No model shows a trading edge here.</b> ") +
-    (judged.length ? judged.length + " of " + models.length + " models produced enough decided picks to judge (" + ML_MIN_N + "+)" + (lost.length ? "; " + lost.map(function (r) { return esc(mlName(r)); }).join(", ") + " clearly lost" : "") + ", the rest are too thin to call. "
+    (judged.length ? (judged.length === models.length ? "All " + models.length + " models" : judged.length + " of " + models.length + " models") + " produced enough decided picks to judge (" + ML_MIN_N + "+)" +
+                     (lost.length ? "; " + lost.map(function (r) { return esc(mlName(r)); }).join(", ") + " clearly lost" : "") +
+                     (judged.length === models.length ? (judged.length - lost.length - won.length ? (lost.length || won.length ? "; the others" : ", and none") + " can" + (lost.length || won.length ? "not" : "") + " be told apart from zero. " : ". ")
+                                                      : ", the rest are too thin to call. ")
                    : "No model produced " + ML_MIN_N + " decided picks, so every result below is a small sample. ") +
+    (function () {   // the bar a model has to clear: the better of the two no-model rules
+      var bb = bases.filter(function (b) { return mlM(b).avgR != null; }).sort(function (a, b) { return mlM(b).avgR - mlM(a).avgR; })[0];
+      if (!bb || !judged.length) return "";
+      var beat = judged.filter(function (r) { return mlM(r).avgR > mlM(bb).avgR; });
+      return beat.length ? "" : "<b>None beat the " + esc(mlName(bb).replace(/^A/, "a")) + " rule</b> (" + mlSigned(mlM(bb).avgR) + "R). ";
+    })() +
     (baseTxt ? (bases.every(function (b) { return mlM(b).avgR < 0; })
-      ? "Two rules with no model behind them also lost (" + esc(baseTxt) + ") — the market chopped both ways that week, so a model that mostly said <i>no trade</i> looks good for free. "
-      : "For scale, two rules with no model behind them: " + esc(baseTxt) + ". ") : "") +
+      ? "Two rules with no model behind them also lost (" + esc(baseTxt) + ") — the market chopped both ways" + (isP ? "" : " that week") + ", so a model that mostly said <i>no trade</i> looks good for free. "
+      : "The two rules with no model behind them: " + esc(baseTxt) + ". ") : "") +
     "What the set measures well is the plumbing: <b>" + perfect.length + " of " + models.length + "</b> models returned a usable answer every time" +
     (secs.length ? ", a decision took <b>" + secs[0].toFixed(0) + "–" + secs[secs.length - 1].toFixed(0) + " seconds</b>" : "") +
     (costs.length ? " and cost <b>" + mlUsd1k(costs[0]) + "–" + mlUsd1k(costs[costs.length - 1]) + " per 1,000 decisions</b>." : ".");
@@ -4864,14 +4886,14 @@ function mlRender() {
   var costItems = models.concat(fleet ? [fleet] : []).filter(function (r) { return mlPer1k(r) != null; }).sort(function (a, b) { return mlPer1k(a) - mlPer1k(b); }).map(function (r) {
     var o = nm(r); o.v = mlPer1k(r); o.faded = r.formatOkPct < 80; o.tip = tipOf(r); o.label = "<b>" + mlUsd1k(mlPer1k(r)) + "</b>"; return o;
   });
-  $("ml-legend-kind").innerHTML = mlLegend([["sw k-cand", "Candidate model"], ["sw k-seat", "Holds one of our live seats today"], ["sw k-ref", "Reference: our fleet as it traded, and two naive rules"], ["sw k-cand fade", "Faded = small sample or unreliable"]]);
+  $("ml-legend-kind").innerHTML = mlLegend([["sw k-cand", "Candidate model"], ["sw k-seat", "Holds one of our live seats today"], ["sw k-ref", isP ? "Reference: two naive rules, no model" : "Reference: our fleet as it traded, and two naive rules"], ["sw k-cand fade", "Faded = small sample or unreliable"]]);
   $("ml-high").innerHTML =
     mlCard("Trading result", "Average R per decided pick · Higher is better · line = 90% interval", mlBars(resItems, { signed: true }),
       "n = decided picks. " + (noRes.length ? " No decided pick yet: " + esc(noRes.join(", ")) + "." : "")) +
     mlCard("Reliability", "Share of prompts answered in a usable format · Higher is better", mlBars(relItems),
       "Usable = a parseable pick or an explicit no-trade. An empty, cut-off or unreadable answer counts against the model: a desk cannot trade it.") +
     mlCard("Speed", "Median seconds for one decision · Lower is better", mlBars(spdItems), "End to end, including the model's thinking time. Our desks give a model up to several minutes; a slow model risks losing the cycle.") +
-    mlCard("Cost", "US dollars per 1,000 decisions · Lower is better", mlBars(costItems), "What the provider actually billed for the ~25,000-token prompt plus the answer, through OpenRouter. Our desks make about 240 decisions a month each.");
+    mlCard("Cost", "US dollars per 1,000 decisions · Lower is better", mlBars(costItems), isP ? "What the provider actually billed for the ~2,200-token chart prompt plus the answer, through OpenRouter. Most of the bill is the model's own thinking." : "What the provider actually billed for the ~25,000-token prompt plus the answer, through OpenRouter. Our desks make about 240 decisions a month each.");
 
   // ── leaderboard ──
   var rows = all.slice(), sk = _ml.sk, sd = _ml.sd;
@@ -4933,10 +4955,10 @@ function mlRender() {
     : "<p class='src'>Charts appear once a model has decided picks.</p>";
 
   // ── behaviour: what each model did with every prompt ──
-  $("ml-behave").innerHTML = mlMarket(d, bases) + mlStrip(d, models.concat(fleet ? [fleet] : [])) + mlOutcomes(models.concat(fleet ? [fleet] : []).concat(bases)) + mlTokens(models.concat(fleet ? [fleet] : [])) + mlCurves(all.filter(function (r) { return !r.baseline; }));
+  $("ml-behave").innerHTML = mlMarket(d, bases) + mlStrip(d, models.concat(fleet ? [fleet] : [])) + mlOutcomes(models.concat(fleet ? [fleet] : []).concat(bases)) + (isP ? mlLongShort(models.concat(bases)) : "") + mlTokens(models.concat(fleet ? [fleet] : [])) + mlCurves(all.filter(function (r) { return !r.baseline; }), !isP);
 
   // ── ops (optional) ──
-  var ops = Array.isArray(d.ops) ? d.ops : null;
+  var ops = !isP && Array.isArray(d.ops) ? d.ops : null;
   $("ml-ops-box").classList.toggle("hidden", !(ops && ops.length));
   if (ops && ops.length) {
     $("ml-ops-sub").textContent = "Every model that has held a live seat, from the desk call log. These records are CONFOUNDED — each model ran one desk, with its own stop rule, lessons and dates — so they are not a fair head-to-head; the benchmark above is.";
@@ -4956,7 +4978,7 @@ function mlRender() {
 
 // One model's page-within-the-page: four cards with rank, one plain-English verdict, how it trades, and every pick it wrote.
 function mlDetail(all) {
-  var box = $("ml-detail"), d = _ml.data, r = all.filter(function (x) { return x.model === _ml.open; })[0];
+  var box = $("ml-detail"), d = mlD(), r = all.filter(function (x) { return x.model === _ml.open; })[0];
   box.classList.toggle("hidden", !r); if (!r) { box.innerHTML = ""; return; }
   var m = mlM(r), peers = all.filter(function (x) { return !x.baseline && !x.liveFleet; });
   var rank = function (get, asc) {
@@ -4983,7 +5005,7 @@ function mlDetail(all) {
   var st = r.style || {}, tk = r.tokens || {};
   var style = (r.picks ? "<b>How it trades.</b> " + mlFmt(st.longPct, 0, "%") + " longs · planned reward-to-risk " + mlFmt(st.avgRR, 1) + " · average stop " + mlFmt(st.avgStopPct, 1, "%") + " from entry · average conviction " + mlFmt(st.avgConv, 1) +
       (st.topAssets && st.topAssets.length ? " · most picked: " + st.topAssets.map(function (a) { return esc(a[0]) + " ×" + a[1]; }).join(", ") : "") + ".<br>" : "") +
-    (r.baseline ? "<b>The rule.</b> At every market moment: enter BTC at the last closed 1-hour price, stop 2% away, target 4.4% away. No model, no judgement — the bar any model should clear." :
+    (r.baseline ? "<b>The rule.</b> At every market moment: enter " + (mlIsP() ? "the chart's coin" : "BTC") + " at the last closed 1-hour price, stop 2% away, target 4.4% away. No model, no judgement — the bar any model should clear." :
       "<b>The calls.</b> " + (tk.avgIn ? Number(tk.avgIn).toLocaleString("en-US") + " input tokens · " : "") + (tk.avgReasoning != null ? Number(tk.avgReasoning).toLocaleString("en-US") + " reasoning + " + Number(tk.avgAnswer).toLocaleString("en-US") + " answer tokens per decision" : "") +
       (tk.outPerSec ? " · " + tk.outPerSec.toFixed(0) + " tokens/s" : "") + (r.maxTokens ? " · " + Number(r.maxTokens).toLocaleString("en-US") + "-token budget" : "") +
       (r.providers && r.providers.length ? "<br><b>Served by</b> " + r.providers.map(function (p) { return esc(p[0]) + " (" + p[1] + ")"; }).join(", ") + " via OpenRouter." : "") +
@@ -5072,13 +5094,14 @@ function mlMarket(d, bases) {
   g += "<path class='line' d='" + bars.map(function (b, i) { return (i ? "L" : "M") + sx(b[0]).toFixed(1) + " " + sy(b[1]).toFixed(1); }).join("") + "'/>";
   mo.forEach(function (x) { g += "<line class='tick' x1='" + sx(x.t).toFixed(1) + "' y1='" + (H - B) + "' x2='" + sx(x.t).toFixed(1) + "' y2='" + (H - B + 6) + "'/>"; });
   var days = [], dd = new Date(t0 * 1000); dd.setUTCHours(0, 0, 0, 0);
-  for (var t = dd.getTime() / 1000 + 86400; t < t1; t += 86400 * (narrow ? 2 : 1)) days.push(t);
+  var stepD = Math.max(1, Math.ceil((t1 - t0) / 86400 / (narrow ? 4 : 9)));   // at most ~4 (phone) / ~9 date labels, whatever the window
+  for (var t = dd.getTime() / 1000 + 86400; t < t1; t += 86400 * stepD) days.push(t);
   days.forEach(function (t) { g += "<text x='" + sx(t).toFixed(1) + "' y='" + (H - 6) + "' text-anchor='middle'>" + esc(mlDate(new Date(t * 1000).toISOString())) + "</text>"; });
   g += "<text class='lab' x='" + (sx(t1) - 4).toFixed(1) + "' y='" + (sy(bars[bars.length - 1][1]) - 6).toFixed(1) + "' text-anchor='end'>$" + Math.round(bars[bars.length - 1][1]).toLocaleString("en-US") + "</text>";
   var note = bases.map(function (b) { var m = mlM(b), tr = _ml.basis === "live" ? b.live : b; return "<b>" + esc(mlName(b)) + "</b>: " + (tr.target || 0) + " targets, " + (tr.stop || 0) + " stops" + (_ml.basis === "live" ? ", " + (b.live.scratch || 0) + " breakevens" : "") + " → " + mlSigned(m.avgR) + "R a pick"; }).join(" · ");
-  return "<div class='ml-wide'>" + mlCard("The market that week", "Bitcoin, hourly close · each tick on the axis is one prompt",
+  return "<div class='ml-wide'>" + mlCard(mlIsP() ? "The market over the set" : "The market that week", "Bitcoin, hourly close · each tick on the axis is one prompt" + (mlIsP() ? " (the charts cover five coins; Bitcoin stands for the market)" : ""),
     "<svg class='ml-svg' viewBox='0 0 " + W + " " + H + "' role='img' aria-label='Bitcoin price over the benchmark window'>" + g + "</svg>",
-    "Context for every number on this page. " + note + ". When both naive rules lose, the week punished anyone who traded; a model that mostly declined was not skilful, it was absent.") + "</div>";
+    "Context for every number on this page. " + note + "." + (bases.length && bases.every(function (b) { return mlM(b).avgR < 0; }) ? " When both naive rules lose, the market punished anyone who traded; a model that mostly declined was not skilful, it was absent." : " A model has to beat the better of these two to have shown anything.")) + "</div>";
 }
 
 // One cell per prompt per model: trade now / watch / no trade / unusable / failed.
@@ -5126,7 +5149,7 @@ function mlOutcomes(rows) {
 }
 
 // Cumulative R, one small chart per model, all on the same scale.
-function mlCurves(rows) {
+function mlCurves(rows, wide) {
   var idx = _ml.basis === "live" ? 2 : 1;
   var R = rows.map(function (r) { var c = (r.curve || []).filter(function (p) { return p[idx] != null; }), s = 0; return { r: r, pts: c.map(function (p) { s += p[idx]; return [p[0], s]; }) }; }).filter(function (x) { return x.pts.length >= 3; });
   if (!R.length) return "";
@@ -5145,8 +5168,28 @@ function mlCurves(rows) {
       "<text class='lab' x='" + (sx(last[0]) + 7).toFixed(1) + "' y='" + (sy(last[1]) + 3.5).toFixed(1) + "'>" + mlSigned(last[1], 1) + "R</text></svg></div>";
   });
   h += "</div>";
-  return "<div class='ml-wide'>" + mlCard("How each result built up", "Running total of R, pick by pick, in the order the picks were made · same scale on every chart · the grey line is zero", h,
-    "A steady climb means the edge was spread across many picks; one jump means one trade made the whole result. Models with fewer than three decided picks are left out.") + "</div>";
+  return (wide ? "<div class='ml-wide'>" : "") + mlCard("How each result built up", "Running total of R, pick by pick, in the order the picks were made · same scale on every chart · the grey line is zero", h,
+    "A steady climb means the edge was spread across many picks; one jump means one trade made the whole result. Models with fewer than three decided picks are left out.") + (wide ? "</div>" : "");
+}
+
+// Longs vs shorts per model (price set): two bars on one zero line.
+function mlLongShort(rows) {
+  var live = _ml.basis === "live", get = function (x) { return x ? { v: live ? x.liveAvgR : x.avgR, n: live ? x.liveDecided : x.decided } : { v: null, n: 0 }; };
+  var R = rows.filter(function (r) { return (r.byDirection || []).some(function (x) { return get(x).v != null; }); });
+  if (!R.length) return "";
+  var lo = 0, hi = 0; R.forEach(function (r) { r.byDirection.forEach(function (x) { var g = get(x); if (g.v != null) { lo = Math.min(lo, g.v); hi = Math.max(hi, g.v); } }); });
+  if (hi - lo < 0.5) hi = lo + 0.5;
+  var lp = function (x) { return 100 * (x - lo) / (hi - lo); };
+  var h = "<div class='ml-bars signed pair'>";
+  R.forEach(function (r) {
+    var L = get(r.byDirection[0]), S = get(r.byDirection[1]);
+    var one = function (g, c) { return g.v == null ? "" : "<i class='ml-bf " + c + "' style='left:" + lp(Math.min(g.v, 0)).toFixed(2) + "%;width:" + Math.max(0.6, Math.abs(lp(g.v) - lp(0))).toFixed(2) + "%'></i>"; };
+    h += "<div class='ml-br'" + mlTipAttr("<b>" + esc(mlName(r)) + "</b><br>Longs " + mlSigned(L.v) + "R over " + L.n + "<br>Shorts " + mlSigned(S.v) + "R over " + S.n) + "><div class='ml-bn'>" + esc(mlName(r)) + "</div>" +
+      "<div class='ml-bt two'><i class='ml-z' style='left:" + lp(0).toFixed(2) + "%'></i><div class='ml-half'>" + one(L, "d-l") + "</div><div class='ml-half'>" + one(S, "d-s") + "</div></div>" +
+      "<div class='ml-bv two'><span>L <b>" + mlSigned(L.v) + "</b> " + L.n + "</span><span>S <b>" + mlSigned(S.v) + "</b> " + S.n + "</span></div></div>";
+  });
+  return mlCard("Longs vs shorts", "Average R per decided pick, by direction · small number = decided picks", mlLegend([["cl d-l", "Longs"], ["cl d-s", "Shorts"]]) + h + "</div>",
+    "A model that only makes money in one direction has read the market's drift, not the chart.");
 }
 
 // Output tokens per decision: thinking vs answer.
@@ -5227,17 +5270,30 @@ function mlTrack(d) {
 
 // Methods, limits, run totals, changelog — said plainly.
 function mlMethod(d) {
+  var isP = mlIsP();
   var rt = d.runTotals || {}, n = function (x) { return x == null ? "—" : Number(x).toLocaleString("en-US"); };
   var M = function (v) { return v == null ? "—" : (v / 1e6).toFixed(1) + "M"; };
   $("ml-foot").innerHTML =
     "<div class='ml-tiles ml-run'>" +
-      "<div class='ml-tile'><div class='t-k'>Models tested</div><div class='t-v'>" + n(rt.models) + "</div><div class='t-s'>on " + esc(d.moments) + " identical prompts</div></div>" +
+      "<div class='ml-tile'><div class='t-k'>Models tested</div><div class='t-v'>" + n(rt.models) + "</div><div class='t-s'>on " + esc(d.moments) + " identical " + (isP ? "charts" : "prompts") + "</div></div>" +
       "<div class='ml-tile'><div class='t-k'>Model calls</div><div class='t-v'>" + n(rt.calls) + "</div><div class='t-s'>one run each, no cherry-picking</div></div>" +
       "<div class='ml-tile'><div class='t-k'>Tokens processed</div><div class='t-v'>" + M((rt.inputTokens || 0) + (rt.outputTokens || 0)) + "</div><div class='t-s'>" + M(rt.inputTokens) + " in · " + M(rt.outputTokens) + " out</div></div>" +
       "<div class='ml-tile'><div class='t-k'>Cost of this set</div><div class='t-v'>" + (rt.costUsd == null ? "—" : "$" + rt.costUsd.toFixed(2)) + "</div><div class='t-s'>billed by " + n(rt.providers) + " providers via OpenRouter</div></div>" +
     "</div>" +
     "<div class='box-grid'>" +
-    "<details class='box' open><summary class='box-h'>How the benchmark works</summary><div class='box-b ml-prose'><ol>" +
+    (isP ? "<details class='box' open><summary class='box-h'>How the benchmark works</summary><div class='box-b ml-prose'><ol>" +
+      "<li><b>Charts only.</b> Each prompt is one coin's last 14 daily, 30 four-hour and 72 hourly candles, taken every " + esc(d.everyH || 12) + " hours across " + esc((d.assets || []).length) + " coins.</li>" +
+      "<li><b>Nothing to recognise.</b> The coin's name and the dates are removed and prices are rescaled so the last close is 100. A model cannot recall what happened next, and cannot lean on \"Bitcoin usually goes up\".</li>" +
+      "<li><b>Same rules for all.</b> Long, short or pass; reward at least twice the risk; enter now or wait for a level. About 2,200 tokens, sent through OpenRouter, reasoning effort low where the model accepts it, one attempt.</li>" +
+      "<li><b>Same parser, same scoring</b> as the desk benchmark: the pick is mapped back to the real coin and played forward on real 1-hour candles — stop or target, whichever is touched first.</li>" +
+      "<li><b>Honest intervals.</b> Five coins move together, so all picks in one direction on one day count as a single idea when the interval is drawn.</li>" +
+    "</ol></div></details>" +
+    "<details class='box' open><summary class='box-h'>What this does not tell you</summary><div class='box-b ml-prose'><ul>" +
+      "<li><b>One month, one market.</b> A model that suits this stretch may not suit the next. Compare each model with the two naive rules first.</li>" +
+      "<li><b>Chart-reading is not desk work.</b> Our live desks also weigh funding, flows, news and their own record. This isolates one skill; the desk benchmark tests the whole job.</li>" +
+      "<li><b>One run per prompt</b>, low effort only, no fees, slippage or position sizing.</li>" +
+      "<li><b>One retry, disclosed.</b> On the September set, 13 Mercury calls came back empty within three seconds (the provider dropped the request); those 13 were sent once more and all answered. Timeouts and cut-off answers were not retried: they are results.</li></ul></div></details>"
+    : "<details class='box' open><summary class='box-h'>How the benchmark works</summary><div class='box-b ml-prose'><ol>" +
       "<li><b>Real prompts.</b> Every cycle our live desks send a model about 25,000 tokens: prices, levels, funding, flows, news, the desk's own record. We archive each prompt exactly as sent.</li>" +
       "<li><b>One prompt per market moment.</b> Six desks in one cycle see nearly the same market, so they count once; the desk whose prompt represents a moment rotates.</li>" +
       "<li><b>Same text, every model.</b> Sent through OpenRouter as a single message, reasoning effort low where the model accepts it, a 16,000-token output budget, the provider's default temperature, one attempt.</li>" +
@@ -5250,11 +5306,11 @@ function mlMethod(d) {
       "<li><b>One run per prompt.</b> Asked the same prompt twice, a model gives the same decision only about half to three-quarters of the time. A single run cannot separate skill from that noise.</li>" +
       "<li><b>A borrowed seat.</b> Each prompt carries the record, lessons and open watches of the desk it came from. The question answered is \"what would this model do if it took over that seat\", not \"how does it trade from a blank page\".</li>" +
       "<li><b>Low effort only.</b> Our seats run at low reasoning effort for cost and speed. A model may do better thinking harder; that is a different benchmark.</li>" +
-      "<li><b>No fees, slippage or position sizing.</b></li></ul></div></details>" +
+      "<li><b>No fees, slippage or position sizing.</b></li></ul></div></details>") +
     "<details class='box'><summary class='box-h'>Who pays, and who checks</summary><div class='box-b ml-prose'>Every call on this page was paid for by The Bot Exchange at list price. No model maker or provider has sponsored, supplied credits for, or reviewed these results. " +
-      "Models are chosen because we would consider them for a live seat, and a model that fails stays on the board. The scoring code, the naive baselines and every pick are published here; the prompts are not, because they contain licensed market data.</div></details>" +
+      "Models are chosen because we would consider them for a live seat, and a model that fails stays on the board. The scoring code, the naive baselines and every pick are published here; the desk prompts are not, because they contain licensed market data.</div></details>" +
     "<details class='box'><summary class='box-h'>Changelog</summary><div class='box-b ml-prose'><ul>" +
-      "<li><b>2 Oct 2026</b> — five models added on the same 36 prompts (GPT-5.6 Luna, DeepSeek V4 Pro, MiniMax M3, Gemini 3.7 Flash, Claude Haiku 4.5). Re-scored with five more days of candles (picks that were still open have now resolved). Added: the live-rules basis, naive BTC baselines, the interval that resamples whole ideas, R per 100 prompts, per-model picks, behaviour and token charts. Earlier interval figures are not comparable.</li>" +
+      "<li><b>2 Oct 2026</b> — price-action benchmark added: candle-only prompts with the coin and dates hidden, first set September 2026.</li><li><b>2 Oct 2026</b> — five models added on the same 36 prompts (GPT-5.6 Luna, DeepSeek V4 Pro, MiniMax M3, Gemini 3.7 Flash, Claude Haiku 4.5). Re-scored with five more days of candles (picks that were still open have now resolved). Added: the live-rules basis, naive BTC baselines, the interval that resamples whole ideas, R per 100 prompts, per-model picks, behaviour and token charts. Earlier interval figures are not comparable.</li>" +
       "<li><b>29 Sep 2026</b> — set v1 published: 13 models on 36 prompts from 24–27 Sep, plus the September track record.</li></ul>" +
       "A new set is frozen each month once its picks have had time to resolve.</div></details>" +
     "</div>" +
