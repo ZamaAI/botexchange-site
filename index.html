@@ -1081,6 +1081,12 @@
     <div id="ml-legend-kind"></div>
     <div class="ml-grid" id="ml-high"></div>
   </details>
+  <details class="ml-sec hidden" id="ml-months-box" open>
+    <summary>Month by month: the same chart test on other months</summary>
+    <p class="sub" id="ml-months-sub" style="max-width:980px"></p>
+    <div class="ml-wrap"><table class="data ml-table" id="ml-months"></table></div>
+    <div class="src" id="ml-months-legend"></div>
+  </details>
   <details class="ml-sec">
     <summary>All the numbers in one table</summary>
     <div class="ml-wrap"><table class="data ml-table" id="ml-table"></table></div>
@@ -4896,9 +4902,44 @@ function mlBars(items, o) {
 }
 function mlLegend(parts) { return "<div class='ml-leg'>" + parts.map(function (p) { return "<span><i class='" + p[0] + "'></i>" + p[1] + "</span>"; }).join("") + "</div>"; }
 
+// [#540] The chart benchmark on other months — one row per model, one column per month, R per pick on the basis the
+// switch above selects. A month is ONE market: a model that only looks good in the month the market went its way has
+// shown direction, not skill, so the two "always" baselines sit in the same table.
+function mlRenderMonths(isP) {
+  var box = $("ml-months-box"), pm = _ml.data && _ml.data.priceMonths;
+  if (!box) return;
+  if (!isP || !pm || pm.length < 2) { box.classList.add("hidden"); return; }
+  box.classList.remove("hidden");
+  var months = pm.slice().sort(function (a, b) { return String(a.since) < String(b.since) ? -1 : 1; });
+  var label = function (m) { try { return new Date(m.since).toLocaleDateString("en-GB", { month: "short", year: "2-digit", timeZone: "UTC" }); } catch (e) { return m.set; } };
+  var by = {}, order = [];
+  months.forEach(function (m, i) { (m.board || []).forEach(function (r) { if (!by[r.model]) { by[r.model] = { row: r, cells: [] }; order.push(r.model); } by[r.model].cells[i] = r; }); });
+  var rows = order.map(function (k) { return by[k]; }).filter(function (x) { return x.cells.filter(Boolean).length >= 2; });
+  var cell = function (r) {
+    if (!r) return "<td class='rt' style='color:var(--ink3)'>—</td>";
+    var m = mlM(r), ci = m.ci, small = !(m.decided >= ML_MIN_N), clear = !small && ci && ci.length === 2 && ci[0] != null && (ci[0] > 0 || ci[1] < 0);
+    var col = small ? "var(--ink3)" : m.avgR > 0 ? "var(--up)" : m.avgR < 0 ? "var(--down)" : "inherit";
+    var tip = (m.decided || 0) + " decided picks" + (ci && ci[0] != null ? " · 90% interval " + mlFmt(ci[0], 2) + " to " + mlFmt(ci[1], 2) + "R" : "") + (small ? " · too few to judge" : clear ? " · interval excludes zero" : " · interval includes zero");
+    return "<td class='rt' title='" + esc(tip) + "' style='color:" + col + (clear ? ";font-weight:700" : "") + "'>" + (m.avgR == null ? "—" : (m.avgR > 0 ? "+" : "") + mlFmt(m.avgR, 2) + "R") + (clear ? " *" : "") + "</td>";
+  };
+  var score = function (x) { var v = x.cells.filter(Boolean).map(function (r) { return mlM(r).avgR; }).filter(function (v) { return v != null; }); return v.length ? v.reduce(function (a, b) { return a + b; }, 0) / v.length : -9; };
+  var models = rows.filter(function (x) { return !x.row.baseline; }).sort(function (a, b) { return score(b) - score(a); }), bases = rows.filter(function (x) { return x.row.baseline; });
+  var line = function (x) {
+    var up = x.cells.filter(function (r) { return r && mlM(r).avgR > 0; }).length, n = x.cells.filter(Boolean).length;
+    return "<tr" + (x.row.baseline ? " style='font-style:italic'" : "") + "><td class='ml-model'>" + esc(mlName(x.row)) + (x.row.baseline ? " BTC" : "") + "</td>" + months.map(function (m, i) { return cell(x.cells[i]); }).join("") + "<td class='rt'>" + up + " of " + n + "</td></tr>";
+  };
+  $("ml-months").innerHTML = "<tr><th>Model</th>" + months.map(function (m) { return "<th class='rt' title='" + esc(m.moments + " charts") + "'>" + esc(label(m)) + "</th>"; }).join("") + "<th class='rt'>Months above zero</th></tr>" +
+    models.map(line).join("") + bases.map(line).join("");
+  var clearUp = models.filter(function (x) { return x.cells.some(function (r) { if (!r) return false; var m = mlM(r); return m.decided >= ML_MIN_N && m.ci && m.ci[0] > 0; }); }).length;
+  $("ml-months-sub").innerHTML = "The same test — hidden coin, hidden dates, one trade or no trade — on " + months.length + " separate months (" + months.map(function (m) { return esc(String(m.moments)); }).join(" / ") + " charts). R per pick. " +
+    (clearUp ? clearUp + " model" + (clearUp === 1 ? " has" : "s have") + " at least one month clearly above zero." : "<b>No model has a month clearly above zero</b>: every positive figure sits inside its own margin of error.") +
+    " Read each model across the row, then against the two baselines: a month where simply holding long (or short) won is a month the market did the work.";
+  $("ml-months-legend").innerHTML = "Bold with * = the 90% interval excludes zero (hover a cell for the interval and the number of decided picks). Grey = fewer than " + ML_MIN_N + " decided picks. Only models run on at least two months are listed; all figures follow the “Score picks by” switch above.";
+}
 function mlRender() {
   var d = mlD(); if (!d) return;
   var isP = mlIsP();
+  mlRenderMonths(isP);
   var all = (d.board || []).slice();
   var models = all.filter(function (r) { return !r.baseline && !r.liveFleet; });
   var fleet = all.filter(function (r) { return r.liveFleet; })[0], bases = all.filter(function (r) { return r.baseline; });
@@ -5479,6 +5520,7 @@ function mlMethod(d) {
       d.providersTable.slice(0, 14).map(function (p) { return "<tr><td class='ml-model'>" + esc(p.provider) + "</td><td class='rt'>" + p.calls + "</td><td class='rt'>" + mlFmt(p.medianSec, 1, "s") + "</td><td class='rt'>" + (p.outPerSec || "—") + "</td><td>" + p.models.map(function (x) { return esc(ML_NAMES[x] || x); }).join(", ") + "</td></tr>"; }).join("") +
       "</table></div>" + (d.providersTable.length > 14 ? "…and " + (d.providersTable.length - 14) + " more with a handful of answers each. " : "") + "A failed call names no provider, so this table shows who served, not who failed.</div></details>" : "") +
     "<details class='box'><summary class='box-h'>Changelog</summary><div class='box-b ml-prose'><ul>" +
+      "<li><b>4 Oct 2026</b> — month-by-month view added to the price-action benchmark: the same chart test run on June, July and August 2026 for five low-cost models (290 / 300 / 300 charts), beside September. Scored as raw ideas, no model has a month clearly above zero, and in August — when simply holding long made +0.59R a pick — all five finished at or below zero. Scored under our live rules, GPT-5.6 Luna and GPT-6 Luna were clearly positive in August (+0.20R and +0.17R), still well short of holding long (+0.47R). Use the “Score picks by” switch to see both.</li>" +
       "<li><b>4 Oct 2026</b> — Claude Opus 5.5 and Claude Sonnet 5.5 added on the chart set (260 moments, low effort like every model here; not run on the desk set). Opus traded on 4 charts in 10 and finished below always-long BTC (−0.25R a pick, 20 targets against 70 stops). Sonnet declined almost every chart (7 picks from 260), too few to score. Both answered every chart in a few seconds.</li>" +
       "<li><b>4 Oct 2026</b> — Muse Spark 1.3 added on both sets, same prompts and same frozen scoring (it could not be called before: the provider required an account setting). On the desk set it made 9 picks from 36 prompts, too few to judge. On the chart set it sits level with always-long BTC (+0.14R against +0.12R a pick, intervals overlapping) — matched within noise, not beaten.</li>" +
       "<li><b>3 Oct 2026</b> — five more low-cost models added on both sets, same prompts and same frozen scoring (Seed 1.6 Flash, Hunyuan 3, GPT-OSS 120B, Gemma 4 31B, Ling 3.0 Flash). None clears every gate with a positive result; always-long BTC is still unbeaten on the chart set.</li>" +
