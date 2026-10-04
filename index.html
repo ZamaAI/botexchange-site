@@ -3780,11 +3780,21 @@ function startLiveLayers() {
       .then(function (d) { if (d && d.generatedAt) renderAll(d); })
       .catch(function () {});
   }, 300000);
-  setInterval(function () { liveStripRefresh(undefined); }, 60000);
-  setInterval(fetchMacroStrip, 60000);
-  setInterval(fetchHLStrip, 60000);
-  setInterval(renderLiveMarkets, 30000);
-  setInterval(refreshOpenLive, 30000);
+  // [#539] Every poll below hits Hyperliquid FROM THE VISITOR'S BROWSER, and Hyperliquid rate-limits per IP. A tab left
+  // open in the background kept polling (browsers throttle hidden timers to about once a minute, they do not stop them):
+  // on 4 Oct several background tabs on the operator's own machine spent the bot's read budget. A hidden tab now makes
+  // NO exchange request; when it becomes visible again it refreshes at once if a poll was missed, then resumes its cadence.
+  pollVisible(function () { liveStripRefresh(undefined); }, 60000);
+  pollVisible(fetchMacroStrip, 60000);
+  pollVisible(fetchHLStrip, 60000);
+  pollVisible(renderLiveMarkets, 30000);
+  pollVisible(refreshOpenLive, 30000);
+}
+function pollVisible(fn, ms) {
+  var last = Date.now();
+  var run = function () { if (document.hidden) return; last = Date.now(); fn(); };
+  setInterval(run, ms);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden && Date.now() - last >= ms) run(); });
 }
 // [#184c] Consensus & disagreement — one row per asset, one chip per desk stance.
 // Green = long, red = short; solid chip = a position on (paper desks included),
