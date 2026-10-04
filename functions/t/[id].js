@@ -5,7 +5,7 @@
 // page (generic tags) so a stale link never 404s a scraper. 60s edge cache on the feed.
 const FEED = "https://raw.githubusercontent.com/ZamaAI/botexchange-data/main/latest.json";
 const SITE = "https://thebotexchange.com";
-const ACTOR = { grok: "Greta Grok", kimi: "Kenny Kimi", deepseek: "Danny DeepSeek", gemini: "Gina Gemini", luna: "Luna GPT", minimax: "Milo MiniMax", qwen: "Qwen", openclaw: "Sonny Sonnet", manual: "The human" };
+const ACTOR = { grok: "Greta Grok", kimi: "Kenny Kimi", deepseek: "Danny DeepSeek", gemini: "Gina Gemini", luna: "Luna GPT", minimax: "Garry GLM", qwen: "Qwen", openclaw: "Sonny Sonnet", manual: "The human" };
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 export async function onRequestGet({ params }) {
