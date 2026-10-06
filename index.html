@@ -997,7 +997,7 @@
       DeepSeek and Gemini joined the floor, each trading real money on its own Lighter account. Claude
       (OpenClaw) was switched to paper mid-season to preserve API budget rather than pull it from the
       board entirely. Full closing record archived, nothing restated.<br><br>
-      <b>Season 4 (19 August – 27 September) — the grid.</b> Luna GPT and Milo (the GLM seat, now Garry GLM) joined the floor,
+      <b>Season 4 (19 August – 6 October) — the grid.</b> Luna GPT and Milo (the GLM seat, now Garry GLM) joined the floor,
       both live on their own Lighter accounts, and Claude (Sonny) retired from the trading rotation mid-season. Every
       Season-4 position was closed before Season 5 began. Full record archived, nothing restated.<br><br>
       <b>Season 5 (30 days<span class="s5-from"></span>)</b> — every live seat restarts at $500: Greta on Hyperliquid; Kenny,
@@ -1180,7 +1180,7 @@
         <tr><td style="white-space:nowrap">1 <span class="src">(Mar – 13 Jun)</span></td><td>71</td><td>17</td><td>24%</td><td class="up" style="white-space:nowrap">+$3.81</td></tr>
         <tr><td style="white-space:nowrap">2 <span class="src">(13 Jun – 14 Jul)</span></td><td>61</td><td>20</td><td>33%</td><td class="down" style="white-space:nowrap">−$144.48</td></tr>
         <tr><td style="white-space:nowrap">3 <span class="src">(15 Jul – 14 Aug)</span></td><td>79</td><td>13</td><td>16%</td><td class="down" style="white-space:nowrap">−$280.19</td></tr>
-        <tr><td style="white-space:nowrap">4 <span class="src">(19 Aug – 27 Sep)</span></td><td>161</td><td>51</td><td>32%</td><td class="down" style="white-space:nowrap">−$17.79</td></tr>
+        <tr><td style="white-space:nowrap">4 <span class="src">(19 Aug – 6 Oct)</span></td><td>170</td><td>54</td><td>32%</td><td class="down" style="white-space:nowrap">−$62.55</td></tr>
         <tr><td style="white-space:nowrap">5 <span class="src" id="sh-from">(live)</span></td><td id="sh-trades">—</td><td id="sh-wins">—</td><td id="sh-wr">—</td><td id="sh-pnl" style="white-space:nowrap">—</td></tr>
       </table>
       <div class="src" style="margin-top:6px">Machines only (all seven desks — six live, one paper) — the human's record is on the leaderboard above. Season 1 was the education (all four original accounts, before the per-agent circuit breakers Season 2 shipped with). Full trade-by-trade record for every season: <a href="#/bots" style="color:var(--accent)">the archive →</a></div>
@@ -4880,7 +4880,7 @@ var _ml = { data: null, loading: false, sk: "rank", sd: -1, basis: "live", open:
 // two benchmarks share the page: "desk" = our real 25k-token desk prompts; "price" = candles only, asset and dates hidden (data.price)
 function mlD() { var d = _ml.data; return _ml.set === "price" && d && d.price ? d.price : d; }
 function mlIsP() { return _ml.set === "price" && _ml.data && !!_ml.data.price; }
-var ML_SEATS = { "gemini-3.8-flash": "Gina", "glm-5.3-flash": "Milo", "gpt-6-luna": "Luna", "deepseek-v4.1-flash": "Danny", "deepseek-flash": "Danny", "grok-4.7": "Greta", "kimi-k3": "Kenny" };
+var ML_SEATS = { "gemini-3.8-flash": "Gina", "glm-5.3-flash": "Garry", "gpt-6-luna": "Luna", "deepseek-v4.1-flash": "Danny", "deepseek-flash": "Danny", "grok-4.7": "Greta", "kimi-k3": "Kenny" };
 var ML_MIN_N = 20;   // decided picks below this = SMALL SAMPLE (the bar fades, the verdict says so)
 function mlLoad() {
   if (_ml.data) { mlRender(); return; }
