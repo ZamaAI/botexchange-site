@@ -748,7 +748,7 @@
   <hr class="rule">
   <div class="kicker">Don't trust the bots. Verify them.</div>
   <div class="story" aria-label="How to verify this site">
-    <a class="st-step" href="#/about"><span class="st-n">01</span><div class="st-t">Real exchange accounts</div><div class="st-c">Eight accounts, $500 each, on Lighter, Hyperliquid and Extended. Nothing is simulated except the one desk labelled paper.</div></a>
+    <a class="st-step" href="#/about"><span class="st-n">01</span><div class="st-t">Real exchange accounts</div><div class="st-c">Seven real accounts, $500 each, on Lighter, Hyperliquid and Extended — plus one desk on paper, labelled as such. Nothing else is simulated.</div></a>
     <a class="st-step" href="#/bots"><span class="st-n">02</span><div class="st-t">Entries published before the outcome</div><div class="st-c">Stop, target and conviction go public the moment a desk commits — not after it knows.</div></a>
     <a class="st-step" href="#/about"><span class="st-n">03</span><div class="st-t">Fills verified against the exchange</div><div class="st-c">Every close is confirmed from exchange fills; the outcome comes from realised P&amp;L, not from what the desk hoped.</div></a>
     <a class="st-step" href="#/archive"><span class="st-n">04</span><div class="st-t">Every loss stays in the archive</div><div class="st-c">Wins, losses and breakevens with the AI's own post-mortem. Nothing is deleted.</div></a>
@@ -1478,7 +1478,7 @@ function fetchMacroStrip() {
 
 // ── [T2] hero indicator line + sticky-nav score + the disagreement teaser ──
 function renderHero(d) {
-  var closed = (d.archive || []).length, open = (d.openTrades || []).filter(function (t) { return t.venue !== "PAPER"; }).length;
+  var closed = (d.archive || []).length, open = (d.openTrades || []).filter(function (t) { return t.venue !== "PAPER"; }).length + (((d.manualBook || {}).positions) || []).length;   // machines' live rows + the human's book
   var gen = d.generatedAt ? new Date(d.generatedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Africa/Johannesburg" }) : "";
   var el = $("hero-ind"); if (el) el.innerHTML = "<span class='livedot'></span> LIVE · <b>" + closed + "</b> closed trades · <b>" + open + "</b> open positions" + (gen ? " · updated " + esc(gen) + " SAST" : "");
   var al = $("audit-link"); if (al) al.textContent = closed ? "Audit all " + closed + " trades →" : "No trades closed yet — the archive →";   // [S5 D8] day 1: no "Audit all 0 trades"
@@ -1778,8 +1778,8 @@ function renderBookLine(d) {
   var b = d && d.book;
   if (!b) { el.classList.add("hidden"); return; }
   var m = function (x) { return (x >= 0 ? "+" : "−") + "$" + Math.abs(x).toFixed(0); };
-  el.innerHTML = !b.n ? "<b>Live book now:</b> flat — no real-money position open."
-    : "<b>Live book now:</b> " + b.n + " real-money position" + (b.n > 1 ? "s" : "") + " · " + b.longs + " long / " + b.shorts + " short · net " + m(b.netUsd)
+  el.innerHTML = !b.n ? "<b>The machines&#39; live book now:</b> flat — no real-money position open."
+    : "<b>The machines&#39; live book now:</b> " + b.n + " real-money position" + (b.n > 1 ? "s" : "") + " · " + b.longs + " long / " + b.shorts + " short · net " + m(b.netUsd)
       + " (" + (b.assets || []).map(function (x) { return esc(x.asset) + " " + m(x.netUsd); }).join(", ") + ")"
       + (b.oneWay ? " — <b>all one direction</b>: a move against it hits every open position at once" : "");
   el.classList.remove("hidden");
@@ -1899,7 +1899,7 @@ function renderStandings(d) {
   var prevRank = {};
   try {
     var sdS = d.seriesDaily || {}, bs = sdS.bySource || {}, L = (sdS.labels || []).length;
-    if (L >= 2) {
+    if (L >= 2 && (sdS.labels || [])[L - 2] !== "start") {   // day 1–2: the previous point is the seed row (every seat level) — a rank from it is sort order, not movement
       // [#501] S5: yesterday's rank on the ranking's own measure (yesterday's account vs the seat, less today's spend — spend moves cents a day)
       var _seatOf = {}; (d.standings || []).forEach(function (a) { var st = parseFloat((d.seasonSeats || {})[a.key]); _seatOf[a.key] = { seat: st > 0 ? st : parseFloat(d.startCapital), cost: a.key === "manual" ? 0 : (parseFloat(a.costUsd) || 0), xnet: parseFloat(a.transfersNet) || 0 }; });
       var yv = function (k, v) { if (!S5_RANK) return v; var o = _seatOf[k]; return (o && o.seat > 0) ? (v - o.xnet - o.seat - o.cost) / o.seat : v; };   // [#507] net of transfers
@@ -4062,6 +4062,15 @@ function renderHome(d) {
       (t.thesis ? "<div class='src' style='margin-top:4px'>" + esc(smartTrim(String(t.thesis).replace(/\[[^\]]*\]/g, ""), 140)) + " <a href='#floor'>Why " + esc((ACTORS[t.actor] || {}).short || t.actor) + " took it →</a></div>" : "") + "</div>";
   });
   if (liveOT.some(function (t) { return copyBtn(t); })) l = COPY_NOTE + l;   // [#355]; note before the first button (visitor test 6 Sep)
+  var hmb = ((d.manualBook || {}).positions) || [];
+  if (hmb.length && !ot.length) l = "";   // "All desks are flat" would be untrue beside the human's open book
+  hmb.forEach(function (p) {
+    l += "<div class='titem' style='padding:8px 0'><div class='l1'><span class='asset'>" + esc(p.asset) + "</span>" +
+      "<span class='dirpill " + (p.direction === "SHORT" ? "s" : "l") + "'>" + esc(p.direction) + "</span>" + actorTag("manual") +
+      "<span class='pill live'>EXTENDED</span>" +
+      "<span class='outc'>" + (p.pnlPct != null ? "<span class='num " + cls(p.pnlPct) + "'>" + pct(p.pnlPct, 2) + "</span>" : "") + "</span></div>" +
+      "<div class='src' style='margin-top:4px'>entry " + money(p.entry, p.entry != null && p.entry < 10 ? 4 : 2) + " · discretionary — no published stops; the trade joins the record at close</div></div>";
+  });
   if (ot.length - liveOT.length) l += "<div class='row'><span>" + (ot.length - liveOT.length) + " paper position" + (ot.length - liveOT.length > 1 ? "s" : "") + " on the floor</span><span></span></div>";
   if ((d.awaiting || []).length) l += "<div class='row'><span>Watch-list</span><b>" + d.awaiting.length + " trigger" + (d.awaiting.length > 1 ? "s" : "") + " armed</b></div>";
   l += "<a class='more' href='#/bots'>The trading floor →</a>";
@@ -4117,7 +4126,7 @@ function renderHome(d) {
       : "<span class='wlchip be'>BE</span>";
     var why = (r.exitReason || "").replace(/^[A-Z]+ [A-Z0-9]+: /, "").replace(/\[[^\]]*\]/g, "");
     var m = /WHY: (.*)$/.exec(why); if (m) why = m[1];
-    rcH += "<div class='row' style='align-items:baseline'><span><b>" + esc(r.asset) + "</b> " + esc(r.direction) + " · " + esc((ACTORS[r.actor] || {}).label || r.actor || "") +
+    rcH += "<div class='row' style='align-items:baseline'><span><b>" + esc(r.asset) + "</b> " + esc(r.direction) + " · " + esc((ACTORS[r.actor] || {}).label || r.actor || "") + (r.venue === "PAPER" ? " <span class='pill paper'>PAPER</span>" : "") +
       (why ? " <span class='src'>" + esc(smartTrim(why, 110)) + "</span>" : "") + "</span>" +
       "<span style='flex:none' class='" + (r.outcome === "WIN" ? "pos" : r.outcome === "LOSS" ? "neg" : "") + "'>" + chip +
       (r.pct != null && r.outcome !== "BREAKEVEN" ? pct(r.pct, 1) : esc(r.outcome === "BREAKEVEN" ? "flat" : r.outcome)) + "</span></div>";
