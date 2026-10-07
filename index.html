@@ -4192,8 +4192,8 @@ function renderHome(d) {
     var rec = function (x) { return (x.w || 0) + "W–" + (x.l || 0) + "L–" + (x.be || 0) + "BE" + ((x.open || 0) ? " · " + x.open + " open" : ""); };
     funnelH = "<div class='src' style='margin-top:12px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08)'>" +
       "<b>What happens to a watch.</b> Over the last " + esc(String(wf.windowDays)) + " days the desks registered <b>" + wf.registered + "</b> watches. " +
-      "<b>" + wf.filled + "</b> triggered and filled (" + pctOf(wf.filled) + "%), <b>" + wf.dropped + "</b> were dropped before or at the trigger (" + pctOf(wf.dropped) + "%), <b>" + wf.expired + "</b> expired untouched, <b>" + wf.pending + "</b> are still waiting." +
-      "<div style='display:flex;height:8px;margin:8px 0 4px;background:rgba(255,255,255,.06)'>" + seg("filled", wf.filled, "#1e7a3a") + seg("dropped", wf.dropped, "#b5473a") + seg("expired", wf.expired, "#8a6414") + seg("pending", wf.pending, "#556") + "</div>" +
+      "<b>" + wf.filled + "</b> triggered and filled (" + pctOf(wf.filled) + "%), <b>" + wf.dropped + "</b> were dropped before or at the trigger (" + pctOf(wf.dropped) + "%), <b>" + wf.expired + "</b> expired untouched, " + (wf.cancelled ? "<b>" + wf.cancelled + "</b> were cancelled when a season ended, " : "") + "<b>" + wf.pending + "</b> are still waiting." +
+      "<div style='display:flex;height:8px;margin:8px 0 4px;background:rgba(255,255,255,.06)'>" + seg("filled", wf.filled, "#1e7a3a") + seg("dropped", wf.dropped, "#b5473a") + seg("expired", wf.expired, "#8a6414") + seg("cancelled at a season end", wf.cancelled || 0, "#3a4a5a") + seg("pending", wf.pending, "#556") + "</div>" +
       "<span style='color:#1e7a3a'>■</span> filled · <span style='color:#b5473a'>■</span> dropped · <span style='color:#8a6414'>■</span> expired · <span style='color:#889'>■</span> pending" +
       "</div>";
     if (wf.dropReasons && wf.dropReasons.length) {
