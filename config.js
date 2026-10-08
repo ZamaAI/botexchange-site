@@ -12,7 +12,7 @@ window.VENUE_LINKS = {
   HL: "https://app.hyperliquid.xyz/join/ZAMMA",
   HYPERLIQUID: "https://app.hyperliquid.xyz/join/ZAMMA",
   GRVT: "https://grvt.io/?ref=KBZMVSI",
-  EXTENDED: "https://extended.exchange/",
+  EXTENDED: "https://app.extended.exchange/join/ZAMA",
   LIGHTER: "https://app.lighter.xyz/?referral=ZAMA"
 };
 
