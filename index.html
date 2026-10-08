@@ -36,6 +36,27 @@
   .num { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: .96em; }
   .wrap { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
   .hidden { display: none !important; }
+  /* [#565] Extended Calls */
+  .ec-cta { display: inline-block; background: var(--ink); color: #fff; text-decoration: none; font-weight: 700; font-size: 13px; padding: 8px 14px; border-radius: 3px; margin-right: 8px; }
+  .ec-cta:hover { background: var(--accent); }
+  .ec-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin: 22px 0 8px; border-bottom: 2px solid var(--ink); padding-bottom: 5px; }
+  .ec-h b { font-size: 12px; letter-spacing: .07em; text-transform: uppercase; }
+  .ec-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 8px; }
+  @media (max-width: 980px) { .ec-grid { grid-template-columns: 1fr; } }
+  .ec-card { border: 1px solid var(--line); background: #fff; min-width: 0; }
+  .ec-card > .ec-who { background: var(--bg2); border-bottom: 1px solid var(--line); padding: 8px 12px; font-size: 13px; font-weight: 700; }
+  .ec-card > .ec-who small { display: block; font-weight: 400; color: var(--ink3); font-size: 11px; margin-top: 1px; }
+  .ec-call { padding: 10px 12px; border-bottom: 1px solid var(--line2); }
+  .ec-call:last-child { border-bottom: none; }
+  .ec-call .ec-t { font-weight: 700; font-size: 14px; }
+  .ec-call .ec-lv { font-family: var(--mono); font-size: 12px; color: var(--ink2); margin: 4px 0 3px; line-height: 1.6; font-variant-numeric: tabular-nums; }
+  .ec-call .ec-why { font-size: 12.5px; color: var(--ink2); line-height: 1.45; overflow-wrap: anywhere; }
+  .ec-tag { display: inline-block; font-size: 9.5px; font-weight: 700; letter-spacing: .07em; padding: 1px 5px; border-radius: 3px; margin-left: 6px; vertical-align: 2px; font-family: var(--mono); border: 1px solid var(--line); color: var(--ink3); background: var(--bg2); text-transform: uppercase; }
+  .ec-tag.own { color: #1b5fa8; border-color: #a9c8ea; background: #eef5fc; }
+  .ec-tag.win { color: #1e7a3a; border-color: #9ec9ab; background: #f0f7f2; }
+  .ec-tag.loss { color: #a8321b; border-color: #e9b3a8; background: #fdf1ee; }
+  .ec-meta { padding: 9px 12px; font-size: 12px; color: var(--ink2); border-top: 1px solid var(--line2); line-height: 1.5; overflow-wrap: anywhere; }
+  .ec-meta b { color: var(--ink); }
 
   .strip { background: var(--accent); color: #eaf3ee; font-size: 12px; font-weight: 600; }
   .strip .wrap { display: flex; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 6px 10px; padding: 6px 16px; }
@@ -663,6 +684,7 @@
   <a href="#/bots" data-page="bots">The Bots</a>
   <a href="#/desks" data-page="desks">Desks</a>
   <a href="#/models" data-page="models">Model Lab</a>
+  <a href="#/calls" data-page="calls">Extended Calls</a>
   <a href="#/archive" data-page="archive">Archive</a>
   <a href="#/about" data-page="about">About</a>
   <span class="nav-score" id="nav-score"></span>
@@ -1115,6 +1137,31 @@
   </details>
   <div class="ml-foot" id="ml-foot"></div>
 </div>
+<div class="page" data-page="calls">
+  <!-- [#565] EXTENDED CALLS: the bot's twice-daily Extended brief in public. Data: feed.extendedCalls (built from the bot's own
+       pick log; the page never triggers a model call). A rules-only screen and two models each make up to three calls on
+       Extended's liquid perps; every call is checked 12 hours later against real 15-minute bars. Candidates, not advice. -->
+  <div class="kicker">Extended Calls · Final Arc competition · 7 Oct – 3 Nov</div>
+  <h2 class="sec" id="calls">A rulebook and two AI models call Extended perps. Every call is scored.</h2>
+  <p class="sub" style="max-width:900px">Twice a day (06:12 and 18:12 SAST) a rules-only screen reads Extended's most liquid perps — crypto, plus commodities, indices, FX and stocks — and proposes up to three trades from price, range and funding alone. Two AI models then read the same markets <i>and the news</i>, and either take the screen's setups or make calls of their own, with their own stop and target. Twelve hours later each call is checked on real 15-minute bars: target first, stop first, or still open, after taker fees. Nothing is removed afterwards.</p>
+  <p class="sub" style="max-width:900px"><a id="ec-cta" class="ec-cta hidden" target="_blank" rel="sponsored noopener">Trade these markets on Extended →</a> <span class="src" id="ec-cta-note"></span></p>
+  <div id="ec-board"></div>
+  <div id="ec-latest"></div>
+  <div id="ec-history"></div>
+  <div class="boxcol" style="max-width:900px">
+    <div class="box"><div class="box-h">How the competition scores — and what these calls are built for</div><div class="box-b">
+      <p>Extended's Final Arc competition scores each trader on <b>PnL × (weighted volume)<sup>0.7</sup> × (time-weighted open interest)<sup>0.3</sup></b>. Crypto taker fills count 100% toward volume, RWA taker fills (commodities, indices, FX, stocks) 50%, maker fills 10%.</p>
+      <p>PnL multiplies everything else, so volume on a losing book earns nothing. The pickers are told exactly that: <b>profit first</b>, then volume and time in the market — prefer a liquid market that takes a taker order at size, and a position that can stay open because funding pays it or at least does not charge it. Never a trade for the volume alone.</p>
+    </div></div>
+    <div class="box"><div class="box-h">How to read a call</div><div class="box-b">
+      <p><b>Entry</b> is the market price at the moment the brief was sent — not a limit order and not anyone's fill. Re-check the price before acting on a level you read here.</p>
+      <p><b>R</b> is the result in units of the call's own risk: stopped out is −1R, a target at twice the stop distance is +2R. <b>R:R</b> and every result are after a taker fee in and a taker fee out. Funding is shown but not counted in the result.</p>
+      <p><b>The screen</b> is a fixed rulebook with no model: it fades the edges of a 48-hour range, or goes with a clean 24-hour one-way move, and needs a reward of at least 1.2× the risk. <b>The models</b> see every market the screen read, plus headlines, dated events, flows and positioning. A call marked <i>own</i> uses the model's own stop and target; the code drops one whose stop is on the wrong side, closer than 0.6% or further than 10%, or whose reward after fees is under 1.2× the risk.</p>
+      <p>If the target and the stop both fall inside one 15-minute bar, the call is scored as stopped. A model may also make no call at all. These are machine-generated candidates published for the record — <b>not financial advice</b>, and the operator may or may not trade any of them.</p>
+    </div></div>
+  </div>
+</div>
+
 <div class="page" data-page="about">
   <div class="kicker">The experiment</div>
   <h2 class="sec">About The Bot Exchange</h2>
@@ -3923,6 +3970,70 @@ var GATE_GLOSS = {
   earnings_window:   ["Earnings window", "equity opened inside the 24h before a print"],
   fleet_asset_cap:   ["Fleet asset cap", "three live desks already hold that asset and direction"]
 };
+// ── [#565] EXTENDED CALLS (#/calls) — feed.extendedCalls: the bot's Extended brief, the screen beside two models, scored at 12h ──
+function ecPx(x) { if (x == null || !isFinite(x) || x <= 0) return "—"; var d = x >= 1000 ? 0 : x >= 100 ? 1 : x >= 10 ? 2 : x >= 1 ? 3 : x >= 0.1 ? 4 : x >= 0.01 ? 5 : 6; return Number(x).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d }); }
+function ecR(v, dp) { return v == null || !isFinite(v) ? "—" : (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(dp == null ? 2 : dp) + "R"; }
+function ecWhen(iso) { try { return new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Africa/Johannesburg" }) + " SAST"; } catch (e) { return String(iso || ""); } }
+function ecResult(p, horizonH, at) {
+  if (p.result === "TARGET") return "<span class='ec-tag win'>hit target " + esc(ecR(p.netR)) + "</span>";
+  if (p.result === "STOP") return "<span class='ec-tag loss'>stopped " + esc(ecR(p.netR)) + "</span>";
+  if (p.result === "OPEN") return "<span class='ec-tag " + (p.netR > 0 ? "win" : p.netR < 0 ? "loss" : "") + "'>still open at 12h " + esc(ecR(p.netR)) + "</span>";
+  if (p.result === "UNSCORABLE") return "<span class='ec-tag'>could not be scored</span>";
+  var due = new Date(at).getTime() + (horizonH || 12) * 3600000, left = due - Date.now();
+  return "<span class='ec-tag'>" + (left > 0 ? "scored in " + (left >= 3600000 ? Math.round(left / 3600000) + "h" : Math.max(1, Math.round(left / 60000)) + " min") : "scoring due") + "</span>";
+}
+function ecOrigin(p) { return p.origin === "own" ? "<span class='ec-tag own'>own call</span>" : p.origin === "shortlist" ? "<span class='ec-tag'>" + (p.agrees ? "same as the screen" : "from the screen's shortlist") + "</span>" : ""; }
+function ecCard(k, b, horizonH) {
+  var col = (ACTORS[k.key] || {}).color || "#555";
+  var h = "<div class='ec-card'><div class='ec-who'><span class='swatch' style='background:" + col + "'></span>" + esc(k.label) + "<small>" + esc(k.model || "") + "</small></div>";
+  if (k.error) h += "<div class='ec-call'><span class='src'>No answer this brief — " + esc(k.error) + "</span></div>";
+  else if (!k.picks.length) h += "<div class='ec-call'><div class='ec-t'>No call</div><div class='ec-why'>" + esc(k.noPicks || (k.key === "screen" ? "No setup cleared the screen's bar." : "The model made no call this brief.")) + "</div></div>";
+  k.picks.forEach(function (p) {
+    h += "<div class='ec-call'><div class='ec-t'><span class='" + (p.dir === "LONG" ? "up" : "down") + "'>" + esc(p.asset) + " " + esc(p.dir) + "</span>" + (p.rwa ? "<span class='ec-tag' title='RWA market: taker fills count 50% in the competition'>RWA</span>" : "") + ecOrigin(p) + ecResult(p, horizonH, b.at) + "</div>" +
+      "<div class='ec-lv'>entry ~" + esc(ecPx(p.entry)) + " · target " + esc(ecPx(p.target)) + (p.targetPct != null ? " (" + p.targetPct.toFixed(1) + "%)" : "") + " · stop " + esc(ecPx(p.stop)) + (p.stopPct != null ? " (" + p.stopPct.toFixed(1) + "%)" : "") +
+      "<br>R:R " + (p.rr != null && isFinite(p.rr) ? p.rr.toFixed(1) : "—") + " after fees" + (p.carryDayPct != null ? " · funding " + (p.carryDayPct >= 0 ? "pays " : "costs ") + Math.abs(p.carryDayPct).toFixed(3) + "%/day" : "") + (p.setup && p.origin !== "own" ? " · " + esc(String(p.setup).toLowerCase()) + " setup" : "") + "</div>" +
+      (p.reason ? "<div class='ec-why'>" + esc(p.reason) + "</div>" : "") + "</div>";
+  });
+  var m = "";
+  (k.skips || []).forEach(function (x) { m += "<div><b>Skips " + esc(x.asset) + " " + esc(x.dir) + ":</b> " + esc(x.reason || "no reason given") + "</div>"; });
+  if (k.view) m += "<div><b>View:</b> " + esc(k.view) + "</div>";
+  if (m) h += "<div class='ec-meta'>" + m + "</div>";
+  return h + "</div>";
+}
+function renderCalls(d) {
+  var bEl = $("ec-board"), lEl = $("ec-latest"), hEl = $("ec-history"); if (!bEl || !lEl || !hEl) return;
+  var cta = $("ec-cta"), url = (window.VENUE_LINKS || {}).EXTENDED;
+  if (cta && url) { cta.href = url; cta.classList.remove("hidden"); var cn = $("ec-cta-note"); if (cn) cn.textContent = /[?&](ref|referral|invite|code)=|\/(join|ref|invite|r)\//i.test(url) ? "Our referral link — it opens the venue and places nothing." : "Opens the venue; it places nothing."; }
+  var c = d.extendedCalls;
+  if (!c || !c.latest) { bEl.innerHTML = ""; hEl.innerHTML = ""; lEl.innerHTML = "<p class='src'>No brief has been published yet — the next one is at 06:12 or 18:12 SAST.</p>"; return; }
+  // scoreboard
+  var any = c.board.some(function (x) { return x.scored > 0; });
+  var h = "<div class='ec-h'><b>Scoreboard</b><span class='src'>every call since 8 Oct, checked " + esc(String(c.horizonH)) + "h after its brief, after taker fees · " + esc(String(c.briefs)) + " brief" + (c.briefs === 1 ? "" : "s") + " so far</span></div>" +
+    "<div style='overflow-x:auto'><table class='data'><tr><th>Picker</th><th class='rt'>Calls</th><th class='rt'>Scored</th><th class='rt'>Hit target</th><th class='rt'>Stopped</th><th class='rt'>Open at 12h</th><th class='rt'>Net R</th><th class='rt'>Per call</th><th>Whose levels</th></tr>";
+  c.board.forEach(function (x) {
+    var col = (ACTORS[x.key] || {}).color || "#555", small = x.scored > 0 && x.scored < (c.minRead || 20);
+    var lv = x.key === "screen" ? "<span class='src'>its own rulebook</span>" : [["own", "its own"], ["shortlist", "the screen's"]].map(function (o) { var a = x[o[0]]; return a && a.scored ? o[1] + " " + a.scored + ": " + ecR(a.netR) : null; }).filter(Boolean).join(" · ") || "<span class='src'>—</span>";
+    h += "<tr><td><span class='swatch' style='background:" + col + "'></span><b>" + esc(x.label) + "</b> <span class='src'>" + esc(x.model || "") + "</span></td><td class='rt'>" + x.calls + (x.pending ? " <span class='src'>(" + x.pending + " not yet due)</span>" : "") + "</td><td class='rt'>" + x.scored + "</td><td class='rt up'>" + x.target + "</td><td class='rt down'>" + x.stop + "</td><td class='rt'>" + x.open + "</td>" +
+      "<td class='rt " + (x.netR > 0 ? "up" : x.netR < 0 ? "down" : "") + "'><b>" + esc(ecR(x.netR)) + "</b></td><td class='rt'>" + esc(ecR(x.avgR)) + (small ? " <span class='src'>too few to read</span>" : "") + "</td><td>" + lv + "</td></tr>";
+  });
+  h += "</table></div>" + (any ? "<p class='src' style='margin:-8px 0 0'>A model that makes no call scores nothing for that brief, so compare <b>Net R</b> across pickers, not the per-call average. Under " + esc(String(c.minRead || 20)) + " scored calls is too few to read.</p>" : "<p class='src' style='margin:-8px 0 0'>Nothing has reached its 12-hour check yet. The first results appear here the moment they are scored — wins and losses alike.</p>");
+  bEl.innerHTML = h;
+  // latest brief
+  var b = c.latest;
+  lEl.innerHTML = "<div class='ec-h'><b>Latest brief — " + esc(ecWhen(b.at)) + "</b><span class='src'>" + (b.screened != null ? esc(String(b.screened)) + " markets read · " + esc(String(b.setups)) + " had a setup" : "") + (b.context ? " · news context " + esc(b.context) : "") + "</span></div>" +
+    "<div class='ec-grid'>" + b.pickers.map(function (k) { return ecCard(k, b, c.horizonH); }).join("") + "</div>" +
+    (b.pickers.length < 2 ? "<p class='src'>This brief went out before the two models joined (8 Oct). From the next brief, Gemini's and DeepSeek's calls appear beside the screen's.</p>" : "");
+  // earlier briefs
+  if (!c.history || !c.history.length) { hEl.innerHTML = ""; return; }
+  var t = "<div class='ec-h'><b>Earlier briefs</b><span class='src'>newest first</span></div><div style='overflow-x:auto'><table class='data'><tr><th>Brief</th><th>Picker</th><th>Calls and how they ended</th></tr>";
+  c.history.forEach(function (hb) {
+    hb.pickers.forEach(function (k, i) {
+      var calls = k.error ? "<span class='src'>no answer</span>" : !k.picks.length ? "<span class='src'>no call</span>" : k.picks.map(function (p) { return "<span class='" + (p.dir === "LONG" ? "up" : "down") + "'>" + esc(p.asset) + " " + esc(p.dir) + "</span>" + (p.origin === "own" ? "<span class='ec-tag own'>own</span>" : "") + ecResult(p, c.horizonH, hb.at); }).join(" &nbsp; ");
+      t += "<tr><td class='src' style='white-space:nowrap'>" + (i === 0 ? esc(ecWhen(hb.at)) : "") + "</td><td><span class='swatch' style='background:" + ((ACTORS[k.key] || {}).color || "#555") + "'></span>" + esc(k.label) + "</td><td>" + calls + "</td></tr>";
+    });
+  });
+  hEl.innerHTML = t + "</table></div>";
+}
 function renderReferee(d) {
   var el = $("hw-referee-body"); if (!el) return;
   var r = d.referee;
@@ -4822,7 +4933,7 @@ function renderAll(d) {
   } catch (e) {}
   _feedLast = d;   // [#323]
   _feedForReveal = d;
-  renderStamps(d); renderStrip(d.market); renderHeadline(d); renderFleetPnl(d); renderSeasonHistory(d); try { renderRules(d); } catch (e) {} renderStandings(d); renderReferee(d); try { renderHero(d); } catch (e) {}
+  renderStamps(d); renderStrip(d.market); renderHeadline(d); renderFleetPnl(d); renderSeasonHistory(d); try { renderRules(d); } catch (e) {} renderStandings(d); renderReferee(d); try { renderCalls(d); } catch (e) {} try { renderHero(d); } catch (e) {}
   try { renderHook(d); } catch (e) {}
   renderChart(d); renderPlayers(d); renderSeasonStats(d); renderLearned(d); renderFloor(d); renderRiskIndex(d); renderDesk(d); try { renderVolPanel(d); } catch (e) {}   /* [#516] */ try { if (_deskKey || location.hash === "#/desks" || location.hash.indexOf("#/desk/") === 0) renderDeskPage(d, _deskKey); } catch (e) {} try { if (location.hash.indexOf("#/t/") === 0) renderTradePage(d, location.hash.slice(4)); } catch (e) {} renderHLWhales(d); renderTopTraders(d); renderLighterWhales(d); renderCalendar(d); renderCalMonth(d); renderThisWeek(d); renderIntel(d); renderIntelRail(d);
   // [#289] the risk-rules card reads the FEED's enforced limits — the static prose went
@@ -5634,7 +5745,7 @@ function mlMethod(d) {
 // ── Site pages: hash router (#/markets), legacy-anchor map, per-page nav state ──
 (function () {
   document.body.classList.add("paged");   // no-JS renders all pages stacked
-  var PAGES = { home: 1, markets: 1, charts: 1, news: 1, calendar: 1, bots: 1, about: 1, desks: 1, archive: 1, trade: 1, rules: 1, models: 1 };   // [#254c] models = the Model Lab benchmark   // [#503] rules = the Season-5 pre-registration   // [T2] archive is its own room; [#359] trade = one room per trade, reached by link only
+  var PAGES = { home: 1, markets: 1, charts: 1, news: 1, calendar: 1, bots: 1, about: 1, desks: 1, archive: 1, trade: 1, rules: 1, models: 1, calls: 1 };   // [#254c] models = the Model Lab benchmark   // [#503] rules = the Season-5 pre-registration   // [T2] archive is its own room; [#359] trade = one room per trade, reached by link only
   var INTEL_PAGES = { markets: 1, charts: 1, news: 1, calendar: 1 };   // [T2] the terminal — one nav item, four rooms
   // old deep links (#race, #wire, #rules…) land on the right page, scrolled to the element
   var LEGACY = { race: "home", players: "bots", floor: "bots", desknotes: "bots", tape: "bots",
