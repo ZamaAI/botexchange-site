@@ -67,12 +67,12 @@
   .pt-strip .t { font: 700 11px var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
   .pt-strip .c { white-space: nowrap; } .pt-strip .c b { font-family: var(--mono); } .pt-strip .go { margin-left: auto; color: var(--accent); font-weight: 600; white-space: nowrap; }
   /* scoreboard: fixed, even columns so the leverage figures line up; one line per row */
-  table.dc-sb { table-layout: fixed; min-width: 1090px; }
+  table.dc-sb { table-layout: fixed; min-width: 1160px; }
   table.dc-sb th { white-space: normal; line-height: 1.25; vertical-align: bottom; padding: 6px 8px; }
   table.dc-sb td { padding: 8px 8px; white-space: nowrap; }
   table.dc-sb td:first-child { overflow: hidden; text-overflow: ellipsis; }
   table.dc-sb th:first-child, table.dc-sb td:first-child { width: 235px; padding-left: 4px; }
-  table.dc-sb th:nth-child(2), table.dc-sb th:nth-child(3) { width: 58px; } table.dc-sb th:nth-child(5) { width: 104px; } table.dc-sb th:nth-child(11), table.dc-sb th:nth-child(12) { width: 112px; }
+  table.dc-sb th:nth-child(2), table.dc-sb th:nth-child(3) { width: 58px; } table.dc-sb th:nth-child(5) { width: 104px; } table.dc-sb th:nth-child(12), table.dc-sb th:nth-child(13) { width: 112px; }
   table.dc-sb .g { border-left: 1px solid var(--line); }
   table.dc-sb .dc-liq { display: inline; margin-left: 5px; font-size: 10px; }
   .dc-head { display: flex; flex-wrap: wrap; gap: 14px 28px; align-items: stretch; margin-bottom: 12px; }
@@ -5254,12 +5254,12 @@ function dcRender() {
   if (cEl && !cEl._dcBound) { cEl._dcBound = 1; ["pointermove", "pointerdown"].forEach(function (ev) { cEl.addEventListener(ev, dcHover); }); cEl.addEventListener("pointerleave", dcHover, true); cEl.addEventListener("pointercancel", dcHover, true); }
 
   // what each model says right now
-  var h = "<div class='ec-h'><b>What each model says</b><span class='src'>asked " + esc(dcClock(lastMs)) + " SAST · asked again every " + esc(String(d.everyMin)) + " minutes · a call stays open until the model changes its mind or price reaches its level</span></div><div class='dc-now'>";
+  var h = "<div class='ec-h'><b>What each model says</b><span class='src'>asked " + esc(dcClock(lastMs)) + " SAST · asked again every " + esc(String(d.everyMin)) + " minutes · a call stays open until the model changes its mind, price reaches its target (a win) or touches its wrong-at level (a loss)</span></div><div class='dc-now'>";
   models.forEach(function (x) {
     h += "<div class='dc-card'><div class='who'>" + esc(x.label) + (x.rule ? " <span class='ec-tag'>fixed rules · no model · free</span>" : "") + "</div>";
     d.assets.forEach(function (a) {
       var n = (x.now || {})[a] || { dir: "FLAT" };
-      h += "<div class='ln'>" + esc(a) + " " + dcDir(n.dir) + (n.dir !== "FLAT" ? (n.conf != null ? " <span class='dc-conf'>confidence " + n.conf + "/10</span>" : "") + " · from " + esc(ecPx(n.entry)) + " · <span class='" + dcCls(n.retPct) + "'>" + esc(dcPct(n.retPct)) + "</span>" + (n.invalid != null ? " <span class='src'>· wrong at " + esc(ecPx(n.invalid)) + "</span>" : "") : "") + "</div>" +
+      h += "<div class='ln'>" + esc(a) + " " + dcDir(n.dir) + (n.dir !== "FLAT" ? (n.conf != null ? " <span class='dc-conf'>confidence " + n.conf + "/10</span>" : "") + " · from " + esc(ecPx(n.entry)) + " · <span class='" + dcCls(n.retPct) + "'>" + esc(dcPct(n.retPct)) + "</span></div>" + (n.target != null || n.invalid != null ? "<div class='src' style='margin-top:1px'>" + (n.target != null ? "target <b class='up'>" + esc(ecPx(n.target)) + "</b>" : "") + (n.target != null && n.invalid != null ? " · " : "") + (n.invalid != null ? "wrong at <b class='down'>" + esc(ecPx(n.invalid)) + "</b>" : "") + "</div>" : "") : "</div>") +
         (n.noAnswer ? "<div class='why'>No answer last round" + (n.dir !== "FLAT" ? " — its call stays open" : "") + ".</div>" : n.why ? "<div class='why'>" + esc(n.why) + "</div>" : "");
     });
     h += "</div>";
@@ -5267,18 +5267,18 @@ function dcRender() {
   nEl.innerHTML = h + "</div>";
   // scoreboard
   var t = "<div class='ec-h'><b>Scoreboard</b><span class='src'>every call since " + esc(ecWhen(d.since)) + " · " + esc(String(d.ticks)) + " round" + (d.ticks === 1 ? "" : "s") + " so far · open calls counted at the current price</span></div>" +
-    "<div style='overflow-x:auto'><table class='data dc-sb'><tr><th>Model</th><th class='rt'>Calls</th><th class='rt'>Closed</th><th class='rt'>Closed in profit</th><th class='rt' title='Of every long or short call, how often price had moved its way one round later. No exits involved. A coin flip scores about 50%.'>Right " + esc(String(d.everyMin)) + " min later</th><th class='rt'>Long / short</th>" +
+    "<div style='overflow-x:auto'><table class='data dc-sb'><tr><th>Model</th><th class='rt'>Calls</th><th class='rt'>Closed</th><th class='rt'>Closed in profit</th><th class='rt' title='Of every long or short call, how often price had moved its way one round later. No exits involved. A coin flip scores about 50%.'>Right " + esc(String(d.everyMin)) + " min later</th><th class='rt'>Long / short</th><th class='rt' title='Calls closed by price reaching the profit target / by price touching the wrong-at level'>Target / stop</th>" +
     d.tiers.map(function (L) { return "<th class='rt" + (L === 1 || L === 10 ? " g" : "") + "'>" + L + "x</th>" + (L === 1 && d.feePct ? "<th class='rt' title='The 1x result after a " + d.feePct.toFixed(2) + "% trading fee for every call opened and closed'>1x after fees</th>" : ""); }).join("") + "<th class='rt g'>Answered</th><th class='rt'>Spent</th></tr>";
   d.board.forEach(function (x) {
-    t += "<tr" + (x.baseline ? " class='dc-base'" : "") + "><td><b>" + esc(x.label) + "</b>" + (x.baseline ? " <span class='src'>no model</span>" : x.rule ? " <span class='src'>fixed rules, no model</span>" : "") + "</td><td class='rt'>" + x.positions + "</td><td class='rt'>" + x.closed + "</td><td class='rt'>" + (x.closed ? x.wins + " of " + x.closed : "—") + "</td><td class='rt'>" + (x.hit30 && x.hit30.n ? "<b>" + Math.round(100 * x.hit30.right / x.hit30.n) + "%</b> <span class='src'>of " + x.hit30.n + "</span>" : "—") + "</td><td class='rt'>" + x.long + " / " + x.short + "</td>" +
+    t += "<tr" + (x.baseline ? " class='dc-base'" : "") + "><td><b>" + esc(x.label) + "</b>" + (x.baseline ? " <span class='src'>no model</span>" : x.rule ? " <span class='src'>fixed rules, no model</span>" : "") + "</td><td class='rt'>" + x.positions + "</td><td class='rt'>" + x.closed + "</td><td class='rt'>" + (x.closed ? x.wins + " of " + x.closed : "—") + "</td><td class='rt'>" + (x.hit30 && x.hit30.n ? "<b>" + Math.round(100 * x.hit30.right / x.hit30.n) + "%</b> <span class='src'>of " + x.hit30.n + "</span>" : "—") + "</td><td class='rt'>" + x.long + " / " + x.short + "</td><td class='rt'>" + (x.baseline || x.rule ? "—" : "<span class='up'>" + (x.targeted || 0) + "</span> / <span class='down'>" + (x.invalidated || 0) + "</span>") + "</td>" +
       d.tiers.map(function (L) { var c = x.tiers[L] || {}, v = 100 * c.sumR; return "<td class='rt " + dcCls(v) + (L === 1 || L === 10 ? " g" : "") + "'" + (c.liq ? " title='" + c.liq + " call" + (c.liq === 1 ? "" : "s") + " liquidated at " + L + "x'" : "") + ">" + (L === 1 ? "<b>" : "") + esc(dcPct(v, L === 1 ? 2 : L >= 50 ? 0 : 1)) + (L === 1 ? "</b>" : "") + (c.liq ? "<span class='dc-liq'>" + c.liq + " liq</span>" : "") + "</td>" + (L === 1 && d.feePct ? "<td class='rt " + dcCls(x.net1xPct) + "'>" + (x.net1xPct == null ? "—" : esc(dcPct(x.net1xPct, 2))) + "</td>" : ""); }).join("") +
-      "<td class='rt g'>" + (x.baseline || x.rule || x.answeredPct == null ? "—" : x.answeredPct + "%") + "</td><td class='rt'>" + (x.baseline ? "—" : x.rule ? "free" : "$" + Number(x.costUsd || 0).toFixed((x.costUsd || 0) < 1 ? 3 : 2)) + "</td></tr>";
+      "<td class='rt g'>" + (x.baseline || x.rule || x.answeredPct == null ? "—" : x.answeredPct + "%") + "</td><td class='rt'>" + (x.baseline ? "—" : x.rule ? "free" : (x.costUsd || 0) > 0 && x.costUsd < 0.0005 ? "&lt;$0.001" : "$" + Number(x.costUsd || 0).toFixed((x.costUsd || 0) < 1 ? 3 : 2)) + "</td></tr>";
   });
-  bEl.innerHTML = t + "</table></div><p class='src' style='margin:-8px 0 0'>Ranked on the 1x column: the plain price change of every call added up. <b>Right " + esc(String(d.everyMin)) + " min later</b> is the cleanest read of direction: no exits, just whether price went the call’s way one round on (about 50% is a coin flip). <b>1x after fees</b> charges a normal trading fee per call, so a model that flips often pays for it. Leveraged columns are the same calls replayed; <span class='dc-liq' style='margin:0'>2 liq</span> means two calls were wiped out at that leverage — see the notes below.</p>";
+  bEl.innerHTML = t + "</table></div><p class='src' style='margin:-8px 0 0'>Ranked on the 1x column: the plain price change of every call added up. <b>Target / stop</b> counts calls closed at the profit target against calls closed at the wrong-at level. <b>Right " + esc(String(d.everyMin)) + " min later</b> is the cleanest read of direction: no exits, just whether price went the call’s way one round on (about 50% is a coin flip). <b>1x after fees</b> charges a normal trading fee per call, so a model that flips often pays for it. Leveraged columns are the same calls replayed; <span class='dc-liq' style='margin:0'>2 liq</span> means two calls were wiped out at that leverage — see the notes below.</p>";
   // recently closed
   if (!d.recent || !d.recent.length) { rEl.innerHTML = "<div class='ec-h'><b>Closed calls</b></div><p class='src'>No call has closed yet — the first ones close when a model changes its mind or price reaches its level.</p>"; }
   else {
-    var HOW = { flipped: "changed direction", flat: "stepped aside", invalidated: "price hit its level" };
+    var HOW = { flipped: "changed direction", flat: "stepped aside", invalidated: "price hit its wrong-at level", target: "target hit" };
     var r = "<details class='box' style='margin-top:18px'" + (_dc.recOpen ? " open" : "") + "><summary class='box-h'>Closed calls · the last " + d.recent.length + ", newest first</summary><div style='overflow-x:auto;padding:0 10px'><table class='data'><tr><th>Model</th><th>Call</th><th class='rt'>From</th><th class='rt'>To</th><th>Held</th><th>Ended because</th><th class='rt'>Result</th><th class='rt'>Worst point</th><th>Its reason</th></tr>";
     d.recent.forEach(function (p) {
       var mins = Math.round((p.to - p.from) / 60000), held = mins >= 120 ? (mins / 60).toFixed(1) + " h" : mins + " min";
