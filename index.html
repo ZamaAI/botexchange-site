@@ -62,6 +62,10 @@
   .dc-liq { color: #a8321b; font-size: 10.5px; white-space: nowrap; }
   tr.dc-base td { color: var(--muted, #6b6e68); font-style: italic; }
   /* [#598] Paper Trade pulse: coin cards, charts, whale table */
+  .pt-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 0 0 14px; padding: 9px 14px; border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0; background: var(--bg2); color: var(--ink); text-decoration: none; font-size: 13px; }
+  .pt-strip:hover { border-color: var(--accent); } .pt-strip.hidden { display: none; }
+  .pt-strip .t { font: 700 11px var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
+  .pt-strip .c { white-space: nowrap; } .pt-strip .c b { font-family: var(--mono); } .pt-strip .go { margin-left: auto; color: var(--accent); font-weight: 600; white-space: nowrap; }
   .dc-head { display: flex; flex-wrap: wrap; gap: 14px 28px; align-items: stretch; margin-bottom: 12px; }
   .dc-hl { flex: 1 1 460px; min-width: 0; } .dc-hl .dc-status { margin-bottom: 0; }
   .dc-verdict { flex: 0 1 380px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-content: start; min-width: 260px; }
@@ -776,6 +780,8 @@
       <p class="fleetpnl-note">Not investment advice. Small accounts, real venue risk; the human desk is also the operator.</p>
     </div>
   </div>
+  <!-- [#603] Paper Trade teaser: the AI panel's current BTC / ETH lean, from direction_calls.json; hidden until the file loads -->
+  <a class="pt-strip hidden" id="pt-strip" href="#/direction"></a>
   <!-- the verdict: the question the site exists to answer, then today's answer -->
   <div class="race-row">
     <div class="race-row-left">
@@ -5098,9 +5104,22 @@ function dcLoad() {
 function dcFetch() {
   fetch("https://raw.githubusercontent.com/ZamaAI/botexchange-data/main/direction_calls.json?cb=" + Math.floor(Date.now() / 120000), { cache: "no-store" })
     .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-    .then(function (j) { _dc.data = j; _dc.at = Date.now(); dcRender(); })
+    .then(function (j) { _dc.data = j; _dc.at = Date.now(); ptStrip(); dcRender(); })
     .catch(function (e) { var m = $("dc-method"); if (m && !_dc.data) m.textContent = "The calls file could not be loaded (" + e.message + "). It refreshes every half hour — try again shortly."; });
 }
+// [#603] the homepage teaser: what the AI panel leans on each coin right now. Hidden when the file is missing, has no pulse, or is over 90 minutes old.
+function ptStrip() {
+  var el = $("pt-strip"), d = _dc.data; if (!el) return;
+  var P = d && d.pulse && d.pulse.coins, fresh = d && Date.now() - Date.parse(d.lastTick) < 90 * 60000;
+  if (!P || !fresh) { el.classList.add("hidden"); return; }
+  el.innerHTML = "<span class='t'>Paper Trade · AI panel now</span>" + d.assets.map(function (a) {
+    var c = P[a], ln = c && c.lean; if (!ln) return "";
+    var w = ln.dir === "LONG" ? "<b class='up'>LONG</b>" : ln.dir === "SHORT" ? "<b class='down'>SHORT</b>" : "<b>NO CALL</b>", side = ln.dir === "LONG" ? ln.long : ln.dir === "SHORT" ? ln.short : null;
+    return "<span class='c'>" + esc(a) + " $" + esc(ecPx(c.mark)) + " " + w + (side != null ? " <span class='src'>" + side + " of " + ln.of + " models</span>" : "") + "</span>";
+  }).join("") + "<span class='src'>updated " + esc(dcClock(Date.parse(d.lastTick))) + " SAST</span><span class='go'>Whales, funding and every model’s call →</span>";
+  el.classList.remove("hidden");
+}
+setTimeout(function () { try { if (!_dc.data) dcFetch(); } catch (e) {} }, 1200);   // one small fetch on any page so the homepage teaser can fill
 function dcPct(v, dp) { return v == null || !isFinite(v) ? "—" : (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(dp == null ? 2 : dp) + "%"; }
 function dcCls(v) { return v > 0 ? "up" : v < 0 ? "down" : ""; }
 function dcDir(x) { return x === "LONG" ? "<b class='up'>LONG</b>" : x === "SHORT" ? "<b class='down'>SHORT</b>" : "<b>FLAT</b>"; }
