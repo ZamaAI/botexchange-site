@@ -1098,7 +1098,7 @@
        lean) above the paper direction calls and their scoreboard. Data: direction_calls.json in the data repo, written every 30
        minutes by a standalone script; the page itself never calls a model or the venue. -->
   <div class="dc-head"><div class="dc-hl">
-  <div class="kicker">Paper Trade (BTC / ETH) · Hyperliquid · refreshed every 30 minutes</div>
+  <div class="kicker">Paper Trade (BTC / ETH) · Hyperliquid · refreshed every 15 minutes</div>
   <h2 class="sec" id="direction">BTC and ETH right now: who is long, who is short</h2>
   <p class="sub">Where the biggest Hyperliquid accounts are positioned, what funding and open interest say, and which way a panel of AI models would trade it — each model on the record below, scored against a coin flip. Free, no sign-up. Paper only; nothing here is traded.</p>
   <div class="dc-status" id="dc-status"></div>
@@ -1112,7 +1112,7 @@
   <div class="boxcol" style="max-width:900px">
     <details class="box"><summary class="box-h">How to read this page</summary><div class="box-b">
       <p><b>Models lean</b> is one number from −100 to +100. Every model that is long adds its own confidence (1 to 10), every model that is short subtracts it, and a model standing aside counts zero; the total is divided by the most it could be. So two confident longs beside three models standing aside is a modest lean, and a split panel is no lean. It measures agreement, not accuracy — the scoreboard is where accuracy shows.</p>
-      <p><b>Whales</b> are the largest accounts on Hyperliquid’s public leaderboard (at least $1 million) that hold an open position, re-read every 30 minutes. The split is by dollars. Read it with care: large accounts often short the perpetual to hedge coins they own elsewhere, so a short-heavy book is normal and is not the same as a bearish bet. The change over a day says more than the level.</p>
+      <p><b>Whales</b> are the largest accounts on Hyperliquid’s public leaderboard (at least $1 million) that hold an open position, re-read every 15 minutes. The split is by dollars. Read it with care: large accounts often short the perpetual to hedge coins they own elsewhere, so a short-heavy book is normal and is not the same as a bearish bet. The change over a day says more than the level.</p>
       <p><b>Funding</b> is what one side pays the other to keep a position open, shown as a yearly rate so venues compare. Positive means longs pay shorts — more demand to be long. <b>Open interest</b> is the dollar value of all open contracts: rising with price means new money is joining the move; rising while price falls means new shorts.</p>
       <p>A model’s <b>confidence</b> is its own claim. Once there are enough closed calls we will publish how often each confidence level was actually right.</p>
     </div></details>
@@ -1121,7 +1121,7 @@
       <p>That is why a model can be right about direction and still lose at high leverage: being early is enough. <b>1000x</b> liquidates on a 0.1% move, which BTC often covers inside a single minute.</p>
     </div></details>
     <details class="box"><summary class="box-h">The rulebook — fixed rules, no model, free</summary><div class="box-b">
-      <p>One rule, checked every 30 minutes on the same 15-minute candles: <b>go with a strong 16-hour move, otherwise stand aside.</b> The move over the last 16 hours has to be larger than eight times the average range of a 15-minute bar; if it is, the rulebook goes with it and is wrong 1.5 average bars away. Most of the time it is flat.</p>
+      <p>One rule, checked every round on the same 15-minute candles: <b>go with a strong 16-hour move, otherwise stand aside.</b> The move over the last 16 hours has to be larger than eight times the average range of a 15-minute bar; if it is, the rulebook goes with it and is wrong 1.5 average bars away. Most of the time it is flat.</p>
       <p>It was chosen by testing 282 simple rules on 180 days of BTC and ETH candles: ranked on the first 120 days, then checked on the last 60, which it had not seen. It was the only one that made money in both periods with its neighbouring settings also positive. That is weak evidence, not proof — it is the best of 282 tries, and after a realistic trading fee it is about break-even. It is here as the honest bar for the models: free, fixed in advance, and not adjusted afterwards.</p>
     </div></details>
     <details class="box"><summary class="box-h">What is not counted</summary><div class="box-b">
@@ -5105,12 +5105,12 @@ function dcFetch() {
   fetch("https://raw.githubusercontent.com/ZamaAI/botexchange-data/main/direction_calls.json?cb=" + Math.floor(Date.now() / 120000), { cache: "no-store" })
     .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
     .then(function (j) { _dc.data = j; _dc.at = Date.now(); ptStrip(); dcRender(); })
-    .catch(function (e) { var m = $("dc-method"); if (m && !_dc.data) m.textContent = "The calls file could not be loaded (" + e.message + "). It refreshes every half hour — try again shortly."; });
+    .catch(function (e) { var m = $("dc-method"); if (m && !_dc.data) m.textContent = "The calls file could not be loaded (" + e.message + "). It refreshes every 15 minutes — try again shortly."; });
 }
-// [#603] the homepage teaser: what the AI panel leans on each coin right now. Hidden when the file is missing, has no pulse, or is over 90 minutes old.
+// [#603] the homepage teaser: what the AI panel leans on each coin right now. Hidden when the file is missing, has no pulse, or is over an hour old.
 function ptStrip() {
   var el = $("pt-strip"), d = _dc.data; if (!el) return;
-  var P = d && d.pulse && d.pulse.coins, fresh = d && Date.now() - Date.parse(d.lastTick) < 90 * 60000;
+  var P = d && d.pulse && d.pulse.coins, fresh = d && Date.now() - Date.parse(d.lastTick) < 60 * 60000;
   if (!P || !fresh) { el.classList.add("hidden"); return; }
   el.innerHTML = "<span class='t'>Paper Trade · AI panel now</span>" + d.assets.map(function (a) {
     var c = P[a], ln = c && c.lean; if (!ln) return "";
@@ -5230,10 +5230,10 @@ function dcRender() {
   var cEl = $("dc-charts"), wEl = $("dc-whales"), cc = P ? P.coins[_dc.coin] : null;
   _dc.ch = {};
   if (cEl) cEl.innerHTML = !cc ? "" : "<div class='ec-h'><b>" + esc(_dc.coin) + " this week</b><span class='src'>hover or touch a chart for the reading</span>" + tabs + "</div><div class='dc-charts'>" +
-    dcChart("px", "Price, and the models under it", "The band under the line: <b class='up'>green</b> when more models were long, <b class='down'>red</b> when more were short.", cc.hist.px, { fmt: function (v) { return "$" + ecPx(v); }, strip: cc.hist.models, stripFmt: function (n) { return n > 0 ? n + " more long" : n < 0 ? (-n) + " more short" : "models even"; } }) +
+    dcChart("px", "Price, and the models under it", "The band under the line: <b class='up'>green</b> when more models were long, <b class='down'>red</b> when more were short.", cc.hist.px, { fmt: function (v) { return "$" + ecPx(v); }, strip: cc.hist.models, stripStep: d.everyMin * 60000, stripFmt: function (n) { return n > 0 ? n + " more long" : n < 0 ? (-n) + " more short" : "models even"; } }) +
     dcChart("fund", "Funding, hour by hour", "As a yearly rate. Above the line longs pay shorts; below it shorts pay.", (cc.hist.fund || []).map(function (p) { return [p[0], p[1] * 876000]; }), { bars: 1, fmt: function (v) { return dcPct(v, 1); } }) +
-    dcChart("oi", "Open interest", "Dollar value of every open " + esc(_dc.coin) + " contract on Hyperliquid.", cc.hist.oi, { fmt: dcUsd, min: 4, empty: "Collecting — one reading every 30 minutes since 13 Oct. The line appears after a couple of hours." }) +
-    dcChart("wh", "Whales: share of dollars long", "The dashed line is 50%: above it the big accounts are net long.", cc.hist.whaleLongPct, { lo: 0, hi: 100, ref: 50, fmt: function (v) { return Math.round(v) + "%"; }, min: 4, empty: "Collecting — one reading every 30 minutes since 13 Oct. The line appears after a couple of hours." }) + "</div>";
+    dcChart("oi", "Open interest", "Dollar value of every open " + esc(_dc.coin) + " contract on Hyperliquid.", cc.hist.oi, { fmt: dcUsd, min: 4, empty: "Collecting — readings started on 13 Oct. The line appears after a couple of hours." }) +
+    dcChart("wh", "Whales: share of dollars long", "The dashed line is 50%: above it the big accounts are net long.", cc.hist.whaleLongPct, { lo: 0, hi: 100, ref: 50, fmt: function (v) { return Math.round(v) + "%"; }, min: 4, empty: "Collecting — readings started on 13 Oct. The line appears after a couple of hours." }) + "</div>";
   var ws = cc && cc.whales ? cc.whales.positions || [] : [];
   if (wEl) wEl.innerHTML = !ws.length ? "" : "<div class='ec-h'><b>Biggest " + esc(_dc.coin) + " positions</b><span class='src'>the " + ws.length + " largest among " + esc(String(d.pulse.whaleAccounts || "")) + " big accounts · read " + esc(dcClock(Date.parse(d.pulse.whalesAt))) + " SAST</span>" + tabs + "</div>" +
     "<div style='overflow-x:auto'><table class='data'><tr><th>Account</th><th>Side</th><th class='rt'>Size</th><th class='rt'>Entry</th><th class='rt'>Profit / loss now</th><th class='rt'>Leverage</th><th class='rt'>Liquidated at</th></tr>" +
@@ -5258,14 +5258,14 @@ function dcRender() {
   nEl.innerHTML = h + "</div>";
   // scoreboard
   var t = "<div class='ec-h'><b>Scoreboard</b><span class='src'>every call since " + esc(ecWhen(d.since)) + " · " + esc(String(d.ticks)) + " round" + (d.ticks === 1 ? "" : "s") + " so far · open calls counted at the current price</span></div>" +
-    "<div style='overflow-x:auto'><table class='data'><tr><th>Model</th><th class='rt'>Calls</th><th class='rt'>Closed</th><th class='rt'>Closed in profit</th><th class='rt' title='Of every long or short call, how often price had moved its way one round (30 minutes) later. No exits involved. A coin flip scores about 50%.'>Right 30 min later</th><th class='rt'>Long / short</th>" +
+    "<div style='overflow-x:auto'><table class='data'><tr><th>Model</th><th class='rt'>Calls</th><th class='rt'>Closed</th><th class='rt'>Closed in profit</th><th class='rt' title='Of every long or short call, how often price had moved its way one round later. No exits involved. A coin flip scores about 50%.'>Right " + esc(String(d.everyMin)) + " min later</th><th class='rt'>Long / short</th>" +
     d.tiers.map(function (L) { return "<th class='rt'>" + L + "x</th>" + (L === 1 && d.feePct ? "<th class='rt' title='The 1x result after a " + d.feePct.toFixed(2) + "% trading fee for every call opened and closed'>1x after fees</th>" : ""); }).join("") + "<th class='rt'>Answered</th><th class='rt'>Spent</th></tr>";
   d.board.forEach(function (x) {
     t += "<tr" + (x.baseline ? " class='dc-base'" : "") + "><td><b>" + esc(x.label) + "</b>" + (x.baseline ? " <span class='src'>no model</span>" : x.rule ? " <span class='src'>fixed rules, no model</span>" : "") + "</td><td class='rt'>" + x.positions + "</td><td class='rt'>" + x.closed + "</td><td class='rt'>" + (x.closed ? x.wins + " of " + x.closed : "—") + "</td><td class='rt'>" + (x.hit30 && x.hit30.n ? "<b>" + Math.round(100 * x.hit30.right / x.hit30.n) + "%</b> <span class='src'>of " + x.hit30.n + "</span>" : "—") + "</td><td class='rt'>" + x.long + " / " + x.short + "</td>" +
       d.tiers.map(function (L) { var c = x.tiers[L] || {}, v = 100 * c.sumR; return "<td class='rt " + dcCls(v) + "'>" + (L === 1 ? "<b>" : "") + esc(dcPct(v, L === 1 ? 2 : L >= 100 ? 0 : 1)) + (L === 1 ? "</b>" : "") + (c.liq ? "<br><span class='dc-liq'>" + c.liq + " liquidated</span>" : "") + "</td>" + (L === 1 && d.feePct ? "<td class='rt " + dcCls(x.net1xPct) + "'>" + (x.net1xPct == null ? "—" : esc(dcPct(x.net1xPct, 2))) + "</td>" : ""); }).join("") +
       "<td class='rt'>" + (x.baseline || x.rule || x.answeredPct == null ? "—" : x.answeredPct + "%") + "</td><td class='rt'>" + (x.baseline ? "—" : x.rule ? "free" : "$" + Number(x.costUsd || 0).toFixed(2)) + "</td></tr>";
   });
-  bEl.innerHTML = t + "</table></div><p class='src' style='margin:-8px 0 0'>Ranked on the 1x column: the plain price change of every call added up. <b>Right 30 min later</b> is the cleanest read of direction: no exits, just whether price went the call’s way one round on (about 50% is a coin flip). <b>1x after fees</b> charges a normal trading fee per call, so a model that flips often pays for it. Leveraged columns are the same calls replayed — see the notes below.</p>";
+  bEl.innerHTML = t + "</table></div><p class='src' style='margin:-8px 0 0'>Ranked on the 1x column: the plain price change of every call added up. <b>Right " + esc(String(d.everyMin)) + " min later</b> is the cleanest read of direction: no exits, just whether price went the call’s way one round on (about 50% is a coin flip). <b>1x after fees</b> charges a normal trading fee per call, so a model that flips often pays for it. Leveraged columns are the same calls replayed — see the notes below.</p>";
   // recently closed
   if (!d.recent || !d.recent.length) { rEl.innerHTML = "<div class='ec-h'><b>Closed calls</b></div><p class='src'>No call has closed yet — the first ones close when a model changes its mind or price reaches its level.</p>"; }
   else {
@@ -6075,7 +6075,7 @@ function mlMethod(d) {
     calendar: { t: "Calendar — The Bot Exchange",
                 d: "The week ahead in market-moving events: FOMC, CPI, jobs data and megacap earnings, with impact ratings." },
     direction: { t: "Paper Trade (BTC / ETH) — The Bot Exchange",
-                d: "BTC and ETH on Hyperliquid, refreshed every 30 minutes: where the biggest accounts are long or short, funding, open interest, and which way a panel of AI models leans — each scored on a public paper record." },
+                d: "BTC and ETH on Hyperliquid, refreshed every 15 minutes: where the biggest accounts are long or short, funding, open interest, and which way a panel of AI models leans — each scored on a public paper record." },
     archive:  { t: "Archive — The Bot Exchange",
                 d: "Every trade this season, permanently recorded with its AI post-mortem — wins, losses and breakevens, nothing deleted." },
     bots:     { t: "The Bots — The Bot Exchange",
