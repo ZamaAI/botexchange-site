@@ -1043,7 +1043,7 @@
        Data: direction_calls.json in the data repo (written by a standalone script; the page never triggers a model call). -->
   <div class="kicker">Paper Trade (BTC / ETH) · paper calls · every 30 minutes</div>
   <h2 class="sec" id="direction">Five AI models call BTC and ETH every half hour. Can any of them beat a coin flip?</h2>
-  <p class="sub" style="max-width:900px">Every 30 minutes each model reads the same Hyperliquid candles and answers one question per coin: <b>long, short or flat</b>, with the price that would prove it wrong. A call stays open for as long as the model keeps the same direction; it closes when the model flips, steps aside, or price touches that level. Nothing is traded — this is a paper record, scored on real prices. Three rules with no model behind them (always long, always short, a coin flip) run beside the models as the bar to beat.</p>
+  <p class="sub" style="max-width:900px">Every 30 minutes each model reads the same Hyperliquid candles and answers one question per coin: <b>long, short or flat</b>, with the price that would prove it wrong. A call stays open for as long as the model keeps the same direction; it closes when the model flips, steps aside, or price touches that level. Nothing is traded — this is a paper record, scored on real prices. Beside them runs <b>the rulebook</b> — a fixed rule with no AI that costs nothing — and three yardsticks with no judgement at all (always long, always short, a coin flip). A model earns its fee only if it beats them.</p>
   <div id="dc-now"></div>
   <div id="dc-board"></div>
   <div id="dc-recent"></div>
@@ -1052,9 +1052,13 @@
       <p><b>1x</b> is the plain price change of every call added up, open calls included at the current price. The other columns replay the same calls with leverage: at <b>100x</b> a 1% move against a position at any moment wipes it out (shown as a liquidation, −100% of that position), even if price later came back; if it survives, the result is 100 times the price change. Each position stakes the same amount, so the column is the sum of those results.</p>
       <p>That is why a model can be right about direction and still lose at high leverage: being early is enough. <b>1000x</b> liquidates on a 0.1% move, which BTC often covers inside a single minute.</p>
     </div></div>
+    <div class="box"><div class="box-h">The rulebook — fixed rules, no model, free</div><div class="box-b">
+      <p>One rule, checked every 30 minutes on the same 15-minute candles: <b>go with a strong 16-hour move, otherwise stand aside.</b> The move over the last 16 hours has to be larger than eight times the average range of a 15-minute bar; if it is, the rulebook goes with it and is wrong 1.5 average bars away. Most of the time it is flat.</p>
+      <p>It was chosen by testing 282 simple rules on 180 days of BTC and ETH candles: ranked on the first 120 days, then checked on the last 60, which it had not seen. It was the only one that made money in both periods with its neighbouring settings also positive. That is weak evidence, not proof — it is the best of 282 tries, and after a realistic trading fee it is about break-even. It is here as the honest bar for the models: free, fixed in advance, and not adjusted afterwards.</p>
+    </div></div>
     <div class="box"><div class="box-h">What is not counted</div><div class="box-b">
       <p>Fees, funding, slippage and maintenance margin are <b>not</b> modelled. At high leverage they are large — a real venue would liquidate earlier and charge on the full leveraged size — so every leveraged figure here flatters the real thing. A held call is one position, however long it lasts. A model that fails to answer keeps its open call unchanged.</p>
-      <p>The record starts on 13 Oct 2026 and is too short to read for a long while: we will only say a model has direction skill if it beats all three no-model rules over at least 200 closed calls. Machine-generated and published for the record — <b>not financial advice</b>.</p>
+      <p>The record starts on 13 Oct 2026 and is too short to read for a long while: we will only say a model has direction skill if it beats the three yardsticks over at least 200 closed calls — and it only earns its cost if it beats the rulebook too. Machine-generated and published for the record — <b>not financial advice</b>.</p>
     </div></div>
   </div>
   <p class="src" id="dc-method" style="max-width:900px"></p>
@@ -5044,7 +5048,7 @@ function dcRender() {
   // what each model says right now
   var h = "<div class='ec-h'><b>Right now</b><span class='src'>last asked " + esc(ecWhen(d.lastTick)) + " · BTC " + esc(ecPx(d.marks.BTC)) + " · ETH " + esc(ecPx(d.marks.ETH)) + " · asked again every " + esc(String(d.everyMin)) + " minutes</span></div><div class='dc-now'>";
   models.forEach(function (x) {
-    h += "<div class='dc-card'><div class='who'>" + esc(x.label) + "</div>";
+    h += "<div class='dc-card'><div class='who'>" + esc(x.label) + (x.rule ? " <span class='ec-tag'>fixed rules · no model · free</span>" : "") + "</div>";
     d.assets.forEach(function (a) {
       var n = (x.now || {})[a] || { dir: "FLAT" };
       h += "<div class='ln'>" + esc(a) + " " + dcDir(n.dir) + (n.dir !== "FLAT" ? " from " + esc(ecPx(n.entry)) + " · <span class='" + dcCls(n.retPct) + "'>" + esc(dcPct(n.retPct)) + "</span>" + (n.invalid != null ? " <span class='src'>· wrong at " + esc(ecPx(n.invalid)) + "</span>" : "") : "") + "</div>" +
@@ -5058,9 +5062,9 @@ function dcRender() {
     "<div style='overflow-x:auto'><table class='data'><tr><th>Model</th><th class='rt'>Calls</th><th class='rt'>Closed</th><th class='rt'>Closed in profit</th><th class='rt'>Long / short</th>" +
     d.tiers.map(function (L) { return "<th class='rt'>" + L + "x</th>"; }).join("") + "<th class='rt'>Answered</th><th class='rt'>Spent</th></tr>";
   d.board.forEach(function (x) {
-    t += "<tr" + (x.baseline ? " class='dc-base'" : "") + "><td><b>" + esc(x.label) + "</b>" + (x.baseline ? " <span class='src'>no model</span>" : "") + "</td><td class='rt'>" + x.positions + "</td><td class='rt'>" + x.closed + "</td><td class='rt'>" + (x.closed ? x.wins + " of " + x.closed : "—") + "</td><td class='rt'>" + x.long + " / " + x.short + "</td>" +
+    t += "<tr" + (x.baseline ? " class='dc-base'" : "") + "><td><b>" + esc(x.label) + "</b>" + (x.baseline ? " <span class='src'>no model</span>" : x.rule ? " <span class='src'>fixed rules, no model</span>" : "") + "</td><td class='rt'>" + x.positions + "</td><td class='rt'>" + x.closed + "</td><td class='rt'>" + (x.closed ? x.wins + " of " + x.closed : "—") + "</td><td class='rt'>" + x.long + " / " + x.short + "</td>" +
       d.tiers.map(function (L) { var c = x.tiers[L] || {}, v = 100 * c.sumR; return "<td class='rt " + dcCls(v) + "'>" + (L === 1 ? "<b>" : "") + esc(dcPct(v, L === 1 ? 2 : L >= 100 ? 0 : 1)) + (L === 1 ? "</b>" : "") + (c.liq ? "<br><span class='dc-liq'>" + c.liq + " liquidated</span>" : "") + "</td>"; }).join("") +
-      "<td class='rt'>" + (x.baseline || x.answeredPct == null ? "—" : x.answeredPct + "%") + "</td><td class='rt'>" + (x.baseline ? "—" : "$" + Number(x.costUsd || 0).toFixed(2)) + "</td></tr>";
+      "<td class='rt'>" + (x.baseline || x.rule || x.answeredPct == null ? "—" : x.answeredPct + "%") + "</td><td class='rt'>" + (x.baseline ? "—" : x.rule ? "free" : "$" + Number(x.costUsd || 0).toFixed(2)) + "</td></tr>";
   });
   bEl.innerHTML = t + "</table></div><p class='src' style='margin:-8px 0 0'>Ranked on the 1x column: the plain price change of every call added up. Leveraged columns are the same calls replayed — see the notes below before reading them.</p>";
   // recently closed
