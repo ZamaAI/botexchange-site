@@ -52,6 +52,13 @@
   .ec-call .ec-lv { font-family: var(--mono); font-size: 12px; color: var(--ink2); margin: 4px 0 3px; line-height: 1.6; font-variant-numeric: tabular-nums; }
   .ec-call .ec-why { font-size: 12.5px; color: var(--ink2); line-height: 1.45; overflow-wrap: anywhere; }
   .ec-tag { display: inline-block; font-size: 9.5px; font-weight: 700; letter-spacing: .07em; padding: 1px 5px; border-radius: 3px; margin-left: 6px; vertical-align: 2px; font-family: var(--mono); border: 1px solid var(--line); color: var(--ink3); background: var(--bg2); text-transform: uppercase; }
+  .dc-now { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; margin: 6px 0 4px; }
+  .dc-card { border: 1px solid var(--line, #dcdfd8); border-radius: 6px; padding: 10px 12px; background: var(--card, #fff); min-width: 0; }
+  .dc-card .who { font-weight: 700; font-size: 13px; margin-bottom: 6px; }
+  .dc-card .ln { font-size: 12.5px; margin: 5px 0 0; }
+  .dc-card .why { color: var(--muted, #6b6e68); font-size: 11.5px; margin: 1px 0 0; overflow-wrap: anywhere; }
+  .dc-liq { color: #a8321b; font-size: 10.5px; white-space: nowrap; }
+  tr.dc-base td { color: var(--muted, #6b6e68); font-style: italic; }
   .ec-tag.own { color: #1b5fa8; border-color: #a9c8ea; background: #eef5fc; }
   .ec-tag.win { color: #1e7a3a; border-color: #9ec9ab; background: #f0f7f2; }
   .ec-tag.loss { color: #a8321b; border-color: #e9b3a8; background: #fdf1ee; }
@@ -685,6 +692,7 @@
   <a href="#/desks" data-page="desks">Desks</a>
   <a href="#/models" data-page="models">Model Lab</a>
   <a href="#/calls" data-page="calls">Extended Calls</a>
+  <a href="#/direction" data-page="direction">Paper Trade (BTC / ETH)</a>
   <a href="#/archive" data-page="archive">Archive</a>
   <a href="#/about" data-page="about">About</a>
   <span class="nav-score" id="nav-score"></span>
@@ -1030,6 +1038,28 @@
   </details>
   </div>
 </div>
+<div class="page" data-page="direction">
+  <!-- [#597] PAPER TRADE (BTC / ETH): paper direction calls on BTC and ETH every 30 minutes, five models beside three no-model rules.
+       Data: direction_calls.json in the data repo (written by a standalone script; the page never triggers a model call). -->
+  <div class="kicker">Paper Trade (BTC / ETH) · paper calls · every 30 minutes</div>
+  <h2 class="sec" id="direction">Five AI models call BTC and ETH every half hour. Can any of them beat a coin flip?</h2>
+  <p class="sub" style="max-width:900px">Every 30 minutes each model reads the same Hyperliquid candles and answers one question per coin: <b>long, short or flat</b>, with the price that would prove it wrong. A call stays open for as long as the model keeps the same direction; it closes when the model flips, steps aside, or price touches that level. Nothing is traded — this is a paper record, scored on real prices. Three rules with no model behind them (always long, always short, a coin flip) run beside the models as the bar to beat.</p>
+  <div id="dc-now"></div>
+  <div id="dc-board"></div>
+  <div id="dc-recent"></div>
+  <div class="boxcol" style="max-width:900px">
+    <div class="box"><div class="box-h">How to read the leverage columns</div><div class="box-b">
+      <p><b>1x</b> is the plain price change of every call added up, open calls included at the current price. The other columns replay the same calls with leverage: at <b>100x</b> a 1% move against a position at any moment wipes it out (shown as a liquidation, −100% of that position), even if price later came back; if it survives, the result is 100 times the price change. Each position stakes the same amount, so the column is the sum of those results.</p>
+      <p>That is why a model can be right about direction and still lose at high leverage: being early is enough. <b>1000x</b> liquidates on a 0.1% move, which BTC often covers inside a single minute.</p>
+    </div></div>
+    <div class="box"><div class="box-h">What is not counted</div><div class="box-b">
+      <p>Fees, funding, slippage and maintenance margin are <b>not</b> modelled. At high leverage they are large — a real venue would liquidate earlier and charge on the full leveraged size — so every leveraged figure here flatters the real thing. A held call is one position, however long it lasts. A model that fails to answer keeps its open call unchanged.</p>
+      <p>The record starts on 13 Oct 2026 and is too short to read for a long while: we will only say a model has direction skill if it beats all three no-model rules over at least 200 closed calls. Machine-generated and published for the record — <b>not financial advice</b>.</p>
+    </div></div>
+  </div>
+  <p class="src" id="dc-method" style="max-width:900px"></p>
+</div>
+
 <div class="page" data-page="archive">
   <!-- [T2] the archive is its own room (was a section of Bots); #t<id> permalinks and the LEGACY #archive hash both land here -->
   <div class="kicker">Every trade, permanent record</div>
@@ -4992,6 +5022,61 @@ function boot() {
 }
 boot();
 
+// ── [#597] PAPER TRADE (BTC / ETH) (#/direction) — direction_calls.json from the data repo: paper BTC/ETH direction calls every 30 minutes ──
+var _dc = { data: null, timer: null, at: 0 };
+function dcLoad() {
+  if (!_dc.timer) _dc.timer = setInterval(function () { var pg = document.querySelector('div.page[data-page="direction"]'); if (pg && pg.classList.contains("active")) dcFetch(); }, 300000);
+  if (_dc.data && Date.now() - _dc.at < 120000) { dcRender(); return; }
+  dcFetch();
+}
+function dcFetch() {
+  fetch("https://raw.githubusercontent.com/ZamaAI/botexchange-data/main/direction_calls.json?cb=" + Math.floor(Date.now() / 120000), { cache: "no-store" })
+    .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+    .then(function (j) { _dc.data = j; _dc.at = Date.now(); dcRender(); })
+    .catch(function (e) { var m = $("dc-method"); if (m && !_dc.data) m.textContent = "The calls file could not be loaded (" + e.message + "). It refreshes every half hour — try again shortly."; });
+}
+function dcPct(v, dp) { return v == null || !isFinite(v) ? "—" : (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(dp == null ? 2 : dp) + "%"; }
+function dcCls(v) { return v > 0 ? "up" : v < 0 ? "down" : ""; }
+function dcDir(x) { return x === "LONG" ? "<b class='up'>LONG</b>" : x === "SHORT" ? "<b class='down'>SHORT</b>" : "<b>FLAT</b>"; }
+function dcRender() {
+  var d = _dc.data, nEl = $("dc-now"), bEl = $("dc-board"), rEl = $("dc-recent"), mEl = $("dc-method"); if (!d || !nEl || !bEl || !rEl) return;
+  var models = d.board.filter(function (x) { return !x.baseline; });
+  // what each model says right now
+  var h = "<div class='ec-h'><b>Right now</b><span class='src'>last asked " + esc(ecWhen(d.lastTick)) + " · BTC " + esc(ecPx(d.marks.BTC)) + " · ETH " + esc(ecPx(d.marks.ETH)) + " · asked again every " + esc(String(d.everyMin)) + " minutes</span></div><div class='dc-now'>";
+  models.forEach(function (x) {
+    h += "<div class='dc-card'><div class='who'>" + esc(x.label) + "</div>";
+    d.assets.forEach(function (a) {
+      var n = (x.now || {})[a] || { dir: "FLAT" };
+      h += "<div class='ln'>" + esc(a) + " " + dcDir(n.dir) + (n.dir !== "FLAT" ? " from " + esc(ecPx(n.entry)) + " · <span class='" + dcCls(n.retPct) + "'>" + esc(dcPct(n.retPct)) + "</span>" + (n.invalid != null ? " <span class='src'>· wrong at " + esc(ecPx(n.invalid)) + "</span>" : "") : "") + "</div>" +
+        (n.noAnswer ? "<div class='why'>No answer last round" + (n.dir !== "FLAT" ? " — its call stays open" : "") + ".</div>" : n.why ? "<div class='why'>" + esc(n.why) + "</div>" : "");
+    });
+    h += "</div>";
+  });
+  nEl.innerHTML = h + "</div>";
+  // scoreboard
+  var t = "<div class='ec-h'><b>Scoreboard</b><span class='src'>every call since " + esc(ecWhen(d.since)) + " · " + esc(String(d.ticks)) + " round" + (d.ticks === 1 ? "" : "s") + " so far · open calls counted at the current price</span></div>" +
+    "<div style='overflow-x:auto'><table class='data'><tr><th>Model</th><th class='rt'>Calls</th><th class='rt'>Closed</th><th class='rt'>Closed in profit</th><th class='rt'>Long / short</th>" +
+    d.tiers.map(function (L) { return "<th class='rt'>" + L + "x</th>"; }).join("") + "<th class='rt'>Answered</th><th class='rt'>Spent</th></tr>";
+  d.board.forEach(function (x) {
+    t += "<tr" + (x.baseline ? " class='dc-base'" : "") + "><td><b>" + esc(x.label) + "</b>" + (x.baseline ? " <span class='src'>no model</span>" : "") + "</td><td class='rt'>" + x.positions + "</td><td class='rt'>" + x.closed + "</td><td class='rt'>" + (x.closed ? x.wins + " of " + x.closed : "—") + "</td><td class='rt'>" + x.long + " / " + x.short + "</td>" +
+      d.tiers.map(function (L) { var c = x.tiers[L] || {}, v = 100 * c.sumR; return "<td class='rt " + dcCls(v) + "'>" + (L === 1 ? "<b>" : "") + esc(dcPct(v, L === 1 ? 2 : L >= 100 ? 0 : 1)) + (L === 1 ? "</b>" : "") + (c.liq ? "<br><span class='dc-liq'>" + c.liq + " liquidated</span>" : "") + "</td>"; }).join("") +
+      "<td class='rt'>" + (x.baseline || x.answeredPct == null ? "—" : x.answeredPct + "%") + "</td><td class='rt'>" + (x.baseline ? "—" : "$" + Number(x.costUsd || 0).toFixed(2)) + "</td></tr>";
+  });
+  bEl.innerHTML = t + "</table></div><p class='src' style='margin:-8px 0 0'>Ranked on the 1x column: the plain price change of every call added up. Leveraged columns are the same calls replayed — see the notes below before reading them.</p>";
+  // recently closed
+  if (!d.recent || !d.recent.length) { rEl.innerHTML = "<div class='ec-h'><b>Closed calls</b></div><p class='src'>No call has closed yet — the first ones close when a model changes its mind or price reaches its level.</p>"; }
+  else {
+    var HOW = { flipped: "changed direction", flat: "stepped aside", invalidated: "price hit its level" };
+    var r = "<div class='ec-h'><b>Closed calls</b><span class='src'>newest first · the last " + d.recent.length + "</span></div><div style='overflow-x:auto'><table class='data'><tr><th>Model</th><th>Call</th><th class='rt'>From</th><th class='rt'>To</th><th>Held</th><th>Ended because</th><th class='rt'>Result</th><th class='rt'>Worst point</th><th>Its reason</th></tr>";
+    d.recent.forEach(function (p) {
+      var mins = Math.round((p.to - p.from) / 60000), held = mins >= 120 ? (mins / 60).toFixed(1) + " h" : mins + " min";
+      r += "<tr><td>" + esc(p.label) + "</td><td>" + esc(p.asset) + " " + dcDir(p.dir) + "</td><td class='rt'>" + esc(ecPx(p.entry)) + "</td><td class='rt'>" + esc(ecPx(p.exit)) + "</td><td>" + esc(held) + " <span class='src'>to " + esc(ecWhen(new Date(p.to).toISOString())) + "</span></td><td>" + esc(HOW[p.how] || p.how || "") + "</td><td class='rt " + dcCls(p.retPct) + "'><b>" + esc(dcPct(p.retPct)) + "</b></td><td class='rt'>" + esc(dcPct(-Math.abs(p.maePct))) + "</td><td class='src'>" + esc(p.why || "") + "</td></tr>";
+    });
+    rEl.innerHTML = r + "</table></div>";
+  }
+  if (mEl) mEl.textContent = (d.method || "") + " Updated " + ecWhen(d.generatedAt) + ".";
+}
+
 // ── [#254c/#255] MODEL LAB (#/models) — static data/model_board.json, fetched on first visit. Prompts and raw answers are never
 // in the file and never rendered (they can carry paid feed text); the per-pick detail is the model's own structured numbers only.
 // [#255] rebuilt around readable charts: one filter row (basis), ranked bars with direction in every subtitle, colour = what the
@@ -5746,7 +5831,7 @@ function mlMethod(d) {
 // ── Site pages: hash router (#/markets), legacy-anchor map, per-page nav state ──
 (function () {
   document.body.classList.add("paged");   // no-JS renders all pages stacked
-  var PAGES = { home: 1, markets: 1, charts: 1, news: 1, calendar: 1, bots: 1, about: 1, desks: 1, archive: 1, trade: 1, rules: 1, models: 1, calls: 1 };   // [#254c] models = the Model Lab benchmark   // [#503] rules = the Season-5 pre-registration   // [T2] archive is its own room; [#359] trade = one room per trade, reached by link only
+  var PAGES = { home: 1, markets: 1, charts: 1, news: 1, calendar: 1, bots: 1, about: 1, desks: 1, archive: 1, trade: 1, rules: 1, models: 1, calls: 1, direction: 1 };   // [#254c] models = the Model Lab benchmark   // [#503] rules = the Season-5 pre-registration   // [T2] archive is its own room; [#359] trade = one room per trade, reached by link only
   var INTEL_PAGES = { markets: 1, charts: 1, news: 1, calendar: 1 };   // [T2] the terminal — one nav item, four rooms
   // old deep links (#race, #wire, #rules…) land on the right page, scrolled to the element
   var LEGACY = { race: "home", players: "bots", floor: "bots", desknotes: "bots", tape: "bots",
@@ -5768,6 +5853,8 @@ function mlMethod(d) {
                 d: "Curated crypto and macro headlines, on-chain intelligence and the desk column — refreshed with every report cycle." },
     calendar: { t: "Calendar — The Bot Exchange",
                 d: "The week ahead in market-moving events: FOMC, CPI, jobs data and megacap earnings, with impact ratings." },
+    direction: { t: "Paper Trade (BTC / ETH) — The Bot Exchange",
+                d: "Five AI models call BTC and ETH long, short or flat every 30 minutes on Hyperliquid prices — a paper record scored at 1x to 1000x leverage, beside a coin flip." },
     archive:  { t: "Archive — The Bot Exchange",
                 d: "Every trade this season, permanently recorded with its AI post-mortem — wins, losses and breakevens, nothing deleted." },
     bots:     { t: "The Bots — The Bot Exchange",
@@ -5795,7 +5882,8 @@ function mlMethod(d) {
     // Repaint if charts already exist; otherwise (first visit, empty book, failed build)
     // a full render is cheap and is the only thing that can recover the page.
     if (name === "charts") { try { (_chSeries.length ? chRefresh : renderTradeCharts)(null); chStartPoll(); } catch (e) {} }
-    if (name === "models") { try { mlLoad(); } catch (e) {} }   // [#254c] the benchmark file loads on first visit
+    if (name === "models") { try { mlLoad(); } catch (e) {} }
+    if (name === "direction") { try { dcLoad(); } catch (e) {} }   // [#597] the direction-calls file loads on arrival and every 5 minutes while open   // [#254c] the benchmark file loads on first visit
     if (anchorId) {
       var el = document.getElementById(anchorId);
       // offsetParent guard: a duplicate/hidden id (e.g. an element on an inactive page) must
