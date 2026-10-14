@@ -5202,7 +5202,7 @@ function dcHover(e) {
 }
 function dcRender() {
   var d = _dc.data, nEl = $("dc-now"), bEl = $("dc-board"), rEl = $("dc-recent"), mEl = $("dc-method"); if (!d || !nEl || !bEl || !rEl) return;
-  var models = d.board.filter(function (x) { return !x.baseline; }), P = d.pulse && d.pulse.coins ? d.pulse : null;
+  var models = d.board.filter(function (x) { return !x.baseline && !x.panel; }), P = d.pulse && d.pulse.coins ? d.pulse : null;   // [#616] the panel row is the headline, not a model
   if (d.assets.indexOf(_dc.coin) < 0) _dc.coin = d.assets[0];
   // status line: how fresh, and when the next read lands
   var lastMs = Date.parse(d.lastTick), nextMs = lastMs + d.everyMin * 60000, late = Date.now() - lastMs > (d.everyMin + 15) * 60000;
@@ -5215,7 +5215,13 @@ function dcRender() {
     var side = ln.dir === "LONG" ? ln.long : ln.dir === "SHORT" ? ln.short : 0, cls = ln.dir === "LONG" ? " up" : ln.dir === "SHORT" ? " down" : "";
     return "<div class='dc-v" + cls + "'><div class='c'>" + esc(a) + "</div><div class='w'>" + (ln.dir === "NO LEAN" ? "NO CALL" : esc(ln.dir)) + "</div><div class='n'>" +
       (ln.dir === "NO LEAN" ? (ln.long || ln.short ? ln.long + " long · " + ln.short + " short · " + ln.flat + " aside" : "all " + ln.of + " models standing aside") : "<b>" + side + " of " + ln.of + "</b> models · lean <b>" + (ln.score > 0 ? "+" : "−") + Math.abs(ln.score) + "</b>") + "</div></div>";
-  }).join("") + "<div class='cap'>What the AI panel would do right now · their record is below · not advice</div>";
+  }).join("") + (function () {
+    // [#616] the headline call is SCORED: following these boxes, round by round, is a row of its own in the scoreboard
+    var pr = d.board.filter(function (x) { return x.panel; })[0], v = pr && pr.tiers && pr.tiers[1] ? 100 * pr.tiers[1].sumR : null;
+    var rec = pr && pr.positions ? "<b>This headline's own record:</b> " + (pr.hit30 && pr.hit30.n ? "right <b>" + Math.round(100 * pr.hit30.right / pr.hit30.n) + "%</b> of " + pr.hit30.n + " rounds " + esc(String(d.everyMin)) + " min later · " : "") +
+      "following it at 1x: <b class='" + dcCls(v) + "'>" + esc(dcPct(v, 2)) + "</b> since " + esc(ecWhen(d.since)) + " (" + pr.closed + " call" + (pr.closed === 1 ? "" : "s") + " closed, " + pr.wins + " in profit)" : "";
+    return "<div class='cap'>What the AI panel would do right now · not advice" + (rec ? "<br>" + rec : " · their record is below") + "</div>";
+  })();
 
   // ── the pulse: one card per coin ──
   var pEl = $("dc-pulse");
@@ -5278,9 +5284,9 @@ function dcRender() {
     "<div style='overflow-x:auto'><table class='data dc-sb'><tr><th>Model</th><th class='rt'>Calls</th><th class='rt'>Closed</th><th class='rt'>Closed in profit</th><th class='rt' title='Of every long or short call, how often price had moved its way one round later. No exits involved. A coin flip scores about 50%.'>Right " + esc(String(d.everyMin)) + " min later</th><th class='rt'>Long / short</th><th class='rt' title='Calls closed by price reaching the profit target / by price touching the wrong-at level'>Target / stop</th>" +
     d.tiers.map(function (L) { return "<th class='rt" + (L === 1 || L === 10 ? " g" : "") + "'>" + L + "x</th>" + (L === 1 && d.feePct ? "<th class='rt' title='The 1x result after a " + d.feePct.toFixed(2) + "% trading fee for every call opened and closed'>1x after fees</th>" : ""); }).join("") + "<th class='rt g'>Answered</th><th class='rt'>Spent</th></tr>";
   d.board.forEach(function (x) {
-    t += "<tr" + (x.baseline ? " class='dc-base'" : "") + "><td><b>" + esc(x.label) + "</b>" + (x.baseline ? " <span class='src'>no model</span>" : x.rule ? " <span class='src'>fixed rules, no model</span>" : "") + "</td><td class='rt'>" + x.positions + "</td><td class='rt'>" + x.closed + "</td><td class='rt'>" + (x.closed ? x.wins + " of " + x.closed : "—") + "</td><td class='rt'>" + (x.hit30 && x.hit30.n ? "<b>" + Math.round(100 * x.hit30.right / x.hit30.n) + "%</b> <span class='src'>of " + x.hit30.n + "</span>" : "—") + "</td><td class='rt'>" + x.long + " / " + x.short + "</td><td class='rt'>" + (x.baseline || x.rule ? "—" : "<span class='up'>" + (x.targeted || 0) + "</span> / <span class='down'>" + (x.invalidated || 0) + "</span>") + "</td>" +
+    t += "<tr" + (x.baseline ? " class='dc-base'" : "") + "><td><b>" + esc(x.label) + "</b>" + (x.baseline ? " <span class='src'>no model</span>" : x.rule ? " <span class='src'>fixed rules, no model</span>" : x.panel ? " <span class='src'>the boxes at the top, followed</span>" : "") + "</td><td class='rt'>" + x.positions + "</td><td class='rt'>" + x.closed + "</td><td class='rt'>" + (x.closed ? x.wins + " of " + x.closed : "—") + "</td><td class='rt'>" + (x.hit30 && x.hit30.n ? "<b>" + Math.round(100 * x.hit30.right / x.hit30.n) + "%</b> <span class='src'>of " + x.hit30.n + "</span>" : "—") + "</td><td class='rt'>" + x.long + " / " + x.short + "</td><td class='rt'>" + (x.baseline || x.rule ? "—" : "<span class='up'>" + (x.targeted || 0) + "</span> / <span class='down'>" + (x.invalidated || 0) + "</span>") + "</td>" +
       d.tiers.map(function (L) { var c = x.tiers[L] || {}, v = 100 * c.sumR; return "<td class='rt " + dcCls(v) + (L === 1 || L === 10 ? " g" : "") + "'" + (c.liq ? " title='" + c.liq + " call" + (c.liq === 1 ? "" : "s") + " liquidated at " + L + "x'" : "") + ">" + (L === 1 ? "<b>" : "") + esc(dcPct(v, L === 1 ? 2 : L >= 50 ? 0 : 1)) + (L === 1 ? "</b>" : "") + (c.liq ? "<span class='dc-liq'>" + c.liq + " liq</span>" : "") + "</td>" + (L === 1 && d.feePct ? "<td class='rt " + dcCls(x.net1xPct) + "'>" + (x.net1xPct == null ? "—" : esc(dcPct(x.net1xPct, 2))) + "</td>" : ""); }).join("") +
-      "<td class='rt g'>" + (x.baseline || x.rule || x.answeredPct == null ? "—" : x.answeredPct + "%") + "</td><td class='rt'>" + (x.baseline ? "—" : x.rule ? "free" : (x.costUsd || 0) > 0 && x.costUsd < 0.0005 ? "&lt;$0.001" : "$" + Number(x.costUsd || 0).toFixed((x.costUsd || 0) < 1 ? 3 : 2)) + "</td></tr>";
+      "<td class='rt g'>" + (x.baseline || x.rule || x.panel || x.answeredPct == null ? "—" : x.answeredPct + "%") + "</td><td class='rt'>" + (x.baseline || x.panel ? "—" : x.rule ? "free" : (x.costUsd || 0) > 0 && x.costUsd < 0.0005 ? "&lt;$0.001" : "$" + Number(x.costUsd || 0).toFixed((x.costUsd || 0) < 1 ? 3 : 2)) + "</td></tr>";
   });
   bEl.innerHTML = t + "</table></div><p class='src' style='margin:-8px 0 0'>Ranked on the 1x column: the plain price change of every call added up. <b>Target / stop</b> counts calls closed at the profit target against calls closed at the wrong-at level. <b>Right " + esc(String(d.everyMin)) + " min later</b> is the cleanest read of direction: no exits, just whether price went the call’s way one round on (about 50% is a coin flip). <b>1x after fees</b> charges a normal trading fee per call, so a model that flips often pays for it. Leveraged columns are the same calls replayed; <span class='dc-liq' style='margin:0'>2 liq</span> means two calls were wiped out at that leverage — see the notes below.</p>";
   // recently closed
