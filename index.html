@@ -1435,6 +1435,14 @@ var ACTORS = {
   qwen:     { label: "Qwen",     model: "Qwen 3.7 Max", short: "Qwen 3.7",  color: "#8a6414",
     style: "Scanner volume — screens the whole altcoin board every cycle",
     blurb: "The scanner. Alibaba's Qwen 3.7 Max, called through OpenRouter, screens the whole altcoin board every cycle and fires more picks than any other desk — the one permanent paper account. Its paper trades close only at their stop or their target — there is no trailing stop on paper, so its record is a read of idea quality and is not like-for-like with the live desks, whose winners are often cut short at breakeven by the trail. Until 2 Aug 2026 the seat ran a 9-billion-parameter Qwen on a gaming GPU at home; that local model still writes the daily column and the X posts." },
+  // [#614] two PAPER-ONLY desks (14 Oct 2026): the live desks' own prompt, gates and cadence on a $500 paper seat — paperOnly
+  // renders them like Qwen (no PAPER pill on every row, "Paper account" on the card).
+  haiku55:  { paperOnly: true, label: "Hana Haiku", model: "Claude Haiku 5.5", short: "Hana", color: "#d9480f",
+    style: "Fast and terse — reads the same desk as the live seats",
+    blurb: "Anthropic's newest small model, Claude Haiku 5.5, on the exact prompt, data and rules the live desks get, every report and every scan — a $500 paper account from 14 October 2026. Paper trades close only at their stop or their target (no trailing stop on paper), so compare its record with the live seats as a signal-quality read, not like-for-like P&L." },
+  qwen38:   { paperOnly: true, label: "Quentin Qwen", model: "Qwen 3.8 Flash", short: "Quentin", color: "#5c940d",
+    style: "Capped reasoning — thinks a little, then commits",
+    blurb: "Alibaba's Qwen 3.8 Flash on the live desks' own prompt and rules, every report and every scan — a $500 paper account from 14 October 2026. Left to think freely it never finished an answer, so its reasoning is capped. A separate desk from Qwen, the scanner. Paper trades close only at their stop or their target (no trailing stop on paper)." },
   openclaw: { retired: true, retiredRecord: "2W–0L", label: "Sonny Sonnet", model: "Claude Sonnet 5", short: "Sonny", color: "#2563c4",
     style: "Confirmation-first majors — level-anchored entries, tight stops",
     blurb: "The house AI, retired from the trading rotation mid-Season 4 (Aug 2026) to preserve API budget — it went out on a 2-0 final week. Claude still writes the fleet's weekly lessons and every trade's post-mortem behind the scenes." },
@@ -1800,7 +1808,7 @@ function renderRules(d) {
       || hs.filter(function (h) { return Date.parse(h.from) > st.ms; })[0];
     return cover ? cover.model : ((x.current && x.current.model) || null);
   };
-  var order = ["grok", "kimi", "deepseek", "gemini", "luna", "minimax", "qwen", "manual"];
+  var order = ["grok", "kimi", "deepseek", "gemini", "luna", "minimax", "qwen", "haiku55", "qwen38", "manual"];   // [#614]
   var byKey = {}; (d.standings || []).forEach(function (a) { byKey[a.key] = a; });
   var rows = order.filter(function (k) { return byKey[k]; }).map(function (k) {
     var a = byKey[k], paper = a.paper === true || k === "qwen" || String(a.venue || "").toUpperCase() === "PAPER";
@@ -2308,7 +2316,7 @@ function renderPlayers(d) {
   $("players-grid").innerHTML = order.map(function (k) {
     var meta = ACTORS[k]; if (!meta) return "";
     var s = byKey[k];
-    var venue = k === "manual" ? venueHtml("Extended · live", "EXTENDED") : k === "qwen" ? "Paper account"
+    var venue = k === "manual" ? venueHtml("Extended · live", "EXTENDED") : (k === "qwen" || meta.paperOnly) ? "Paper account"
       : (s ? venueHtml(esc(String(s.venue).toUpperCase()) + (s.paper ? " · paper" : " · live"), s.venue) : "");
     var stat = s
       ? "<span>" + money(s.account, 0) + " <span class='" + cls(s.retPct) + "'>" + pct(s.retPct, 1) + "</span></span>" +
@@ -2688,7 +2696,7 @@ function actorKeyOf(nameOrKey) {
 }
 function actorTag(key) {
   var a = ACTORS[key] || { label: key, color: "#888" };
-  return "<span class='actor-tag' style='color:" + a.color + "'>" + esc(a.label) + (key === "qwen" ? " · paper" : "") + "</span>";
+  return "<span class='actor-tag' style='color:" + a.color + "'>" + esc(a.label) + ((key === "qwen" || a.paperOnly) ? " · paper" : "") + "</span>";
 }
 var _openTrades = [];   // stashed for the live-price patcher
 function posBar(t, i) {
@@ -2744,7 +2752,7 @@ function renderFloor(d) {
       actorTag(t.actor) +
       (t.venue !== "PAPER"
         ? "<span class='pill live'>" + esc(t.venue) + " · LIVE</span>" + copyBtn(t)
-        : (t.actor === "qwen" ? "" : "<span class='pill paper' title='Tracked on paper — not a live order (agent benched or venue-unrouted)'>PAPER</span>")) +
+        : ((t.actor === "qwen" || (ACTORS[t.actor] || {}).paperOnly) ? "" : "<span class='pill paper' title='Tracked on paper — not a live order (agent benched or venue-unrouted)'>PAPER</span>")) +
       (t.smartMoney ? "<span class='smpill' title='Top Hyperliquid accounts hold this same trade'>TOP BOOKS AGREE ×" + esc(t.smartMoney) + "</span>" : "") +
       "<span class='outc'><span class='livepnl' data-pnl='" + i + "'></span> <span class='num'>conv " + esc(t.conviction) + "/10</span></span></div>" +
       "<div class='lvls'>entry " + money(e, e < 10 ? 4 : 2) + " · stop " + (t.levelsApprox ? "≈" : "") + money(s, s < 10 ? 4 : 2) +
@@ -5313,7 +5321,7 @@ function mlFmt(v, dp, suf) { return v == null || !isFinite(v) ? "—" : Number(v
 function mlSigned(v, dp) { return v == null || !isFinite(v) ? "—" : (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(dp == null ? 2 : dp); }
 function mlDate(iso) { try { return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }); } catch (e) { return String(iso || ""); } }   // UTC: the set bounds are UTC dates
 // display names: the slug is what the API calls it, the label is what a reader calls it (unknown slugs fall through unchanged)
-var ML_NAMES = { "claude-haiku-5.5": "Claude Haiku 5.5", "muse-wonder": "Muse Wonder", "qwen3.8-max-0902": "Qwen 3.8 Max", "qwen3.8-max-prime": "Qwen 3.8 Max Prime", "step-5": "Step-5 preview", "pareto-26.10": "Pareto 26.10 preview", "ling-3.1-flash": "Ling 3.1 Flash", "mistral-large-4-0": "Mistral Large 4", "claude-opus-5.5": "Claude Opus 5.5", "claude-sonnet-5.5": "Claude Sonnet 5.5", "muse-spark-1.3": "Muse Spark 1.3", "seed-1.6-flash": "Seed 1.6 Flash", "gemma-4-31b-it": "Gemma 4 31B", "gpt-oss-120b": "GPT-OSS 120B", "hy3": "Hunyuan 3", "ling-3.0-flash": "Ling 3.0 Flash", "gemini-3.8-flash": "Gemini 3.8 Flash", "gemini-3.7-flash": "Gemini 3.7 Flash", "glm-5.3-flash": "GLM 5.3 Flash", "gpt-6-luna": "GPT-6 Luna", "gpt-6-luna-pro": "GPT-6 Luna Pro",
+var ML_NAMES = { "claude-haiku-5.5": "Claude Haiku 5.5", "qwen3.8-flash": "Qwen 3.8 Flash", "muse-wonder": "Muse Wonder", "qwen3.8-max-0902": "Qwen 3.8 Max", "qwen3.8-max-prime": "Qwen 3.8 Max Prime", "step-5": "Step-5 preview", "pareto-26.10": "Pareto 26.10 preview", "ling-3.1-flash": "Ling 3.1 Flash", "mistral-large-4-0": "Mistral Large 4", "claude-opus-5.5": "Claude Opus 5.5", "claude-sonnet-5.5": "Claude Sonnet 5.5", "muse-spark-1.3": "Muse Spark 1.3", "seed-1.6-flash": "Seed 1.6 Flash", "gemma-4-31b-it": "Gemma 4 31B", "gpt-oss-120b": "GPT-OSS 120B", "hy3": "Hunyuan 3", "ling-3.0-flash": "Ling 3.0 Flash", "gemini-3.8-flash": "Gemini 3.8 Flash", "gemini-3.7-flash": "Gemini 3.7 Flash", "glm-5.3-flash": "GLM 5.3 Flash", "gpt-6-luna": "GPT-6 Luna", "gpt-6-luna-pro": "GPT-6 Luna Pro",
   "gpt-5.6-luna": "GPT-5.6 Luna", "deepseek-v4.1-flash": "DeepSeek V4.1 Flash", "deepseek-v4-flash-0731": "DeepSeek V4 Flash", "deepseek-v4-pro": "DeepSeek V4 Pro", "deepseek-flash": "DeepSeek Flash",
   "mercury-2.5": "Mercury 2.5", "qwen3.7-flash": "Qwen 3.7 Flash", "command-a-plus": "Command A Plus", "solar-mini4": "Solar Mini 4", "ling-3.0-flash-fin": "Ling 3.0 Flash Fin", "nex-n2.5-pro": "Nex N2.5 Pro",
   "nemotron-3.5-lightning": "Nemotron 3.5 Lightning", "claude-haiku-4.5": "Claude Haiku 4.5", "minimax-m3": "MiniMax M3", "minimax-m2.5": "MiniMax M2.5", "grok-4.6": "Grok 4.6", "grok-4.7": "Grok 4.7",
