@@ -128,7 +128,8 @@
   .ec-meta b { color: var(--ink); }
 
   .strip { background: var(--accent); color: #eaf3ee; font-size: 12px; font-weight: 600; }
-  .strip .wrap { display: flex; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 6px 10px; padding: 6px 16px; }
+  .strip .wrap { display: flex; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 6px 9px; padding: 6px 16px; }
+  @media (min-width: 900px) and (max-width: 1199px) { .strip .strip-opt { display: none; } }   /* [15 Oct] narrower desktops drop the F&G items before a row wraps */
   .strip .wrap::-webkit-scrollbar { display: none; }
   .strip .wrap > span { white-space: nowrap; flex: 0 0 auto; }
   /* [15 Oct] the crypto row was ~50px wider than the page at every desktop width, so its last item ("Risk index 64 — ELEVATED")
@@ -1580,12 +1581,13 @@ function renderStrip(mkt) {
   _hlStrip.forEach(function (p) {
     h += "<span>" + esc(p.symbol) + " <b>" + money(p.price, p.price > 1000 ? 0 : 2) + "</b>" + (p.change24hPct != null ? " " + strippct(p.change24hPct) : "") + "</span>";
   });
-  if (mkt && mkt.fearGreed) h += "<span title='Crypto Fear &amp; Greed index'>F&amp;G <b>" + esc(mkt.fearGreed.value) + " — " + esc(mkt.fearGreed.classification) + "</b></span>";
-  if (mkt && mkt.regime) h += "<span>Regime <b>" + esc(String(mkt.regime).replace("_", "-")) + "</b></span>";
+  // [15 Oct] compact labels so each row is one line; the full wording lives in the tooltip
+  if (mkt && mkt.fearGreed) h += "<span class='strip-opt' title='Crypto Fear &amp; Greed index: " + esc(mkt.fearGreed.classification) + "'>F&amp;G <b>" + esc(mkt.fearGreed.value) + "</b></span>";
+  if (mkt && mkt.regime) h += "<span title='Crypto market regime'><b>" + esc(String(mkt.regime).replace("_", "-")) + "</b></span>";
   // [#198] BXR in the ticker: accent-coloured so our own number reads differently from the
   // relayed market data around it. Absent index -> no span (never a placeholder).
   if (mkt && mkt.riskIndex && mkt.riskIndex.score != null)
-    h += "<span class='bxr-tick'>Risk index <b>" + Math.round(Number(mkt.riskIndex.score)) + " — " + esc(String(mkt.riskIndex.band || "")) + "</b></span>";
+    h += "<span class='bxr-tick' title='BotExchange Risk Index (0 calm – 100 stressed)'>Risk <b>" + Math.round(Number(mkt.riskIndex.score)) + " · " + esc(String(mkt.riskIndex.band || "")) + "</b></span>";
   $("strip-crypto").innerHTML = h ? "<span class='rowlab'>CRYPTO</span>" + h : "Market data loading…";
   var m = "";
   // [3 Sep] ONE merged macro list: live xyz marks (client-side, _macroStrip) win per symbol;
@@ -1614,8 +1616,8 @@ function renderStrip(mkt) {
     var band = "";   // [15 Oct] the VIX band ("moderate volatility") moved to the tooltip — it pushed the row past one line
     m += "<span" + (sym === "VIX" ? " title='" + esc(vixBand(v.price)) + "'" : "") + ">" + MACRO_SYMS[sym] + " <b>" + fmtMacro(sym, v.price) + "</b>" + band + (showChg ? " " + strippct(v.change) : "") + "</span>";
   });
-  if (mkt && mkt.stockFearGreed && m) m += "<span title='Stock-market Fear &amp; Greed index'>F&amp;G <b>" + esc(mkt.stockFearGreed.value) + " — " + esc(mkt.stockFearGreed.classification) + "</b></span>";
-  if (mkt && mkt.equityRegime && m) m += "<span>Regime <b>" + esc(String(mkt.equityRegime).replace("_", "-")) + "</b></span>";
+  if (mkt && mkt.stockFearGreed && m) m += "<span class='strip-opt' title='Stock-market Fear &amp; Greed index: " + esc(mkt.stockFearGreed.classification) + "'>F&amp;G <b>" + esc(mkt.stockFearGreed.value) + "</b></span>";
+  if (mkt && mkt.equityRegime && m) m += "<span class='strip-opt' title='Equity market regime'><b>" + esc(String(mkt.equityRegime).replace("_", "-")) + "</b></span>";
   if (m) { $("strip-macro").classList.remove("hidden"); $("strip-macro").innerHTML = "<span class='rowlab'>MACRO</span>" + m; }
 }
 var _lastStripMkt = null;
