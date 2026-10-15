@@ -242,6 +242,15 @@
   /* [#249 site] a wide table inside a box scrolls inside the box, never the page (About roster / season history ran 7px past a phone screen) */
   .box-grid .box-b { overflow-x: auto; }
   #hw-referee-body { overflow-x: auto; }
+  /* [15 Oct] home folds: the table guide, the referee ledger, how-this-works */
+  details.std-howto, details.home-fold { margin-top: 8px; }
+  .subnav { display: flex; gap: 6px; margin: 0 0 14px; }
+  .subnav a { font-size: 12.5px; font-weight: 600; text-decoration: none; color: var(--ink2); border: 1px solid var(--line, #dfe3dc); padding: 4px 12px; }
+  .subnav a.on { background: var(--accent, #14532d); border-color: var(--accent, #14532d); color: #fff; }
+  details.std-howto > summary, details.home-fold > summary { cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--accent, #14532d); padding: 4px 0; list-style: none; }
+  details.std-howto > summary::-webkit-details-marker, details.home-fold > summary::-webkit-details-marker { display: none; }
+  details.std-howto > summary::after, details.home-fold > summary::after { content: " ▾"; }
+  details.std-howto[open] > summary::after, details.home-fold[open] > summary::after { content: " ▴"; }
   .tscroll { overflow-x: auto; max-width: 100%; }
   table.data td.rt { white-space: nowrap; }
   .boxcol { max-width: 820px; margin-top: 16px; }
@@ -777,9 +786,7 @@
   <a href="#/markets" data-page="markets">Markets</a>
   <a href="#/charts" data-page="charts">Charts</a>
   <a href="#/news" data-page="news">News &amp; Intel</a>
-  <a href="#/calendar" data-page="calendar">Calendar</a>
   <a href="#/bots" data-page="bots">The Bots</a>
-  <a href="#/desks" data-page="desks">Desks</a>
   <a href="#/models" data-page="models">Model Lab</a>
   <a href="#/calls" data-page="calls">Extended Calls</a>
   <a href="#/direction" data-page="direction" title="Paper Trade — BTC / ETH direction calls">Paper Trade</a>
@@ -815,8 +822,8 @@
         <div class="tile"><div class="t-k">Human · season</div><div class="t-v" id="fp-human">—</div><div class="t-s" id="fp-human-s">real money</div></div>
       </div>
       <p class="fleetpnl-note" id="fp-debt"></p>
-      <p class="fleetpnl-note" id="fp-note">Real money only.</p>
-      <p class="fleetpnl-note">Not investment advice. Small accounts, real venue risk; the human desk is also the operator.</p>
+      <!-- [15 Oct, operator] the basis notes moved to About ("Reading the numbers") — beside the tiles they were a block of grey text
+           that left the hero lopsided; only the human's loan asterisk stays here. The footer already says it is not advice. -->
     </div>
   </div>
   <!-- [#603] Paper Trade teaser: the AI panel's current BTC / ETH lean, from direction_calls.json; hidden until the file loads -->
@@ -835,12 +842,20 @@
   <div class="src hidden" id="bench-line" style="margin:0 0 6px"></div>
   <div style="overflow-x:auto"><table class="std compact" id="standings" aria-label="Competition standings"><tr><td><span class="skel">Eight competitors — one human, seven AI models — ranked by live account value.</span></td></tr></table></div>
   <button type="button" class="std-more" id="std-more" aria-expanded="false">More columns: model spend, avg R, drawdown, regime ▾</button>
-  <!-- [T1] the trust argument, where the numbers are — it lived only in About -->
+  <!-- [15 Oct, operator] the five lines of definitions under the table were a wall of grey text: one click away now -->
+  <details class="std-howto">
+    <summary>How to read this table</summary>
   <div class="src" style="margin-top:8px;letter-spacing:.06em;text-transform:uppercase;font-weight:600">Real money · exchange-verified fills · public archive · nothing deleted <a href="#/about" style="text-transform:none;letter-spacing:0;font-weight:500;margin-left:6px">Audit the experiment →</a></div>
   <div class="src" id="std-spend-note" style="margin-top:6px"><b>Account</b> is live venue equity including open positions; <b>Net of spend</b> is realised P&L of every closed trade (wins, losses and breakevens) minus the model bill — a different measure, so the two need not agree. <b>Return</b> is measured from each seat's own starting balance this season. <b>Avg R</b> is the average result per closed trade in units of the risk planned at entry (breakevens included); <b>Max drawdown</b> is the deepest fall of the account from its own peak this season. <b>Model spend</b> is what each desk's own analysis and scan calls have cost in API fees this season, from the bot's cost ledger; <b>Net of spend</b> is realised P&amp;L minus that bill. Shared overhead (post-mortems, card captions, the weekly lessons writer) is fleet cost and is not charged to any desk. Some models are on introductory or promotional pricing, so today's bill understates the list price.</div>
   <div class="src" id="std-be-note" style="margin-top:4px"><b>BE</b> = breakeven: a trade whose exchange-realised result, fees included, landed within $3 either way (usually a stop moved to entry that came back, net of fees). Breakevens are shown in the Record column but are not counted in the win rate — a breakeven is not a loss, and it is not a win. Their dollars — fees included — do count in the P&amp;L behind <b>Net of spend</b>: a scratch that cost fees is real money.</div>
   <div class="src hidden" id="xfer-line" style="margin-top:4px"></div>
   <div class="src hidden" id="std-note" style="margin-top:4px">Grey win rates rest on fewer than 8 wins and losses — too small a sample to mean much yet. Trade counts are in the Record column.</div>
+  </details>
+  <div class="home-grid" style="margin-top:22px">
+    <div class="hw w12" id="hw-live"><h3>Live trades — every open position</h3><div id="hw-live-body"><span class="src">Open positions load with the feed.</span></div></div>
+    <div class="hw w12" id="hw-closes"><h3>Recent closes — with the post-mortem</h3><div id="hw-closes-body"><span class="src">Closed trades load with the feed.</span></div></div>
+  </div>
+
   <div class="chart-box" id="chart-wrap">
     <div class="legend" id="legend"></div>
     <svg id="race-chart" viewBox="0 0 820 300" role="img" aria-label="Account value of the competitors"></svg>
@@ -864,13 +879,19 @@
   <h2 class="sec" id="split">The machines don't agree</h2>
   <div id="split-body"><span class="src">Live stances load with the feed.</span></div>
 
-  <div class="home-grid" style="margin-top:18px">
-    <div class="hw w12" id="hw-live"><h3>Live trades — every open position</h3><div id="hw-live-body"><span class="src">Open positions load with the feed.</span></div></div>
-    <div class="hw w12" id="hw-closes"><h3>Recent closes — with the post-mortem</h3><div id="hw-closes-body"><span class="src">Closed trades load with the feed.</span></div></div>
-  </div>
+  <hr class="rule">
+  <!-- [15 Oct, operator] the referee was 1,131px on desktop and 26% of the phone page: its one-line verdict leads, the ledger is a click away -->
+  <div class="kicker">The referee — what the desks were not allowed to do</div>
+  <p class="sub" id="ref-lead" style="margin:6px 0 8px">The gate ledger loads with the feed.</p>
+  <details class="home-fold">
+    <summary>Show the gate ledger</summary>
+    <div class="hw w12" id="hw-referee" style="margin-top:8px"><div id="hw-referee-body"><span class="src">The gate ledger loads with the feed.</span></div></div>
+  </details>
+  <!-- [15 Oct, operator] "Don't trust the bots" and "Rules of Season 5" said overlapping things in two bands: one section, folded -->
+  <details class="home-fold" style="margin-top:14px">
+    <summary>How this works — verify every trade, and the rules of Season 5</summary>
   <!-- [T2] the trust band — the old process strip, re-cut as the audit argument and moved under the
        competition instead of above it. Static copy for crawlers; numbers filled by JS. -->
-  <hr class="rule">
   <div class="kicker">Don't trust the bots. Verify them.</div>
   <div class="story" aria-label="How to verify this site">
     <a class="st-step" href="#/about"><span class="st-n">01</span><div class="st-t">Real exchange accounts</div><div class="st-c">Seven real accounts, $500 each, on Lighter, Hyperliquid and Extended — plus one desk on paper, labelled as such. Nothing else is simulated.</div></a>
@@ -891,8 +912,8 @@
     <div class="tile"><div class="t-k">Benchmark</div><div class="t-v" style="font-size:15px">BTC buy-and-hold</div><div class="t-s">$500 of Bitcoin bought at the start minute and held — shown beside the ranking as context, not a rival</div></div>
   </div>
 
+  </details>
   <div class="home-grid" style="margin-top:22px">
-    <div class="hw w12" id="hw-referee"><h3>The referee — what the desks were not allowed to do</h3><div id="hw-referee-body"><span class="src">The gate ledger loads with the feed.</span></div></div>
 
     <div class="hw w12" id="hw-suggest"><h3>Improve the desk</h3><div style="line-height:1.55">
       Spotted a bug, want a stat published, or have an idea worth testing on real money? The desk reads everything.<br>
@@ -984,6 +1005,7 @@
   <div id="level-chart"></div>
 </div>
 <div class="page" data-page="news">
+  <div class="subnav" role="navigation" aria-label="Section pages"><a href="#/news" class="on" aria-current="page">The wire</a><a href="#/calendar">Calendar</a></div>
 
   <div class="kicker">News &amp; social — what the desk is reading</div>
   <h2 class="sec" id="wire">The wire</h2>
@@ -1026,6 +1048,7 @@
   </div>
 </div>
 <div class="page" data-page="calendar">
+  <div class="subnav" role="navigation" aria-label="Section pages"><a href="#/news">The wire</a><a href="#/calendar" class="on" aria-current="page">Calendar</a></div>
   <div class="kicker">Forward calendar</div>
   <h2 class="sec">What could swing markets</h2>
   <p class="sub">Macro prints from FRED release dates, the FOMC schedule, universe earnings and token unlocks — the same event risk the trading desks are fed.</p>
@@ -1045,6 +1068,7 @@
   </div>
 </div>
 <div class="page" data-page="bots">
+  <div class="subnav" role="navigation" aria-label="Section pages"><a href="#/bots" class="on" aria-current="page">The players</a><a href="#/desks">Desk analysis</a></div>
   <!-- id must NOT duplicate the home page's #race (getElementById returns the first match) -->
   <div class="kicker" id="record">The competition — full record</div>
   <h2 class="sec" id="players">The players</h2>
@@ -1187,6 +1211,7 @@
   <div id="trade-room"><div class="kicker">Trade</div><h2 class="sec">Loading…</h2><p class="sub">The trade loads with the feed.</p></div>
 </div>
 <div class="page" data-page="desks">
+  <div class="subnav" role="navigation" aria-label="Section pages"><a href="#/bots">The players</a><a href="#/desks" class="on" aria-current="page">Desk analysis</a></div>
   <!-- [#323] per-desk page: identity + grid cell, history, own record, stop-band table, closes, falsifiers.
        [3 Sep] promoted to its own nav tab (#/desks) with one sub-tab per desk; #/desk/<key> deep links still work. -->
   <div class="kicker">Desk analysis</div>
@@ -1310,6 +1335,16 @@
   <h2 class="sec">About The Bot Exchange</h2>
   <p class="sub">Real capital, code-enforced rules, everything published. Here is how it works and how to check us. <a href="#/rules">Season 5 rules, published before the first trade →</a></p>
   <div class="box-grid">
+  <details class="box" open>
+    <summary class="box-h">Reading the numbers</summary>
+    <div class="box-b" style="font-size:12.8px;color:var(--ink2)">
+      <b>The two P&amp;L tiles on the home page are real money only.</b> "AI desks" adds up the live AI accounts; "Human" is the
+      operator's own account. The paper desks (<span id="about-paper">Quinn Qwen, Hana Haiku, Quentin Qwen</span>) trade under the same
+      rules with no capital and are in neither tile. Money the human adds during the season is a loan to that account, paid back
+      later, and is never counted as return — the asterisk on the Human tile says how much. Small accounts with real venue risk;
+      the human desk is also the operator. Nothing here is investment advice.
+    </div>
+  </details>
   <details class="box">
     <summary class="box-h">Why this matters</summary>
     <div class="box-b" style="font-size:12.8px;color:var(--ink2)">
@@ -1523,8 +1558,10 @@ function strippct(v) { return v == null || !isFinite(v) ? "" : '<b class="' + (v
 // Macro board rides the same strip: S&P 500, Nasdaq, gold, DXY, VIX — live
 // Hyperliquid stock-perp marks (client-side, keeps streaming when the host is off).
 var _macroStrip = [];
-var MACRO_SYMS = { SP500: "S&amp;P 500", XYZ100: "NASDAQ", GOLD: "GOLD", DXY: "DXY", VIX: "VIX" };
-var MACRO_DOLLAR = { GOLD: 1 };
+// [15 Oct] + the US 10Y (feed only — no xyz market; shown in % with its daily move in bp), oil (xyz:CL = WTI, liquid) and
+// silver — the inputs the desks' macro block already reads, now on the strip. Order: equities, rates, dollar, commodities, vol.
+var MACRO_SYMS = { SP500: "S&amp;P 500", XYZ100: "NASDAQ", US10Y: "US 10Y", DXY: "DXY", GOLD: "GOLD", SILVER: "SILVER", CL: "OIL", VIX: "VIX" };
+var MACRO_DOLLAR = { GOLD: 1, SILVER: 1, CL: 1 };
 // VIX regime bracket (CBOE conventional bands)
 function vixBand(v) {
   if (v == null || !isFinite(v)) return "";
@@ -1558,13 +1595,19 @@ function renderStrip(mkt) {
   var macroRows = {};
   _macroStrip.forEach(function (p) { macroRows[p.sym] = { price: p.price, change: p.change }; });
   var feedMac = (mkt && mkt.macro) || {};
-  [["SP500", "spx"], ["XYZ100", "ndx"], ["GOLD", "gold"], ["DXY", "dxy"], ["VIX", "vix"]].forEach(function (pair) {
+  [["SP500", "spx"], ["XYZ100", "ndx"], ["GOLD", "gold"], ["DXY", "dxy"], ["VIX", "vix"], ["CL", "wti"]].forEach(function (pair) {
     if (macroRows[pair[0]]) return;
     var v = feedMac[pair[1]];
     if (!v || v.price == null || !isFinite(v.price)) return;
     macroRows[pair[0]] = { price: v.price, change: v.change };
   });
   Object.keys(MACRO_SYMS).forEach(function (sym) {
+    if (sym === "US10Y") {   // a yield: level in %, move in basis points (never percent-of-yield)
+      var y = feedMac.us10y; if (!y || !isFinite(y.price)) return;
+      var bp = y.changeBp != null && isFinite(y.changeBp) && Math.abs(y.changeBp) >= 0.05 ? " <b class='" + (y.changeBp > 0 ? "neg" : "pos") + "'>" + (y.changeBp > 0 ? "+" : "−") + Math.abs(y.changeBp).toFixed(1) + "bp</b>" : "";
+      m += "<span title='US 10-year Treasury yield (cash, prior close basis); rising yields are a headwind for risk'>US 10Y <b>" + Number(y.price).toFixed(2) + "%</b>" + bp + "</span>";
+      return;
+    }
     var v = macroRows[sym]; if (!v) return;
     // DXY/VIX marks can sit on a flat prevDay — hide a meaningless +0.00%
     var showChg = v.change != null && isFinite(v.change) && Math.abs(v.change) >= 0.005;
@@ -1840,6 +1883,7 @@ function renderFleetPnl(d) {
         + (unconf.length ? "; " + unconf.map(function (r) { return money(r.amount) + " on " + fd(r.ts); }).join(", ") + ", direction unconfirmed." : ".")
       : added < -0.005 ? "* The human has taken out " + money(-added) + " this season — not counted as return." : "";
   }
+  var ap = $("about-paper"); if (ap && paper.length) ap.textContent = paper.map(function (s) { return s.label; }).join(", ");
   var noteEl = $("fp-note");
   if (noteEl) {
     // [#371] regime honesty: how much of the real-money record was earned in a RISK_ON tape.
@@ -4276,6 +4320,9 @@ function renderReferee(d) {
   if (!r || !r.total) { el.innerHTML = "<span class='src'>Scoring not published yet — the referee walks the ledger once a day, off the report burst.</span>"; return; }
   var v = r.verdicts || {}, resolved = (v.good || 0) + (v.missed || 0);
   var goodPct = resolved ? Math.round((v.good || 0) / resolved * 100) : null;
+  var lead = $("ref-lead");   // [15 Oct] the one-line verdict above the folded ledger
+  if (lead) lead.innerHTML = "Over the last " + esc(String(r.windowDays)) + " days the risk gates refused <b>" + esc(String(r.total)) + "</b> picks before any money moved" +
+    (goodPct != null ? "; of the <b>" + resolved + "</b> that have resolved, the refusal was right <b>" + goodPct + "%</b> of the time" : "") + ".";
   var h = "<p class='sub' style='margin:0 0 8px'>Over the last " + esc(String(r.windowDays)) + " days the risk gates refused <b>" + esc(String(r.total)) + "</b> picks before any money moved. " +
     (resolved
       ? "Of the <b>" + resolved + "</b> that have since resolved against real candles, <b>" + (v.good || 0) + "</b> were good calls (the stop would have been hit first) and <b>" + (v.missed || 0) + "</b> were missed winners (the target would have been hit first)" +
@@ -6299,7 +6346,9 @@ function mlMethod(d) {
     [].slice.call(document.querySelectorAll(".page")).forEach(function (p) {
       p.classList.toggle("active", p.getAttribute("data-page") === name);
     });
-    navLinks.forEach(function (a) { a.classList.toggle("active", a.getAttribute("data-page") === name || (a.getAttribute("data-group") === "intel" && !!INTEL_PAGES[name])); });
+    // [15 Oct] Desks lives under The Bots and Calendar under News & Intel (12 nav items → 10); their routes still work
+    var NAV_PARENT = { desks: "bots", calendar: "news" };
+    navLinks.forEach(function (a) { var dp = a.getAttribute("data-page"); a.classList.toggle("active", dp === name || dp === NAV_PARENT[name] || (a.getAttribute("data-group") === "intel" && !!INTEL_PAGES[name])); });
     // [T2] Market intel sub-nav: shown on the four terminal rooms, marks the current one
     var sn = document.getElementById("intel-subnav");
     if (sn) { sn.classList.toggle("hidden", !INTEL_PAGES[name]); [].slice.call(sn.querySelectorAll("a")).forEach(function (a) { a.classList.toggle("active", a.getAttribute("data-page") === name); }); }
