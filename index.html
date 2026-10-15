@@ -175,11 +175,11 @@
   .hero-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px 32px; flex-wrap: wrap; }
   .hero-row .race-row-right { margin-left: auto; padding-top: 58px; text-align: right; }   /* [T2d] tiles sit level with the headline, not the kicker */
   .hero-row .race-row-right { max-width: 340px; }   /* the notes wrap under the tiles: an unbounded note (the paper-desk names, 15 Oct) widened this column past the row and wrapped the tiles onto their own line, leaving a blank band beside the hero */
-  @media (max-width: 760px) { .hero-row .race-row-right { max-width: none; } }
+  @media (max-width: 760px) { .hero-row .race-row-right { max-width: none; padding-top: 0; margin-left: 0; text-align: left; } .hero-row .race-row-right .fleetpnl { margin-left: 0; } }   /* [15 Oct] the desktop padding-top rule sits after the 760px reset at line ~163 and won, leaving a blank band above the tiles on phones */
   .hero-row .fleetpnl { margin-left: auto; }
   .hook { display: none; }   /* [T2c] the hook repeated the verdict headline word for word */
   .race-row { margin-top: 6px; }
-  .hero-h { font-family: var(--serif); font-size: clamp(22px, 3vw, 36px); line-height: 1.1; margin: 8px 0 8px; white-space: nowrap; }   /* [T2d] one line on desktop */
+  .hero-h { font-family: var(--serif); font-size: clamp(22px, 3vw, 36px); line-height: 1.1; margin: 8px 0 8px; text-wrap: balance; }   /* [T2d] was nowrap — [15 Oct] a nowrap headline wider than the row pushed the P&L tiles onto their own line (900–1250px); it wraps now, so the tiles stay beside it */
   @media (max-width: 900px) { .hero-h { white-space: normal; text-wrap: balance; font-size: clamp(24px, 6vw, 34px); } }
   .hero-sub { font-size: 15.5px; color: var(--ink2); max-width: 640px; margin: 0 0 14px; line-height: 1.45; }
   .hero-cta { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
@@ -741,7 +741,7 @@
 
 <header class="mast"><div class="wrap">
   <h1>The Bot Exchange</h1>
-  <span class="tag">One human. Seven machines. Real money — every trade tracked live, in public.</span>
+  <span class="tag" id="mast-tag">One human. Six machines on real money, three on paper — every trade tracked live, in public.</span>
   <span class="datestamp" id="datestamp"></span>
 </div></header>
 <nav class="sections pagesnav"><div class="wrap">
@@ -775,8 +775,8 @@
   <div class="hero-row">
   <div class="hero">
     <div class="kicker" id="hero-kicker">Season 5 · 30 days</div>
-    <h1 class="hero-h">7 AIs. 1 human. $500 each. Real money.</h1>
-    <p class="hero-sub">Six AI desks trade real money on live venues, a seventh trades on paper, and every position, stop and post-mortem goes public the moment it exists.</p>
+    <h1 class="hero-h" id="hero-h">6 AIs on real money. 3 on paper. 1 human.</h1>
+    <p class="hero-sub" id="hero-sub">Six AI desks trade real money from $500 each, three more trade on paper under the same rules, and every position, stop and post-mortem goes public the moment it exists.</p>
     <div class="hero-cta"><a class="btn-primary" href="#floor">Watch the live floor</a><a class="btn-ghost" href="#/archive">See every trade →</a></div>
     <div class="src hero-ind" id="hero-ind">Standings and positions load with the feed.</div>
   </div>
@@ -784,9 +784,11 @@
       <!-- Real-money-only P&L tiles: season total + today's change. Excludes paper accounts —
            see .fleetpnl CSS comment and renderFleetPnl() for why and how. -->
       <div class="fleetpnl" id="fleetpnl">
-        <div class="tile"><div class="t-k">Season P&amp;L</div><div class="t-v" id="fp-season">—</div><div class="t-s">real money</div></div>
-        <div class="tile"><div class="t-k">Today</div><div class="t-v" id="fp-today">—</div><div class="t-s">vs yesterday</div></div>
+        <!-- [15 Oct] split: the one "Season P&L" tile was ~95% the human's account (−$394 of −$416) under a headline about AIs -->
+        <div class="tile"><div class="t-k">AI desks · season</div><div class="t-v" id="fp-season">—</div><div class="t-s" id="fp-season-s">real money</div></div>
+        <div class="tile"><div class="t-k">Human · season</div><div class="t-v" id="fp-human">—</div><div class="t-s" id="fp-human-s">real money</div></div>
       </div>
+      <p class="fleetpnl-note" id="fp-debt"></p>
       <p class="fleetpnl-note" id="fp-note">Real money only.</p>
       <p class="fleetpnl-note">Not investment advice. Small accounts, real venue risk; the human desk is also the operator.</p>
     </div>
@@ -1685,11 +1687,14 @@ function renderHeadline(d) {
   // starting capital, realized basis, and names the best desk as the best desk.
   var vr = (d.verdictByReturn || {}).realized;
   var s5 = S5_RANK ? s5Verdict(d) : null;
+  // [15 Oct] "X leads the human" on 3 trades read as a result. Until the leading desk has EARLY_MIN_DECIDED wins + losses,
+  // the headline says it is too early and the line under it gives the spread and the trade count instead.
+  var early = earlyCall(d);
   if (s5) {   // [#501] Season 5: the headline reads the ranking's own number (return from each seat's start, net of model spend, marked to market)
     var m5 = s5.man.retNetPct, b5 = s5.best.retNetPct, bl5 = (ACTORS[s5.best.key] || {}).label || s5.best.key, d5 = Math.abs(m5 - b5);
-    $("race").textContent = d5 < 0.5 ? "Dead heat — the human and " + bl5 + " are " + d5.toFixed(2) + " points apart"
+    $("race").textContent = early ? early.head : d5 < 0.5 ? "Dead heat — the human and " + bl5 + " are " + d5.toFixed(2) + " points apart"
       : m5 > b5 ? "The human leads every machine" : m5 > s5.mean ? "The human beats the fleet, trails " + bl5 : bl5 + " leads the human";
-    $("race-sub").innerHTML = "Ranked on return from each seat's own start, net of its model bill, open positions at market — the same number as the table. The human is at <b class='" + cls(m5) + "'>" + pct(m5, 2) +
+    $("race-sub").innerHTML = (early ? early.sub : "") + "Ranked on return from each seat's own start, net of its model bill, open positions at market — the same number as the table. The human is at <b class='" + cls(m5) + "'>" + pct(m5, 2) +
       "</b>; the best machine, " + esc(bl5) + ", is at <b class='" + cls(b5) + "'>" + pct(b5, 2) + "</b>. Across all " + s5.n + " machines the average is <b class='" + cls(s5.mean) + "'>" + pct(s5.mean, 2) + "</b>, and <b>" + s5.belowMan + " of " + s5.n + "</b> sit below the human." +
       "<span class='src' style='display:block;margin-top:6px'>The human has no model bill; a transfer on the human's account during the season is dated in the record and not counted as return.</span>";
     return;
@@ -1701,8 +1706,8 @@ function renderHeadline(d) {
       : vr.manBeatsBest ? "The human leads every machine"
       : vr.manBeatsFleetMean ? "The human beats the fleet, trails " + esc(vr.best.label)
       : esc(vr.best.label) + " leads the human";
-    $("race").textContent = h;
-    $("race-sub").innerHTML =
+    $("race").textContent = early ? early.head : h;
+    $("race-sub").innerHTML = (early ? early.sub : "") +
       "Measured as return on each seat's own starting capital, closed trades only. The human is at <b class='" + cls(mr) + "'>" + pct(mr, 2) +
       "</b> from " + money(vr.man.seat, 0) + "; the best machine, " + esc(vr.best.label) + ", is at <b class='" + cls(br) + "'>" + pct(br, 2) +
       "</b>. Across all " + n + " machines the average is <b class='" + cls(fm) + "'>" + pct(fm, 2) + "</b>" +
@@ -1722,6 +1727,24 @@ function renderHeadline(d) {
     : esc(v.machine.label) + " — the leading machine — holds <b>" + money(v.machine.account) + "</b>. The human sits at <b>" + money(v.man.account) + "</b>.";
 }
 
+var EARLY_MIN_DECIDED = 10;   // wins + losses the leading AI desk needs before the headline names a leader
+function earlyCall(d) {
+  var ai = (d.standings || []).filter(function (s) { return !s.paper && s.key !== "manual"; });
+  if (!ai.length) return null;
+  var ret = function (s) { return isFinite(s.retNetPct) ? s.retNetPct : s.retPct; };
+  var best = ai.slice().sort(function (a, b) { return (ret(b) || 0) - (ret(a) || 0); })[0];
+  var dec = function (s) { return (s.wins || 0) + (s.losses || 0); };
+  if (dec(best) >= EARLY_MIN_DECIDED) return null;
+  var w = ai.reduce(function (n, s) { return n + (s.wins || 0); }, 0), c = ai.reduce(function (n, s) { return n + dec(s) + (s.be || 0); }, 0);
+  var spread = Math.max.apply(null, ai.map(function (s) { return Math.abs(ret(s) || 0); }));
+  var name = (ACTORS[best.key] || {}).label || best.label;
+  return {
+    head: "Too early to call",
+    sub: "<b>The " + ai.length + " AI desks are all within ±" + spread.toFixed(1) + "% of their start, with " + w + " win" + (w === 1 ? "" : "s") + " in " + c + " closed trades between them.</b> " +
+      esc(name) + " is ahead for now on " + dec(best) + " decided trade" + (dec(best) === 1 ? "" : "s") + " — the headline names a leader once the front-runner has " + EARLY_MIN_DECIDED + ". "
+  };
+}
+
 // ── real-money-only fleet P&L strip (season total + today's change) ──
 // Paper accounts (Sonny Sonnet, Quinn Qwen — anything with `paper: true`) are excluded on
 // purpose: the site's own tagline says "Real money", so a headline number that quietly
@@ -1729,7 +1752,20 @@ function renderHeadline(d) {
 // excluded set is read off the data, never hardcoded, so a future roster change can't drift
 // this out of sync with the standings table.
 function pnlCls(v) { return v == null || !isFinite(v) ? "" : cls(v); }
+// [15 Oct] the roster counts on the hero + masthead come from the feed — #614 added two paper desks and the static
+// "7 AIs … a seventh trades on paper" went stale the same day.
+function renderHeroCounts(d) {
+  var st = d.standings || [];
+  var live = st.filter(function (s) { return !s.paper && s.key !== "manual"; }).length, paper = st.filter(function (s) { return s.paper; }).length;
+  if (!live) return;
+  var W = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"], w = function (n) { return W[n] || String(n); };
+  var cap = function (t) { return t.charAt(0).toUpperCase() + t.slice(1); };
+  $("hero-h").textContent = live + " AIs on real money. " + (paper ? paper + " on paper. " : "") + "1 human.";
+  $("hero-sub").textContent = cap(w(live)) + " AI desks trade real money from $500 each" + (paper ? ", " + w(paper) + " more trade" + (paper === 1 ? "s" : "") + " on paper under the same rules" : "") + ", and every position, stop and post-mortem goes public the moment it exists.";
+  var tag = $("mast-tag"); if (tag) tag.textContent = "One human. " + cap(w(live)) + " machines on real money" + (paper ? ", " + w(paper) + " on paper" : "") + " — every trade tracked live, in public.";
+}
 function renderFleetPnl(d) {
+  try { renderHeroCounts(d); } catch (e) {}
   var el = $("fleetpnl");
   if (!el) return;
   var standings = d.standings || [];
@@ -1738,24 +1774,42 @@ function renderFleetPnl(d) {
   if (!real.length) { el.classList.add("hidden"); return; }
   el.classList.remove("hidden");
 
-  var season = real.reduce(function (sum, s) { return sum + (isFinite(s.pnl) ? s.pnl : 0); }, 0);
-
+  // [15 Oct] AI desks and the human are separate tiles: the human's account carried ~95% of the combined figure
+  var ai = real.filter(function (s) { return s.key !== "manual"; }), man = real.filter(function (s) { return s.key === "manual"; });
+  var sumPnl = function (arr) { return arr.reduce(function (sum, s) { return sum + (isFinite(s.pnl) ? s.pnl : 0); }, 0); };
   var series = (d.seriesDaily || {}).bySource || {};
-  var haveSeries = real.some(function (s) { return Array.isArray(series[s.key]) && series[s.key].length >= 2; });
-  var today = null;
-  if (haveSeries) {
-    today = real.reduce(function (sum, s) {
-      var arr = series[s.key];
-      if (!Array.isArray(arr) || arr.length < 2) return sum;
-      var last = arr[arr.length - 1], prev = arr[arr.length - 2];
-      return sum + (isFinite(last) && isFinite(prev) ? (last - prev) : 0);
+  var dayMove = function (arr) {
+    var have = false, t = arr.reduce(function (sum, s) {
+      var x = series[s.key];
+      if (!Array.isArray(x) || x.length < 2) return sum;
+      var last = x[x.length - 1], prev = x[x.length - 2];
+      if (!isFinite(last) || !isFinite(prev)) return sum;
+      have = true; return sum + (last - prev);
     }, 0);
+    return have ? t : null;
+  };
+  var aiPnl = sumPnl(ai), aiDay = dayMove(ai);
+  $("fp-season").textContent = signedMoney(aiPnl);
+  $("fp-season").className = "t-v " + pnlCls(aiPnl);
+  $("fp-season-s").textContent = aiDay == null ? "real money" : "today " + signedMoney(aiDay);
+  if (man.length) {
+    var manPnl = sumPnl(man), manDay = dayMove(man);
+    // [15 Oct, operator] money the human ADDED mid-season is a loan to the account, owed back — never return. Read off the
+    // feed's transfer sweep (seasonTransfers), so a new deposit or a repayment updates the asterisk without a site edit.
+    var tr = ((d.seasonTransfers || {}).rows || []).filter(function (r) { return r.seat === "manual"; });
+    var added = tr.reduce(function (sum, r) { return sum + (isFinite(r.net) ? r.net : 0); }, 0);
+    var unconf = tr.filter(function (r) { return r.net == null && isFinite(r.amount); });
+    var fd = function (iso) { return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "Africa/Johannesburg" }); };
+    var star = added > 0.005 ? "*" : "";
+    $("fp-human").textContent = signedMoney(manPnl) + star;
+    $("fp-human").className = "t-v " + pnlCls(manPnl);
+    $("fp-human-s").textContent = manDay == null ? "real money" : "today " + signedMoney(manDay);
+    var debt = $("fp-debt");
+    if (debt) debt.textContent = added > 0.005
+      ? "* " + money(added) + " added this season (" + tr.filter(function (r) { return isFinite(r.net) && r.net > 0; }).map(function (r) { return fd(r.ts); }).join(", ") + ") — a loan the human will pay back, not counted as return"
+        + (unconf.length ? "; " + unconf.map(function (r) { return money(r.amount) + " on " + fd(r.ts); }).join(", ") + ", direction unconfirmed." : ".")
+      : added < -0.005 ? "* The human has taken out " + money(-added) + " this season — not counted as return." : "";
   }
-
-  $("fp-season").textContent = signedMoney(season);
-  $("fp-season").className = "t-v " + pnlCls(season);
-  $("fp-today").textContent = signedMoney(today);
-  $("fp-today").className = "t-v " + pnlCls(today);
   var noteEl = $("fp-note");
   if (noteEl) {
     // [#371] regime honesty: how much of the real-money record was earned in a RISK_ON tape.
@@ -1763,7 +1817,7 @@ function renderFleetPnl(d) {
     real.forEach(function (s) { if (s.key === "manual" || !s.regimes) return; on += (s.regimes.RISK_ON || {}).n || 0; known += s.regimes.known || 0; });
     var regimeNote = known ? " " + Math.round(100 * on / known) + "% of the machines' closes were opened in a RISK_ON regime" + (on === known ? " — untested outside it." : ".") : "";
     noteEl.textContent = (paper.length
-      ? "Real money only — excludes " + paper.map(function (s) { return s.label; }).join(" & ") + " (paper)."
+      ? "Real money only — paper desks (" + paper.map(function (s) { return s.label; }).join(", ") + ") are in neither tile."
       : "Real money only.") + regimeNote;
   }
 }
@@ -2154,6 +2208,11 @@ function renderStandings(d) {
 // ── race chart: hourly rows when we have depth, else daily series ──
 var chartMode = null; // '24h' (5-min samples) | 'season' (hourly/daily)
 var chartPct = false, chartHidden = new Set();   // [T2] % view + hidden desks (session-only)
+var chartInit = false;   // [15 Oct] first render shows the live AI desks only — the human and the paper desks stretched the scale until the six live lines were one flat band
+function aiOnlyHidden(d, series) {
+  var off = {}; (d.standings || []).forEach(function (s) { if (s.paper || s.key === "manual") off[(ACTORS[s.key] || {}).model] = 1; });
+  return new Set(series.filter(function (s) { return off[s.key]; }).map(function (s) { return s.key; }));
+}
 function seriesFromRows(rows, labelFn) {
   // [#249 site] the equity tables keep the pre-#211 column name 'hermes' for Greta's seat (history is never
   // rewritten); fold it forward to 'grok' like the bot's canonicalActor() — without this the 24h view had no Grok line.
@@ -2204,12 +2263,13 @@ function renderChart(d) {
     ? "live account value incl. open trades · 5-min samples"
     : "account value at each day's close · dashed = start") + (chartPct ? " · % from $" + start : " · $");
   var allSeries = chartSeries(d, chartMode).series;
+  if (!chartInit) { chartInit = true; chartHidden = aiOnlyHidden(d, allSeries); data.series = data.series.filter(function (s) { return !chartHidden.has(s.key); }); }
   $("legend").innerHTML = allSeries.map(function (s) {
     var off = chartHidden.has(s.key);
     return "<button class='leg" + (off ? " off" : "") + "' data-k='" + esc(s.key) + "' title='click to " + (off ? "show" : "hide") + "'><span class='swatch' style='background:" + s.color + "'></span>" + esc(s.key) + "</button>";
   }).join("") + "<span style='margin-left:auto;color:var(--ink3)'>" + legNote + "</span>" + tog +
     "<span class='ctog'><button data-p='1'" + (chartPct ? " class='on'" : "") + ">%</button><button data-p='0'" + (!chartPct ? " class='on'" : "") + ">$</button></span>" +
-    "<span class='ctog'><button data-preset='hvb' title='human vs the best machine'>Human vs best</button><button data-preset='all'>All</button></span>";
+    "<span class='ctog'><button data-preset='ai' title='the live AI desks only'>AI desks</button><button data-preset='hvb' title='human vs the best machine'>Human vs best</button><button data-preset='all'>All</button></span>";
   Array.prototype.forEach.call($("legend").querySelectorAll(".ctog button[data-m]"), function (b) {
     b.onclick = function () { chartMode = b.getAttribute("data-m"); renderChart(d); };
   });
@@ -2222,6 +2282,7 @@ function renderChart(d) {
   Array.prototype.forEach.call($("legend").querySelectorAll(".ctog button[data-preset]"), function (b) {
     b.onclick = function () {
       chartHidden = new Set();
+      if (b.getAttribute("data-preset") === "ai") chartHidden = aiOnlyHidden(d, allSeries);
       if (b.getAttribute("data-preset") === "hvb" && d.verdict) {
         var keep = { manual: 1 }; (d.standings || []).forEach(function (a) { if (a.label === d.verdict.machine.label || (ACTORS[a.key] || {}).label === d.verdict.machine.label) keep[a.key] = 1; });
         allSeries.forEach(function (s) { var k = Object.keys(ACTORS).filter(function (kk) { return ACTORS[kk].model === s.key; })[0]; if (!keep[k]) chartHidden.add(s.key); });
@@ -2254,7 +2315,7 @@ function renderChart(d) {
   var Y = function (v) { return m.t + ih * (1 - (v - yMin) / (yMax - yMin)); };
   for (var g = Math.ceil(yMin / gStep) * gStep; g <= yMax; g += gStep) {
     el("line", { x1: m.l, x2: W - m.r, y1: Y(g), y2: Y(g), stroke: "#eef0ec" });
-    el("text", { x: m.l - 8, y: Y(g) + 4, "text-anchor": "end", fill: "#7d897f", "font-size": 11, "font-family": "ui-monospace,Consolas,monospace" }).textContent = "$" + (gStep < 1 ? g.toFixed(2) : Math.round(g));
+    el("text", { x: m.l - 8, y: Y(g) + 4, "text-anchor": "end", fill: "#7d897f", "font-size": 11, "font-family": "ui-monospace,Consolas,monospace" }).textContent = chartPct ? (g > 0 ? "+" : "") + Math.round(g) + "%" : "$" + (gStep < 1 ? g.toFixed(2) : Math.round(g));   // [15 Oct] the % view printed "$5" for +5%
   }
   var base = chartPct ? 0 : 500;
   if (yMin <= base && base <= yMax)
