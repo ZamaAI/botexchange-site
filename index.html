@@ -1560,8 +1560,8 @@ function strippct(v) { return v == null || !isFinite(v) ? "" : '<b class="' + (v
 var _macroStrip = [];
 // [15 Oct] + the US 10Y (feed only — no xyz market; shown in % with its daily move in bp), oil (xyz:CL = WTI, liquid) and
 // silver — the inputs the desks' macro block already reads, now on the strip. Order: equities, rates, dollar, commodities, vol.
-var MACRO_SYMS = { SP500: "S&amp;P 500", XYZ100: "NASDAQ", US10Y: "US 10Y", DXY: "DXY", GOLD: "GOLD", SILVER: "SILVER", CL: "OIL", VIX: "VIX" };
-var MACRO_DOLLAR = { GOLD: 1, SILVER: 1, CL: 1 };
+var MACRO_SYMS = { SP500: "S&amp;P 500", XYZ100: "NASDAQ", US10Y: "US 10Y", DXY: "DXY", GOLD: "GOLD", CL: "OIL", VIX: "VIX" };   // [15 Oct] silver dropped: the row must stay one line
+var MACRO_DOLLAR = { GOLD: 1, CL: 1 };
 // VIX regime bracket (CBOE conventional bands)
 function vixBand(v) {
   if (v == null || !isFinite(v)) return "";
