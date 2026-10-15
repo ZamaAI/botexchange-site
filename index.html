@@ -681,6 +681,19 @@
   .ml-heat { font-size: 12px; } .ml-heat .ml-n { font-size: 9.5px; opacity: .75; margin-left: 3px; } .ml-heat.none { color: var(--ink3); }
   table.ml-heatt td { border-bottom: 2px solid var(--bg); border-right: 2px solid var(--bg); }
   .ml-wrap table.ml-heatt { min-width: 560px; }
+  /* [15 Oct] the answer first: one row per test, each with its sample and what would settle it */
+  .ml-ans { border: 1px solid var(--line, #dfe3dc); border-left: 4px solid var(--accent, #14532d); background: var(--panel, #f6f7f4); padding: 14px 16px; margin: 6px 0 16px; }
+  .ml-ans h3 { font-family: var(--serif); font-size: 22px; margin: 0 0 4px; }
+  .ml-ans > p { margin: 0 0 10px; color: var(--ink2); max-width: 900px; }
+  .ml-ans-g { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .ml-ans-c { background: var(--bg, #fff); border: 1px solid var(--line, #dfe3dc); padding: 10px 12px; }
+  .ml-ans-c .k { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink3); font-weight: 700; }
+  .ml-ans-c .v { font-size: 17px; font-weight: 700; margin: 4px 0 2px; }
+  .ml-ans-c .s { font-size: 13px; color: var(--ink2); line-height: 1.4; }
+  .ml-ans-c .t { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; padding: 1px 6px; border: 1px solid currentColor; margin-top: 6px; }
+  .ml-ans-c .t.no { color: #9a6700; } .ml-ans-c .t.yes { color: #1a7f37; }
+  .ml-ans .src { margin-top: 8px; }
+  @media (max-width: 860px) { .ml-ans-g { grid-template-columns: minmax(0, 1fr); } }
   .ml-hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 14px; margin: 4px 0 14px; align-items: start; }
   .ml-sl { display: grid; gap: 2px; }
   .ml-sr { display: grid; grid-template-columns: 22px minmax(0, 190px) minmax(0, 1fr) 40px; grid-template-areas: "rk nm bar sc" "rk sx sx sx"; column-gap: 9px; align-items: center; padding: 5px 6px 6px; border-radius: 4px; cursor: pointer; border-bottom: 1px solid var(--line2); }
@@ -1211,6 +1224,7 @@
        Data: static data/model_board.json (committed with the page, never the live feed). Prompts/answers are NEVER rendered. -->
   <div class="kicker">Model Lab · benchmark</div>
   <h2 class="sec" id="models">Which AI model trades best on the same inputs?</h2>
+  <div class="ml-ans" id="ml-answer"><h3>Who's best?</h3><p class="src">Loading the three tests…</p></div>
   <p class="sub" id="ml-method" style="max-width:980px">Loading the benchmark…</p>
   <div class="ml-filters" id="ml-filters"></div>
   <div class="ml-hero">
@@ -1219,7 +1233,7 @@
   </div>
   <div class="ml-verdict" id="ml-verdict"></div>
   <div class="ml-detail hidden" id="ml-detail"></div>
-  <details class="ml-sec" open>
+  <details class="ml-sec">   <!-- [15 Oct] collapsed by default: the gates answer "could it hold a seat?", not "who is best?" -->
     <summary>The evidence and the four gates, one chart each</summary>
     <div id="ml-legend-kind"></div>
     <div class="ml-grid" id="ml-high"></div>
@@ -1731,7 +1745,8 @@ var EARLY_MIN_DECIDED = 10;   // wins + losses the leading AI desk needs before 
 function earlyCall(d) {
   var ai = (d.standings || []).filter(function (s) { return !s.paper && s.key !== "manual"; });
   if (!ai.length) return null;
-  var ret = function (s) { return isFinite(s.retNetPct) ? s.retNetPct : s.retPct; };
+  var num = function (v) { return typeof v === "number" && isFinite(v); };   // isFinite(null) is true
+  var ret = function (s) { return num(s.retNetPct) ? s.retNetPct : s.retPct; };
   var best = ai.slice().sort(function (a, b) { return (ret(b) || 0) - (ret(a) || 0); })[0];
   var dec = function (s) { return (s.wins || 0) + (s.losses || 0); };
   if (dec(best) >= EARLY_MIN_DECIDED) return null;
@@ -5090,8 +5105,10 @@ function wrapWideTables(root) {
   new MutationObserver(function () { if (q) return; q = true; requestAnimationFrame(function () { q = false; try { wrapWideTables(); } catch (e) {} }); })
     .observe(pages, { childList: true, subtree: true });
 })();
+var _liveFeed = null;   // [15 Oct] the Model Lab answer card reads the live standings
 function renderAll(d) {
   try { tidyFeedStrings(d, 0); } catch (e) {}
+  _liveFeed = d; setTimeout(function () { try { mlAnswer(); } catch (e) {} }, 0);   // after renderAll has computed retNetPct on the same object
   // [#248 S3] Return = (account − the seat's ACTUAL season start) / that start — the basis the #460 headline already uses.
   // The feed's retPct divides by a nominal $500, so the same desk showed two returns on one page (Luna −2.3% in the
   // table vs −0.96% in the headline). Seats come from d.seasonSeats; a desk with no seat keeps the feed's figure.
@@ -5184,7 +5201,7 @@ function dcLoad() {
 function dcFetch() {
   fetch("https://raw.githubusercontent.com/ZamaAI/botexchange-data/main/direction_calls.json?cb=" + Math.floor(Date.now() / 120000), { cache: "no-store" })
     .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-    .then(function (j) { _dc.data = j; _dc.at = Date.now(); ptStrip(); dcRender(); })
+    .then(function (j) { _dc.data = j; _dc.at = Date.now(); ptStrip(); dcRender(); try { mlAnswer(); } catch (e) {} })
     .catch(function (e) { var m = $("dc-method"); if (m && !_dc.data) m.textContent = "The calls file could not be loaded (" + e.message + "). It refreshes every 15 minutes — try again shortly."; });
 }
 // [#603] the homepage teaser: what the AI panel leans on each coin right now. Hidden when the file is missing, has no pulse, or is over an hour old.
@@ -5378,6 +5395,7 @@ function mlIsP() { return _ml.set === "price" && _ml.data && !!_ml.data.price; }
 var ML_SEATS = { "gemini-3.8-flash": "Gina", "glm-5.3-flash": "Garry", "gpt-6-luna": "Luna", "deepseek-v4.1-flash": "Danny", "deepseek-flash": "Danny", "grok-4.7": "Greta", "kimi-k3": "Kenny" };
 var ML_MIN_N = 20;   // decided picks below this = SMALL SAMPLE (the bar fades, the verdict says so)
 function mlLoad() {
+  try { if (!_dc.data) dcFetch(); } catch (e) {}   // [15 Oct] the answer card's Paper Trade row
   if (_ml.data) { mlRender(); return; }
   if (_ml.loading) return; _ml.loading = true;
   fetch("data/model_board.json?cb=" + Math.floor(Date.now() / 300000), { cache: "no-store" })
@@ -5511,6 +5529,52 @@ function mlRenderMonths(isP) {
     " Read each model across the row, then against the two baselines: a month where simply holding long (or short) won is a month the market did the work.";
   $("ml-months-legend").innerHTML = "Bold with * = the 90% interval excludes zero (hover a cell for the interval and the number of decided picks). Grey = fewer than " + ML_MIN_N + " decided picks. Only models run on at least two months are listed; all figures follow the “Score picks by” switch above.";
 }
+// [15 Oct, operator: "so much information but still not sure who is the best"] The site runs three different tests and
+// they live on three tabs. This card answers the page's own question once, at the top: per test, who leads, on how much
+// evidence, and whether that is enough to call. Every number is read from the data the page already loads.
+function mlAnswer() {
+  var el = $("ml-answer"); if (!el) return;
+  var rows = [];
+  // 1. real money — the live standings
+  var f = _liveFeed, ai = f ? (f.standings || []).filter(function (s) { return !s.paper && s.key !== "manual"; }) : [];
+  if (ai.length) {
+    var ret = function (s) { return typeof s.retNetPct === "number" && isFinite(s.retNetPct) ? s.retNetPct : s.retPct; }, dec = function (s) { return (s.wins || 0) + (s.losses || 0); };
+    var best = ai.slice().sort(function (a, b) { return (ret(b) || 0) - (ret(a) || 0); })[0], ok = dec(best) >= EARLY_MIN_DECIDED;
+    rows.push({ k: "Real money · Season " + SEASON, v: esc((ACTORS[best.key] || {}).label || best.label) + " " + (ret(best) >= 0 ? "+" : "−") + Math.abs(ret(best) || 0).toFixed(1) + "%",
+      s: "Ahead of " + (ai.length - 1) + " other live desks on " + dec(best) + " decided trade" + (dec(best) === 1 ? "" : "s") + ". The live table names a leader at " + EARLY_MIN_DECIDED + ".",
+      ok: ok, t: ok ? "LEADING" : "TOO EARLY", href: "#/home" });
+  }
+  // 2. the benchmark — the set this page renders
+  var m = _ml.summary;
+  if (m) rows.push({ k: "Benchmark · " + esc(m.moments) + (m.isP ? " price charts" : " desk prompts"),
+    v: m.qual.length ? esc(m.qual.join(", ")) : "No model proven",
+    s: m.elig + " of " + m.models + " models could hold a seat (all four gates). " + (m.qual.length ? "" : "Proving it takes 20+ decided picks with the whole result interval above zero. ") +
+       (m.bestBase && m.beatBase === 0 ? "None beat the " + esc(m.bestBase.name.replace(/^A/, "a")) + " rule." : ""),
+    ok: !!m.qual.length, t: m.qual.length ? "QUALIFIED" : "NOT PROVEN" });
+  // 3. Paper Trade — BTC / ETH direction calls
+  var dc = _dc && _dc.data, b = dc ? (dc.board || []) : [];
+  var mods = b.filter(function (r) { return !r.baseline && !r.rule && !r.panel && isFinite(r.net1xPct); });
+  if (mods.length) {
+    var top = mods.slice().sort(function (a, c) { return c.net1xPct - a.net1xPct; })[0];
+    var flip = b.filter(function (r) { return r.model === "coin-flip"; })[0];
+    var rate = function (r) { return r && r.hit30 && r.hit30.n ? r.hit30.right / r.hit30.n : null; };
+    var bestRate = Math.max.apply(null, mods.map(function (r) { return rate(r) || 0; })), fr = rate(flip);
+    var beats = fr != null && bestRate > fr;
+    rows.push({ k: "Paper Trade · BTC / ETH", v: esc(top.label || top.model) + " " + (top.net1xPct >= 0 ? "+" : "−") + Math.abs(top.net1xPct).toFixed(1) + "%",
+      s: "Best of " + mods.length + " models on " + (dc.ticks || "?") + " rounds. " + (fr != null ? (beats ? "Its calls beat a coin flip one round later." : "No model calls the next round more often than a coin flip (" + Math.round(100 * fr) + "%).") : ""),
+      ok: beats, t: beats ? "AHEAD OF CHANCE" : "NOT PROVEN", href: "#/direction" });
+  }
+  if (!rows.length) return;
+  var proven = rows.filter(function (r) { return r.ok; }).length;
+  el.innerHTML = "<h3>Who's best? " + (proven ? proven + " of " + rows.length + " tests have a leader worth naming" : "Not proven yet") + "</h3>" +
+    "<p>Three tests, three different questions: real money on live venues, a frozen benchmark every model answers identically, and fast BTC / ETH direction calls. " +
+    (proven ? "" : "Each has someone ahead, and none of them is ahead by enough to call it skill.") + "</p>" +
+    "<div class='ml-ans-g'>" + rows.map(function (r) {
+      return "<div class='ml-ans-c'><div class='k'>" + r.k + "</div><div class='v'>" + r.v + "</div><div class='s'>" + r.s + "</div>" +
+        "<span class='t " + (r.ok ? "yes" : "no") + "'>" + r.t + "</span>" + (r.href ? " <a class='src' href='" + r.href + "'>see it →</a>" : "") + "</div>";
+    }).join("") + "</div>" +
+    "<div class='src'>Small samples move a lot: a desk or a model is named here as the leader only once its own evidence clears the bar shown on its card.</div>";
+}
 function mlRender() {
   var d = mlD(); if (!d) return;
   var isP = mlIsP();
@@ -5555,6 +5619,16 @@ function mlRender() {
   var scored = models.concat(fleet ? [fleet] : []).map(function (r) { return { r: r, s: mlScore(r) }; }).sort(function (a, b) { return b.s.total - a.s.total; });
   var elig = scored.filter(function (x) { return !x.r.liveFleet && x.s.gates.ok; }), qual = elig.filter(function (x) { return x.s.status === "qualified"; });
   scored.sort(function (a, b) { return (b.s.gates.ok - a.s.gates.ok) || (b.s.total - a.s.total); });   // the shortlist first, then the rest — a model that cannot answer never tops the list
+  // [15 Oct] while NO model has qualified the score cannot separate them (every one is held near 50), so the list is not a
+  // ranking: no rank numbers, and the models that can hold a seat are listed cheapest first — the one comparison that is real.
+  var noneProven = !qual.length;
+  var c1k = function (r) { var c = r.cost1kAll != null ? r.cost1kAll : mlPer1k(r); return c == null ? Infinity : c; };
+  var lose = function (x) { return x.s.status === "losing" ? 1 : 0; };   // a model whose whole interval is below zero sinks under the unproven ones
+  if (noneProven) scored.sort(function (a, b) { return (b.s.gates.ok - a.s.gates.ok) || (a.s.gates.ok && b.s.gates.ok ? (lose(a) - lose(b)) || (c1k(a.r) - c1k(b.r)) : b.s.total - a.s.total); });
+  _ml.summary = { models: models.length, elig: elig.length, qual: qual.map(function (x) { return mlName(x.r); }), judged: judged.length, isP: isP, moments: d.moments,
+    bestBase: (function () { var bb = bases.filter(function (b) { return mlM(b).avgR != null; }).sort(function (a, b) { return mlM(b).avgR - mlM(a).avgR; })[0]; return bb ? { name: mlName(bb), avgR: mlM(bb).avgR } : null; })(),
+    beatBase: (function () { var bb = bases.filter(function (b) { return mlM(b).avgR != null; }).sort(function (a, b) { return mlM(b).avgR - mlM(a).avgR; })[0]; return bb ? judged.filter(function (r) { return mlM(r).avgR > mlM(bb).avgR; }).length : null; })() };
+  try { mlAnswer(); } catch (e) {}
   if (_ml.view === "short") scored = scored.filter(function (x) { return x.s.gates.ok; });
   $("ml-verdict").innerHTML = "<b>What this set says.</b> " + "<b>" + elig.length + " of " + models.length + " models clear all four gates</b> (usable answers, speed, cost, discipline) and make the seat shortlist. " +
     (qual.length ? "<b>Qualified on trading: " + qual.map(function (x) { return esc(mlName(x.r)); }).join(", ") + ".</b> " : "<b>None has qualified on trading yet</b> — that takes 20 or more decided picks with the whole interval above zero. ") +
@@ -5584,9 +5658,9 @@ function mlRender() {
     var r = x.r, s = x.s;
     if (cut && i >= SHOWN && _ml.open !== r.model) return;
     if (_ml.view !== "short" && !s.gates.ok && (i === 0 || scored[i - 1].s.gates.ok)) sh += "<div class='ml-bd ml-nd'>Tested, not on the seat shortlist (fails a gate)</div>";
-    if (_ml.view !== "short" && s.gates.ok && i === 0) sh += "<div class='ml-bd ml-nd'>Seat shortlist — clears all four gates</div>";
+    if (_ml.view !== "short" && s.gates.ok && i === 0) sh += "<div class='ml-bd ml-nd'>" + (noneProven ? "Usable as a seat — clears all four gates · none proven yet, so cheapest first" : "Seat shortlist — clears all four gates") + "</div>";
     sh += "<div class='ml-sr" + (_ml.open === r.model ? " on" : "") + "' data-model=\"" + esc(r.model) + "\" tabindex='0' role='button' title='Show this model’s detail'>" +
-      "<div class='ml-rk'>" + (s.gates.ok ? (i + 1) : "–") + "</div><div class='ml-snm'><b>" + esc(mlName(r)) + (mlIsNew(r) ? " <i class='ec-tag own' style='font-style:normal'>NEW</i>" : "") + "</b><span>" + esc(mlVendor(r)) + (mlEffort(r) ? " · " + esc(mlEffort(r)) + " effort" : "") + "</span></div>" +
+      "<div class='ml-rk'>" + (s.gates.ok && !noneProven ? (i + 1) : "–") + "</div><div class='ml-snm'><b>" + esc(mlName(r)) + (mlIsNew(r) ? " <i class='ec-tag own' style='font-style:normal'>NEW</i>" : "") + "</b><span>" + esc(mlVendor(r)) + (mlEffort(r) ? " · " + esc(mlEffort(r)) + " effort" : "") + "</span></div>" +
       "<div class='ml-sb'><i class='ml-bf k-" + mlKind(r) + (s.gates.ok ? "" : " off") + "' style='left:0;width:" + Math.max(1, s.total).toFixed(1) + "%'></i><i class='ml-mid'></i></div>" +
       "<div class='ml-sv'>" + Math.round(s.total) + "</div>" +
       "<div class='ml-sx'><span class='ml-st st-" + s.status + "'>" + ML_STATUS[s.status] + "</span>" +
@@ -5601,14 +5675,17 @@ function mlRender() {
     fresh.forEach(function (x) {
       var r = x.r, m = mlM(r), pos = all0.map(function (y) { return y.r.model; }).indexOf(r.model) + 1, c = r.cost1kAll != null ? r.cost1kAll : mlPer1k(r);
       lt += "<tr class='ml-nr' data-model=\"" + esc(r.model) + "\" tabindex='0' role='button' style='cursor:pointer' title='Show this model’s detail'><td><b>" + esc(mlName(r)) + "</b> <span class='src'>" + esc(mlVendor(r)) + "</span></td>" +
-        "<td class='rt'><b>" + Math.round(x.s.total) + "</b></td><td class='rt'>" + (x.s.gates.ok ? pos + " of " + all0.length : "—") + "</td>" +
+        "<td class='rt'><b>" + Math.round(x.s.total) + "</b></td><td class='rt'>" + (x.s.gates.ok && !noneProven ? pos + " of " + all0.length : noneProven ? "unproven" : "—") + "</td>" +
         "<td class='rt " + (m.avgR > 0 ? "up" : m.avgR < 0 ? "down" : "") + "'>" + (m.avgR == null ? "—" : mlSigned(m.avgR) + "R") + "</td><td class='rt'>" + (m.decided || 0) + "</td><td class='rt'>" + mlUsd1k(c) + "</td>" +
         "<td>" + (x.s.gates.ok ? "<span class='up'>✓ clears all four gates</span>" : "<span class='down'>✗ " + esc(x.s.gates.fails.map(function (g) { return g.k + " " + g.v; }).join(", ")) + "</span>") + "</td></tr>";
     });
     latest = mlCard("Latest test · " + ML_NEW.date, fresh.length + " models added on the same " + esc(d.moments) + " desk prompts · tagged NEW in every chart below", lt + "</table></div>",
       "None of this batch has qualified: a model needs " + ML_MIN_N + " or more decided picks with its whole interval above zero. Most rank below the top 10, so they sit behind <b>Show all</b> in the ranking; click a row here for a model’s picks. These models were run on the desk prompts only — the price-action set and the monthly track record do not include them.");
   }
-  $("ml-scores").innerHTML = latest + mlCard(_ml.view === "short" ? "Seat shortlist" : "Trading score", (_ml.view === "short" ? "Models that clear all four gates, ranked by trading score" : "Every model tested, ranked by trading score") + " · 0–100 · 50 = break-even",
+  $("ml-scores").innerHTML = latest + mlCard(_ml.view === "short" ? "Seat shortlist" : "Trading score",
+    (noneProven
+      ? (_ml.view === "short" ? "Models that clear all four gates, cheapest first" : "Not a ranking yet — no model has proven itself, so seat-capable models come first (cheapest first), then the rest by score")
+      : (_ml.view === "short" ? "Models that clear all four gates, ranked by trading score" : "Every model tested, ranked by trading score")) + " · 0–100 · 50 = break-even",
     sh || "<p class='src'>No model clears all four gates on this set.</p>",
     "<b>The score is trading evidence only</b>: average R per decided pick, held near 50 until a model has enough picks to prove otherwise. <b>The four gates are pass or fail</b>: usable answers ≥ " + ML_GATES.usable + "%, 95% of answers within " + ML_GATES.p95 + " s, ≤ $" + (isP ? ML_GATES.costPrice : ML_GATES.cost) +
     " per 1,000 decisions, ≥ " + ML_GATES.legal + "% of picks accepted by our risk rules. Speed and cost earn no points: fast and cheap enough is enough. Click a model for its picks.");
