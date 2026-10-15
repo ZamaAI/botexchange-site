@@ -131,6 +131,10 @@
   .strip .wrap { display: flex; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 6px 10px; padding: 6px 16px; }
   .strip .wrap::-webkit-scrollbar { display: none; }
   .strip .wrap > span { white-space: nowrap; flex: 0 0 auto; }
+  /* [15 Oct] the crypto row was ~50px wider than the page at every desktop width, so its last item ("Risk index 64 — ELEVATED")
+     was always clipped with no scrollbar. Desktop wraps; phones keep the swipe, with a fade that says there is more. */
+  @media (min-width: 900px) { .strip .wrap { flex-wrap: wrap; overflow-x: visible; } }
+  @media (max-width: 899px) { .strip .wrap { -webkit-mask-image: linear-gradient(to right, #000 88%, transparent); mask-image: linear-gradient(to right, #000 88%, transparent); } }
   .strip .strip-macro { border-top: 1px solid rgba(255,255,255,.14); }
   .strip .rowlab { font: 800 12px var(--mono); letter-spacing: .14em; color: #cfe8d9; align-self: center; }
   .strip b { font-weight: 700; font-family: var(--mono); }
@@ -144,7 +148,11 @@
   nav.sections { border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--bg); z-index: 6; }
   nav.sections .wrap { display: flex; flex-wrap: nowrap; padding: 0 20px; overflow-x: auto; scrollbar-width: none; }
   nav.sections .wrap::-webkit-scrollbar { display: none; }
-  nav.sections a { text-decoration: none; color: var(--ink2); font-size: 12.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 9px 14px; border-bottom: 2px solid transparent; white-space: nowrap; }
+  nav.sections a { text-decoration: none; color: var(--ink2); font-size: 12.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 9px 12px; border-bottom: 2px solid transparent; white-space: nowrap; }
+  /* [15 Oct] 12 sections never fit one desktop row — Archive and About sat off the edge with no scrollbar. Desktop wraps to a
+     second row when it must; phones keep the swipe, with a fade on the right edge. */
+  @media (min-width: 900px) { nav.sections .wrap { flex-wrap: wrap; overflow-x: visible; } }
+  @media (max-width: 899px) { nav.sections .wrap { -webkit-mask-image: linear-gradient(to right, #000 85%, transparent); mask-image: linear-gradient(to right, #000 85%, transparent); } }
   nav.sections a:first-child { padding-left: 0; }
   nav.sections a:hover, nav.sections a:focus-visible { color: var(--accent); border-bottom-color: var(--accent); outline: none; }
   nav.sections a.active { color: var(--accent); border-bottom-color: var(--accent); }
@@ -774,7 +782,7 @@
   <a href="#/desks" data-page="desks">Desks</a>
   <a href="#/models" data-page="models">Model Lab</a>
   <a href="#/calls" data-page="calls">Extended Calls</a>
-  <a href="#/direction" data-page="direction">Paper Trade (BTC / ETH)</a>
+  <a href="#/direction" data-page="direction" title="Paper Trade — BTC / ETH direction calls">Paper Trade</a>
   <a href="#/archive" data-page="archive">Archive</a>
   <a href="#/about" data-page="about">About</a>
   <span class="nav-score" id="nav-score"></span>
@@ -1535,7 +1543,7 @@ function renderStrip(mkt) {
   _hlStrip.forEach(function (p) {
     h += "<span>" + esc(p.symbol) + " <b>" + money(p.price, p.price > 1000 ? 0 : 2) + "</b>" + (p.change24hPct != null ? " " + strippct(p.change24hPct) : "") + "</span>";
   });
-  if (mkt && mkt.fearGreed) h += "<span>Fear &amp; Greed <b>" + esc(mkt.fearGreed.value) + " — " + esc(mkt.fearGreed.classification) + "</b></span>";
+  if (mkt && mkt.fearGreed) h += "<span title='Crypto Fear &amp; Greed index'>F&amp;G <b>" + esc(mkt.fearGreed.value) + " — " + esc(mkt.fearGreed.classification) + "</b></span>";
   if (mkt && mkt.regime) h += "<span>Regime <b>" + esc(String(mkt.regime).replace("_", "-")) + "</b></span>";
   // [#198] BXR in the ticker: accent-coloured so our own number reads differently from the
   // relayed market data around it. Absent index -> no span (never a placeholder).
@@ -1560,10 +1568,10 @@ function renderStrip(mkt) {
     var v = macroRows[sym]; if (!v) return;
     // DXY/VIX marks can sit on a flat prevDay — hide a meaningless +0.00%
     var showChg = v.change != null && isFinite(v.change) && Math.abs(v.change) >= 0.005;
-    var band = sym === "VIX" ? " (" + vixBand(v.price) + ")" : "";
-    m += "<span>" + MACRO_SYMS[sym] + " <b>" + fmtMacro(sym, v.price) + "</b>" + band + (showChg ? " " + strippct(v.change) : "") + "</span>";
+    var band = "";   // [15 Oct] the VIX band ("moderate volatility") moved to the tooltip — it pushed the row past one line
+    m += "<span" + (sym === "VIX" ? " title='" + esc(vixBand(v.price)) + "'" : "") + ">" + MACRO_SYMS[sym] + " <b>" + fmtMacro(sym, v.price) + "</b>" + band + (showChg ? " " + strippct(v.change) : "") + "</span>";
   });
-  if (mkt && mkt.stockFearGreed && m) m += "<span>Fear &amp; Greed <b>" + esc(mkt.stockFearGreed.value) + " — " + esc(mkt.stockFearGreed.classification) + "</b></span>";
+  if (mkt && mkt.stockFearGreed && m) m += "<span title='Stock-market Fear &amp; Greed index'>F&amp;G <b>" + esc(mkt.stockFearGreed.value) + " — " + esc(mkt.stockFearGreed.classification) + "</b></span>";
   if (mkt && mkt.equityRegime && m) m += "<span>Regime <b>" + esc(String(mkt.equityRegime).replace("_", "-")) + "</b></span>";
   if (m) { $("strip-macro").classList.remove("hidden"); $("strip-macro").innerHTML = "<span class='rowlab'>MACRO</span>" + m; }
 }
