@@ -1272,6 +1272,11 @@
     <div id="ml-square"></div>
   </div>
   <div class="ml-verdict" id="ml-verdict"></div>
+  <details class="ml-sec hidden" id="ml-retest-box" open>
+    <summary>Re-test: the leaders on prompts they never saw</summary>
+    <p class="sub" id="ml-retest-sub" style="max-width:980px"></p>
+    <div class="ml-wrap"><table class="data ml-table" id="ml-retest"></table></div>
+  </details>
   <div class="ml-detail hidden" id="ml-detail"></div>
   <details class="ml-sec">   <!-- [15 Oct] collapsed by default: the gates answer "could it hold a seat?", not "who is best?" -->
     <summary>The evidence and the four gates, one chart each</summary>
@@ -5544,14 +5549,18 @@ function mlGates(r) {
   ];
   return { list: g, ok: g.every(function (x) { return x.ok; }), fails: g.filter(function (x) { return !x.ok; }) };
 }
-// THE SCORE, 0–100 — trading evidence only. 50 = break-even. Average R per decided pick, pulled toward zero while picks are few
-// (× n/(n+30)): an unproven model sits at 50 and only a result that holds over many picks moves it. +0.5R → 100, −0.5R → 0.
-// The STATUS is the decision, the number is the estimate: qualified = 20+ decided picks AND the whole interval above zero.
+// THE SCORE, 0–100 — trading evidence only. 50 = break-even. Average R per decided pick, pulled toward zero while DISTINCT
+// IDEAS (asset + direction) are few — × ideas/(ideas+30). [15 Oct] It shrank by picks until now, so a model that restated one
+// trade at ten moments looked ten times as proven (Seed 1.6 Flash: 35 decided picks, 12 ideas, score 98 → 75 — and on fresh prompts it lost).
+// +0.5R → 100, −0.5R → 0. The STATUS is the decision: qualified = 20+ decided picks across 10+ distinct ideas AND the whole
+// (idea-resampled) interval above zero.
 function mlClamp(v) { return Math.max(0, Math.min(100, v)); }
+var ML_MIN_IDEAS = 10;   // distinct asset + direction ideas a model needs before its interval can qualify it
 function mlScore(r) {
-  var m = mlM(r), n = m.decided || 0, shr = m.avgR == null ? 0 : m.avgR * n / (n + 30);
+  var m = mlM(r), n = m.decided || 0, k = m.ideas != null ? m.ideas : n, shr = m.avgR == null ? 0 : m.avgR * k / (k + 30);
   var c = m.ci && m.ci.length === 2 && m.ci[0] != null ? m.ci : null;
-  var status = n >= ML_MIN_N && c && c[0] > 0 ? "qualified" : n >= ML_MIN_N && c && c[1] < 0 ? "losing" : "unproven";
+  var enough = n >= ML_MIN_N && k >= ML_MIN_IDEAS;
+  var status = enough && c && c[0] > 0 ? "qualified" : enough && c && c[1] < 0 ? "losing" : "unproven";
   var acted = r.profile && r.prompts ? 100 * (r.profile.confirmed + r.profile.watch) / r.prompts : (r.pickRatePct || 0);
   return { total: mlClamp(50 + 100 * shr), status: status, acted: acted, gates: mlGates(r) };
 }
@@ -5591,6 +5600,34 @@ function mlLegend(parts) { return "<div class='ml-leg'>" + parts.map(function (p
 // [#540] The chart benchmark on other months — one row per model, one column per month, R per pick on the basis the
 // switch above selects. A month is ONE market: a model that only looks good in the month the market went its way has
 // shown direction, not skill, so the two "always" baselines sit in the same table.
+// [15 Oct] The desk test re-run on FRESH prompts (a later window the first set never saw) for the models that led it. A lead that
+// does not survive new prompts was the sample, not the model. Same basis switch as everything else on the page.
+function mlRenderRetest(isP) {
+  var box = $("ml-retest-box"), t = _ml.data && _ml.data.retest;
+  if (!box) return;
+  if (isP || !t || !(t.board || []).length) { box.classList.add("hidden"); return; }
+  box.classList.remove("hidden");
+  var first = {}; ((_ml.data && _ml.data.board) || []).forEach(function (r) { first[r.model] = r; });
+  var cell = function (r) {
+    if (!r) return "<td class='rt' style='color:var(--ink3)'>—</td>";
+    var m = mlM(r), ci = m.ci && m.ci.length === 2 && m.ci[0] != null ? m.ci : null, small = !(m.decided >= ML_MIN_N);
+    var col = small ? "var(--ink3)" : m.avgR > 0 ? "var(--up)" : m.avgR < 0 ? "var(--down)" : "inherit";
+    var tip = (m.decided || 0) + " decided picks · " + (m.ideas || 0) + " distinct ideas" + (ci ? " · 90% interval " + mlFmt(ci[0], 2) + " to " + mlFmt(ci[1], 2) + "R" : "");
+    return "<td class='rt' title='" + esc(tip) + "' style='color:" + col + "'>" + (m.avgR == null ? "—" : mlSigned(m.avgR) + "R") + " <span class='src'>" + (m.ideas != null ? m.ideas + (m.ideas === 1 ? " idea" : " ideas") : (m.decided || 0) + " picks") + "</span></td>";
+  };
+  var rows = t.board.slice().sort(function (a, b) { return (a.baseline - b.baseline) || (a.liveFleet - b.liveFleet) || ((mlM(b).avgR || -9) - (mlM(a).avgR || -9)); });
+  $("ml-retest").innerHTML = "<tr><th>Model</th><th class='rt'>First test · " + esc(String(_ml.data.moments)) + " prompts</th><th class='rt'>Fresh prompts · " + esc(String(t.moments)) + "</th><th class='rt'>Usable answers</th><th class='rt'>Picks our rules accept</th></tr>" +
+    rows.map(function (r) {
+      return "<tr" + (r.baseline ? " style='font-style:italic'" : "") + "><td class='ml-model'>" + esc(mlName(r)) + "</td>" + cell(first[r.model]) + cell(r) +
+        "<td class='rt'>" + (r.baseline ? "—" : mlFmt(r.formatOkPct, 0, "%")) + "</td><td class='rt'>" + (r.baseline || r.legalPct == null ? "—" : mlFmt(r.legalPct, 0, "%")) + "</td></tr>";
+    }).join("");
+  var mods = t.board.filter(function (r) { return !r.baseline && !r.liveFleet; }), held = mods.filter(function (r) { return mlM(r).avgR > 0; });
+  var bb = t.board.filter(function (r) { return r.baseline && mlM(r).avgR != null; }).sort(function (a, b) { return mlM(b).avgR - mlM(a).avgR; })[0];
+  $("ml-retest-sub").innerHTML = "The same desk test on <b>" + esc(String(t.moments)) + " later prompts</b> (" + esc(mlDate(t.since)) + "–" + esc(mlDate(new Date(Date.parse(t.until) - 1).toISOString())) + ") that none of these models had seen. " +
+    (held.length ? held.length + " of " + mods.length + " re-tested models stayed above zero." : "<b>None of the " + mods.length + " re-tested models stayed above zero</b>: their first-test results were the sample, not an edge.") +
+    (bb ? " The best no-model rule here, " + esc(mlName(bb).replace(/^A/, "a")) + ", made " + mlSigned(mlM(bb).avgR) + "R a pick." : "") +
+    " “Ideas” counts distinct coin + direction calls: a model that repeats one trade at many moments made one bet.";
+}
 function mlRenderMonths(isP) {
   var box = $("ml-months-box"), pm = _ml.data && _ml.data.priceMonths;
   if (!box) return;
@@ -5642,7 +5679,7 @@ function mlAnswer() {
   if (m) rows.push({ k: "Benchmark · " + esc(m.moments) + (m.isP ? " price charts" : " desk prompts"),
     v: m.qual.length ? esc(m.qual.join(", ")) : "No model proven",
     s: m.elig + " of " + m.models + " models could hold a seat (all four gates). " + (m.qual.length ? "" : "Proving it takes 20+ decided picks with the whole result interval above zero. ") +
-       (m.bestBase && m.beatBase === 0 ? "None beat the " + esc(m.bestBase.name.replace(/^A/, "a")) + " rule." : ""),
+       (m.bestBase && m.beatBase === 0 ? "None beat the " + esc(m.bestBase.name.replace(/^A/, "a")) + " rule. " : "") + (m.retest || ""),
     ok: !!m.qual.length, t: m.qual.length ? "QUALIFIED" : "NOT PROVEN" });
   // 3. Paper Trade — BTC / ETH direction calls
   var dc = _dc && _dc.data, b = dc ? (dc.board || []) : [];
@@ -5672,6 +5709,7 @@ function mlRender() {
   var d = mlD(); if (!d) return;
   var isP = mlIsP();
   mlRenderMonths(isP);
+  mlRenderRetest(isP);
   var all = (d.board || []).slice();
   var models = all.filter(function (r) { return !r.baseline && !r.liveFleet; });
   var fleet = all.filter(function (r) { return r.liveFleet; })[0], bases = all.filter(function (r) { return r.baseline; });
@@ -5718,29 +5756,22 @@ function mlRender() {
   var c1k = function (r) { var c = r.cost1kAll != null ? r.cost1kAll : mlPer1k(r); return c == null ? Infinity : c; };
   var lose = function (x) { return x.s.status === "losing" ? 1 : 0; };   // a model whose whole interval is below zero sinks under the unproven ones
   if (noneProven) scored.sort(function (a, b) { return (b.s.gates.ok - a.s.gates.ok) || (a.s.gates.ok && b.s.gates.ok ? (lose(a) - lose(b)) || (c1k(a.r) - c1k(b.r)) : b.s.total - a.s.total); });
-  _ml.summary = { models: models.length, elig: elig.length, qual: qual.map(function (x) { return mlName(x.r); }), judged: judged.length, isP: isP, moments: d.moments,
+  var rtM = !isP && d.retest ? (d.retest.board || []).filter(function (r) { return !r.baseline && !r.liveFleet; }) : [];
+  _ml.summary = { retest: rtM.length ? "Re-tested on " + d.retest.moments + " fresh prompts: " + (rtM.filter(function (r) { return mlM(r).avgR > 0; }).length || "none") + " of " + rtM.length + " held up." : "", models: models.length, elig: elig.length, qual: qual.map(function (x) { return mlName(x.r); }), judged: judged.length, isP: isP, moments: d.moments,
     bestBase: (function () { var bb = bases.filter(function (b) { return mlM(b).avgR != null; }).sort(function (a, b) { return mlM(b).avgR - mlM(a).avgR; })[0]; return bb ? { name: mlName(bb), avgR: mlM(bb).avgR } : null; })(),
     beatBase: (function () { var bb = bases.filter(function (b) { return mlM(b).avgR != null; }).sort(function (a, b) { return mlM(b).avgR - mlM(a).avgR; })[0]; return bb ? judged.filter(function (r) { return mlM(r).avgR > mlM(bb).avgR; }).length : null; })() };
   try { mlAnswer(); } catch (e) {}
   if (_ml.view === "short") scored = scored.filter(function (x) { return x.s.gates.ok; });
-  $("ml-verdict").innerHTML = "<b>What this set says.</b> " + "<b>" + elig.length + " of " + models.length + " models clear all four gates</b> (usable answers, speed, cost, discipline) and make the seat shortlist. " +
-    (qual.length ? "<b>Qualified on trading: " + qual.map(function (x) { return esc(mlName(x.r)); }).join(", ") + ".</b> " : "<b>None has qualified on trading yet</b> — that takes 20 or more decided picks with the whole interval above zero. ") +
-    (won.length ? "" : "") +
+  $("ml-verdict").innerHTML = "<b>What this set says.</b> " +   // [15 Oct] the gate count + "qualified" now live once, in the Who's best? card
     (judged.length ? (judged.length === models.length ? "All " + models.length + " models" : judged.length + " of " + models.length + " models") + " produced enough decided picks to judge (" + ML_MIN_N + "+)" +
                      (lost.length ? "; " + lost.map(function (r) { return esc(mlName(r)); }).join(", ") + " clearly lost" : "") +
                      (judged.length === models.length ? (judged.length - lost.length - won.length ? (lost.length || won.length ? "; the others" : ", and none") + " can" + (lost.length || won.length ? "not" : "") + " be told apart from zero. " : ". ")
                                                       : ", the rest are too thin to call. ")
                    : "No model produced " + ML_MIN_N + " decided picks, so every result below is a small sample. ") +
-    (function () {   // the bar a model has to clear: the better of the two no-model rules
-      var bb = bases.filter(function (b) { return mlM(b).avgR != null; }).sort(function (a, b) { return mlM(b).avgR - mlM(a).avgR; })[0];
-      if (!bb || !judged.length) return "";
-      var beat = judged.filter(function (r) { return mlM(r).avgR > mlM(bb).avgR; });
-      return beat.length ? "" : "<b>None beat the " + esc(mlName(bb).replace(/^A/, "a")) + " rule</b> (" + mlSigned(mlM(bb).avgR) + "R). ";
-    })() +
     (baseTxt ? (bases.every(function (b) { return mlM(b).avgR < 0; })
       ? "Two rules with no model behind them also lost (" + esc(baseTxt) + ") — the market chopped both ways" + (isP ? "" : " that week") + ", so a model that mostly said <i>no trade</i> looks good for free. "
       : "The two rules with no model behind them: " + esc(baseTxt) + ". ") : "") +
-    "What the set measures well is the plumbing: <b>" + perfect.length + " of " + models.length + "</b> models returned a usable answer every time" +
+    "It measures the plumbing well: <b>" + perfect.length + " of " + models.length + "</b> models returned a usable answer every time" +
     (secs.length ? ", a decision took <b>" + secs[0].toFixed(0) + "–" + secs[secs.length - 1].toFixed(0) + " seconds</b>" : "") +
     (costs.length ? " and cost <b>" + mlUsd1k(costs[0]) + "–" + mlUsd1k(costs[costs.length - 1]) + " per 1,000 decisions</b>." : ".");
 
