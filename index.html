@@ -830,9 +830,9 @@
   <div class="chart-box" id="chart-wrap">
     <div class="legend" id="legend"></div>
     <svg id="race-chart" viewBox="0 0 820 300" role="img" aria-label="Account value of the competitors"></svg>
-    <div class="src" style="margin-top:4px">Equity curves — live account value including open positions, sampled every 5 minutes.</div>
+    <div class="src" style="margin-top:4px">Equity curves — account value including open positions, sampled every 5 minutes. <b>Change</b> (the default) starts every line at 0 so accounts of different sizes share one scale; <b>%</b> and <b>$</b> show the level. Dashed lines and * = paper accounts, no real money.</div>
     <!-- SEASON-FLIP: was "Season 3 is closed…". Rewrite at the next season boundary. -->
-    <div class="src" style="margin-top:2px"><b>Season 5</b> — 30 days. Six AI desks trade real money (Greta on Hyperliquid; Kenny, Danny, Gina, Luna and Garry on their own Lighter accounts), Qwen trades paper, and the human trades by hand on Extended. Every live seat started at $500; everyone is ranked on return net of model spend. <a href="#/rules">The rules, fixed before the first trade →</a></div>
+    <div class="src" style="margin-top:2px"><b>Season 5</b> — 30 days. Six AI desks trade real money (Greta on Hyperliquid; Kenny, Danny, Gina, Luna and Garry on their own Lighter accounts), Qwen, Hana and Quentin trade paper under the same rules, and the human trades by hand on Extended. Every live seat started at $500; everyone is ranked on return net of model spend. <a href="#/rules">The rules, fixed before the first trade →</a></div>
   </div>
   <div class="kicker stats-kicker">The season in numbers</div>
   <div class="tape-grid" id="season-stats" style="margin-top:8px"></div>
@@ -2223,11 +2223,15 @@ function renderStandings(d) {
 // ── race chart: hourly rows when we have depth, else daily series ──
 var chartMode = null; // '24h' (5-min samples) | 'season' (hourly/daily)
 var chartPct = false, chartHidden = new Set();   // [T2] % view + hidden desks (session-only)
-var chartInit = false;   // [15 Oct] first render shows the live AI desks only — the human and the paper desks stretched the scale until the six live lines were one flat band
-function aiOnlyHidden(d, series) {
-  var off = {}; (d.standings || []).forEach(function (s) { if (s.paper || s.key === "manual") off[(ACTORS[s.key] || {}).model] = 1; });
-  return new Set(series.filter(function (s) { return off[s.key]; }).map(function (s) { return s.key; }));
+var chartInit = false;   // [15 Oct] first render: every AI desk, live and paper (paper dashed); the human one click away
+var chartChg = true;     // [15 Oct] default view = change over the window: each line starts at 0, so a $624 paper account and the
+                         // $490–506 live desks share one readable scale (raw values squeezed the six live lines into one band)
+function chartKeysWhere(d, series, pred) {
+  var on = {}; (d.standings || []).forEach(function (s) { if (pred(s)) on[(ACTORS[s.key] || {}).model] = 1; });
+  return new Set(series.filter(function (s) { return on[s.key]; }).map(function (s) { return s.key; }));
 }
+function aiOnlyHidden(d, series) { return chartKeysWhere(d, series, function (s) { return s.paper || s.key === "manual"; }); }
+function humanHidden(d, series) { return chartKeysWhere(d, series, function (s) { return s.key === "manual"; }); }
 function seriesFromRows(rows, labelFn) {
   // [#249 site] the equity tables keep the pre-#211 column name 'hermes' for Greta's seat (history is never
   // rewritten); fold it forward to 'grok' like the bot's canonicalActor() — without this the 24h view had no Grok line.
@@ -2272,24 +2276,26 @@ function renderChart(d) {
   // [T2] per-desk toggles (click a legend entry), $ / % of the $500 start, and a "human vs best
   // machine" preset. All client-side on the series the feed already carries.
   var start = d.startCapital || 500;
-  if (chartPct) data.series.forEach(function (s) { s.v = s.v.map(function (v) { return v == null ? v : (v - start) / start * 100; }); });
+  if (chartChg) data.series.forEach(function (s) { var f = null; s.v.forEach(function (v) { if (f == null && v != null && isFinite(v)) f = v; }); s.v = s.v.map(function (v) { return v == null || f == null ? v : v - f; }); });
+  else if (chartPct) data.series.forEach(function (s) { s.v = s.v.map(function (v) { return v == null ? v : (v - start) / start * 100; }); });
   if (chartHidden.size) data.series = data.series.filter(function (s) { return !chartHidden.has(s.key); });
   var legNote = (chartMode === "24h"
     ? "live account value incl. open trades · 5-min samples"
-    : "account value at each day's close · dashed = start") + (chartPct ? " · % from $" + start : " · $");
+    : "account value at each day's close") + (chartChg ? " · change over the window, $" : chartPct ? " · % from $" + start : " · $") + " · dashed line = paper";
   var allSeries = chartSeries(d, chartMode).series;
-  if (!chartInit) { chartInit = true; chartHidden = aiOnlyHidden(d, allSeries); data.series = data.series.filter(function (s) { return !chartHidden.has(s.key); }); }
+  if (!chartInit) { chartInit = true; chartHidden = humanHidden(d, allSeries); data.series = data.series.filter(function (s) { return !chartHidden.has(s.key); }); }
+  var paperKeys = chartKeysWhere(d, allSeries, function (s) { return s.paper; });
   $("legend").innerHTML = allSeries.map(function (s) {
     var off = chartHidden.has(s.key);
     return "<button class='leg" + (off ? " off" : "") + "' data-k='" + esc(s.key) + "' title='click to " + (off ? "show" : "hide") + "'><span class='swatch' style='background:" + s.color + "'></span>" + esc(s.key) + "</button>";
   }).join("") + "<span style='margin-left:auto;color:var(--ink3)'>" + legNote + "</span>" + tog +
-    "<span class='ctog'><button data-p='1'" + (chartPct ? " class='on'" : "") + ">%</button><button data-p='0'" + (!chartPct ? " class='on'" : "") + ">$</button></span>" +
+    "<span class='ctog'><button data-p='c' title='change over the window — every line starts at 0'" + (chartChg ? " class='on'" : "") + ">Change</button><button data-p='1'" + (!chartChg && chartPct ? " class='on'" : "") + ">%</button><button data-p='0'" + (!chartChg && !chartPct ? " class='on'" : "") + ">$</button></span>" +
     "<span class='ctog'><button data-preset='ai' title='the live AI desks only'>AI desks</button><button data-preset='hvb' title='human vs the best machine'>Human vs best</button><button data-preset='all'>All</button></span>";
   Array.prototype.forEach.call($("legend").querySelectorAll(".ctog button[data-m]"), function (b) {
     b.onclick = function () { chartMode = b.getAttribute("data-m"); renderChart(d); };
   });
   Array.prototype.forEach.call($("legend").querySelectorAll(".ctog button[data-p]"), function (b) {
-    b.onclick = function () { chartPct = b.getAttribute("data-p") === "1"; renderChart(d); };
+    b.onclick = function () { var v = b.getAttribute("data-p"); chartChg = v === "c"; chartPct = v === "1"; renderChart(d); };
   });
   Array.prototype.forEach.call($("legend").querySelectorAll("button.leg"), function (b) {
     b.onclick = function () { var k = b.getAttribute("data-k"); if (chartHidden.has(k)) chartHidden.delete(k); else chartHidden.add(k); renderChart(d); };
@@ -2313,9 +2319,10 @@ function renderChart(d) {
   var all = []; data.series.forEach(function (s) { s.v.forEach(function (v) { if (v != null && isFinite(v)) all.push(v); }); });
   if (!all.length) { $("chart-wrap").classList.add("hidden"); return; }
   var yMin, yMax, gStep;
-  if (chartMode === "24h") {
+  if (chartMode === "24h" || chartChg) {
     // auto-zoom to the live data so intraday moves are visible (no forced $500 anchor)
     var lo = Math.min.apply(null, all), hi = Math.max.apply(null, all);
+    if (chartChg) { lo = Math.min(lo, 0); hi = Math.max(hi, 0); }   // the zero line is always in view
     var span = Math.max(hi - lo, 4), padY = span * 0.12;
     yMin = lo - padY; yMax = hi + padY;
     var raw = (yMax - yMin) / 5, p10 = Math.pow(10, Math.floor(Math.log(raw) / Math.LN10)), c = raw / p10;
@@ -2330,9 +2337,9 @@ function renderChart(d) {
   var Y = function (v) { return m.t + ih * (1 - (v - yMin) / (yMax - yMin)); };
   for (var g = Math.ceil(yMin / gStep) * gStep; g <= yMax; g += gStep) {
     el("line", { x1: m.l, x2: W - m.r, y1: Y(g), y2: Y(g), stroke: "#eef0ec" });
-    el("text", { x: m.l - 8, y: Y(g) + 4, "text-anchor": "end", fill: "#7d897f", "font-size": 11, "font-family": "ui-monospace,Consolas,monospace" }).textContent = chartPct ? (g > 0 ? "+" : "") + Math.round(g) + "%" : "$" + (gStep < 1 ? g.toFixed(2) : Math.round(g));   // [15 Oct] the % view printed "$5" for +5%
+    el("text", { x: m.l - 8, y: Y(g) + 4, "text-anchor": "end", fill: "#7d897f", "font-size": 11, "font-family": "ui-monospace,Consolas,monospace" }).textContent = chartChg ? (g > 0 ? "+$" : g < 0 ? "−$" : "$") + Math.abs(gStep < 1 ? +g.toFixed(2) : Math.round(g)) : chartPct ? (g > 0 ? "+" : "") + Math.round(g) + "%" : "$" + (gStep < 1 ? g.toFixed(2) : Math.round(g));   // [15 Oct] the % view printed "$5" for +5%
   }
-  var base = chartPct ? 0 : 500;
+  var base = chartChg || chartPct ? 0 : 500;
   if (yMin <= base && base <= yMax)
     el("line", { x1: m.l, x2: W - m.r, y1: Y(base), y2: Y(base), stroke: "#7d897f", "stroke-dasharray": "5 5", opacity: .7 });
   var step = Math.max(1, Math.round(data.labels.length / 7));
@@ -2344,12 +2351,15 @@ function renderChart(d) {
   data.series.forEach(function (s) {
     var pts = []; s.v.forEach(function (v, i) { if (v != null && isFinite(v)) pts.push(X(i) + "," + Y(v)); });
     if (!pts.length) return;
-    el("polyline", { points: pts.join(" "), fill: "none", stroke: s.color, "stroke-width": 2, "stroke-linejoin": "round" });
+    var pl = { points: pts.join(" "), fill: "none", stroke: s.color, "stroke-width": 2, "stroke-linejoin": "round" };
+    if (paperKeys.has(s.key)) pl["stroke-dasharray"] = "5 4";   // paper money
+    el("polyline", pl);
     var lastIdx = s.v.length - 1; while (lastIdx >= 0 && (s.v[lastIdx] == null || !isFinite(s.v[lastIdx]))) lastIdx--;
     if (lastIdx < 0) return;
     var ly = Y(s.v[lastIdx]);
     el("circle", { cx: X(lastIdx), cy: ly, r: 3.2, fill: s.color, stroke: "#fff", "stroke-width": 1.6 });
-    endLabels.push({ y: ly, color: s.color, text: (s.short || s.key) + " $" + Math.round(s.v[lastIdx]) });
+    var lv = s.v[lastIdx];
+    endLabels.push({ y: ly, color: s.color, text: (s.short || s.key) + (paperKeys.has(s.key) ? "*" : "") + " " + (chartChg ? (lv >= 0 ? "+$" : "−$") + Math.abs(lv).toFixed(Math.abs(lv) < 10 ? 1 : 0) : chartPct ? (lv >= 0 ? "+" : "") + lv.toFixed(1) + "%" : "$" + Math.round(lv)) });
   });
   // De-overlap the end-of-line labels: sort by y, push apart to min 14px separation,
   // then shift back up if the stack ran past the plot bottom (labels printed over
@@ -2376,7 +2386,7 @@ function renderChart(d) {
     var html = "<div class='t-date'>" + esc(data.labels[i]) + "</div>";
     data.series.slice().sort(function (a, b) { return (b.v[i] || 0) - (a.v[i] || 0); }).forEach(function (s) {
       if (s.v[i] == null) return;
-      html += "<div class='row'><span style='color:" + s.color + "'>" + esc(s.key) + "</span><span>" + money(s.v[i]) + "</span></div>";
+      html += "<div class='row'><span style='color:" + s.color + "'>" + esc(s.key) + (paperKeys.has(s.key) ? " (paper)" : "") + "</span><span>" + (chartChg ? signedMoney(s.v[i]) : chartPct ? (s.v[i] >= 0 ? "+" : "") + s.v[i].toFixed(2) + "%" : money(s.v[i])) + "</span></div>";
     });
     tt.innerHTML = html; tt.style.display = "block";
     tt.style.left = Math.min(ev.clientX + 14, innerWidth - 180) + "px";
