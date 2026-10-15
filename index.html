@@ -5380,7 +5380,8 @@ function dcHover(e) {
 }
 function dcRender() {
   var d = _dc.data, nEl = $("dc-now"), bEl = $("dc-board"), rEl = $("dc-recent"), mEl = $("dc-method"); if (!d || !nEl || !bEl || !rEl) return;
-  var models = d.board.filter(function (x) { return !x.baseline && !x.panel; }), P = d.pulse && d.pulse.coins ? d.pulse : null;   // [#616] the panel row is the headline, not a model
+  var models = d.board.filter(function (x) { return !x.baseline && !x.panel && !x.retired; }), P =   // [15 Oct] a retired seat keeps its scoreboard row only
+      d.pulse && d.pulse.coins ? d.pulse : null;   // [#616] the panel row is the headline, not a model
   if (d.assets.indexOf(_dc.coin) < 0) _dc.coin = d.assets[0];
   // status line: how fresh, and when the next read lands
   var lastMs = Date.parse(d.lastTick), nextMs = lastMs + d.everyMin * 60000, late = Date.now() - lastMs > (d.everyMin + 15) * 60000;
@@ -5462,7 +5463,7 @@ function dcRender() {
     "<div style='overflow-x:auto'><table class='data dc-sb'><tr><th>Model</th><th class='rt'>Calls</th><th class='rt'>Closed</th><th class='rt'>Closed in profit</th><th class='rt' title='Of every long or short call, how often price had moved its way one round later. No exits involved. A coin flip scores about 50%.'>Right " + esc(String(d.everyMin)) + " min later</th><th class='rt'>Long / short</th><th class='rt' title='Calls closed by price reaching the profit target / by price touching the wrong-at level'>Target / stop</th>" +
     d.tiers.map(function (L) { return "<th class='rt" + (L === 1 || L === 10 ? " g" : "") + "'>" + L + "x</th>" + (L === 1 && d.feePct ? "<th class='rt' title='The 1x result after a " + d.feePct.toFixed(2) + "% trading fee for every call opened and closed'>1x after fees</th>" : ""); }).join("") + "<th class='rt g'>Answered</th><th class='rt'>Spent</th></tr>";
   d.board.forEach(function (x) {
-    t += "<tr" + (x.baseline ? " class='dc-base'" : "") + "><td><b>" + esc(x.label) + "</b>" + (x.baseline ? " <span class='src'>no model</span>" : x.rule ? " <span class='src'>fixed rules, no model</span>" : x.panel ? " <span class='src'>the boxes at the top, followed</span>" : "") + "</td><td class='rt'>" + x.positions + "</td><td class='rt'>" + x.closed + "</td><td class='rt'>" + (x.closed ? x.wins + " of " + x.closed : "—") + "</td><td class='rt'>" + (x.hit30 && x.hit30.n ? "<b>" + Math.round(100 * x.hit30.right / x.hit30.n) + "%</b> <span class='src'>of " + x.hit30.n + "</span>" : "—") + "</td><td class='rt'>" + x.long + " / " + x.short + "</td><td class='rt'>" + (x.baseline || x.rule ? "—" : "<span class='up'>" + (x.targeted || 0) + "</span> / <span class='down'>" + (x.invalidated || 0) + "</span>") + "</td>" +
+    t += "<tr" + (x.baseline ? " class='dc-base'" : "") + "><td><b>" + esc(x.label) + "</b>" + (x.baseline ? " <span class='src'>no model</span>" : x.rule ? " <span class='src'>fixed rules, no model</span>" : x.panel ? " <span class='src'>the boxes at the top, followed</span>" : x.retired ? " <span class='src'>retired 15 Oct · record kept</span>" : "") + "</td><td class='rt'>" + x.positions + "</td><td class='rt'>" + x.closed + "</td><td class='rt'>" + (x.closed ? x.wins + " of " + x.closed : "—") + "</td><td class='rt'>" + (x.hit30 && x.hit30.n ? "<b>" + Math.round(100 * x.hit30.right / x.hit30.n) + "%</b> <span class='src'>of " + x.hit30.n + "</span>" : "—") + "</td><td class='rt'>" + x.long + " / " + x.short + "</td><td class='rt'>" + (x.baseline || x.rule ? "—" : "<span class='up'>" + (x.targeted || 0) + "</span> / <span class='down'>" + (x.invalidated || 0) + "</span>") + "</td>" +
       d.tiers.map(function (L) { var c = x.tiers[L] || {}, v = 100 * c.sumR; return "<td class='rt " + dcCls(v) + (L === 1 || L === 10 ? " g" : "") + "'" + (c.liq ? " title='" + c.liq + " call" + (c.liq === 1 ? "" : "s") + " liquidated at " + L + "x'" : "") + ">" + (L === 1 ? "<b>" : "") + esc(dcPct(v, L === 1 ? 2 : L >= 50 ? 0 : 1)) + (L === 1 ? "</b>" : "") + (c.liq ? "<span class='dc-liq'>" + c.liq + " liq</span>" : "") + "</td>" + (L === 1 && d.feePct ? "<td class='rt " + dcCls(x.net1xPct) + "'>" + (x.net1xPct == null ? "—" : esc(dcPct(x.net1xPct, 2))) + "</td>" : ""); }).join("") +
       "<td class='rt g'>" + (x.baseline || x.rule || x.panel || x.answeredPct == null ? "—" : x.answeredPct + "%") + "</td><td class='rt'>" + (x.baseline || x.panel ? "—" : x.rule ? "free" : (x.costUsd || 0) > 0 && x.costUsd < 0.0005 ? "&lt;$0.001" : "$" + Number(x.costUsd || 0).toFixed((x.costUsd || 0) < 1 ? 3 : 2)) + "</td></tr>";
   });
@@ -5470,7 +5471,7 @@ function dcRender() {
   // recently closed
   if (!d.recent || !d.recent.length) { rEl.innerHTML = "<div class='ec-h'><b>Closed calls</b></div><p class='src'>No call has closed yet — the first ones close when a model changes its mind or price reaches its level.</p>"; }
   else {
-    var HOW = { flipped: "changed direction", flat: "stepped aside", invalidated: "price hit its wrong-at level", target: "target hit" };
+    var HOW = { flipped: "changed direction", flat: "stepped aside", invalidated: "price hit its wrong-at level", target: "target hit", retired: "model retired from the test (closed at the price then)" };
     var r = "<details class='box' style='margin-top:18px'" + (_dc.recOpen ? " open" : "") + "><summary class='box-h'>Closed calls · the last " + d.recent.length + ", newest first</summary><div style='overflow-x:auto;padding:0 10px'><table class='data'><tr><th>Model</th><th>Call</th><th class='rt'>From</th><th class='rt'>To</th><th>Held</th><th>Ended because</th><th class='rt'>Result</th><th class='rt'>Worst point</th><th>Its reason</th></tr>";
     d.recent.forEach(function (p) {
       var mins = Math.round((p.to - p.from) / 60000), held = mins >= 120 ? (mins / 60).toFixed(1) + " h" : mins + " min";
@@ -5683,7 +5684,7 @@ function mlAnswer() {
     ok: !!m.qual.length, t: m.qual.length ? "QUALIFIED" : "NOT PROVEN" });
   // 3. Paper Trade — BTC / ETH direction calls
   var dc = _dc && _dc.data, b = dc ? (dc.board || []) : [];
-  var mods = b.filter(function (r) { return !r.baseline && !r.rule && !r.panel && isFinite(r.net1xPct); });
+  var mods = b.filter(function (r) { return !r.baseline && !r.rule && !r.panel && !r.retired && isFinite(r.net1xPct); });
   if (mods.length) {
     var top = mods.slice().sort(function (a, c) { return c.net1xPct - a.net1xPct; })[0];
     var flip = b.filter(function (r) { return r.model === "coin-flip"; })[0];
