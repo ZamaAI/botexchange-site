@@ -253,6 +253,10 @@
   details.std-howto > summary::after, details.home-fold > summary::after { content: " ▾"; }
   details.std-howto[open] > summary::after, details.home-fold[open] > summary::after { content: " ▴"; }
   .tscroll { overflow-x: auto; max-width: 100%; }
+  /* a table wider than the screen fades at the right edge until scrolled to its end (Extended Calls on a phone) */
+  .xfade { position: relative; }
+  .xfade::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; width: 32px; pointer-events: none; background: linear-gradient(to right, rgba(255,255,255,0), var(--bg)); opacity: 0; transition: opacity .2s; }
+  .xfade.more::after { opacity: 1; }
   table.data td.rt { white-space: nowrap; }
   .boxcol { max-width: 820px; margin-top: 16px; }
   .mkt-top { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 22px; align-items: start; }
@@ -862,7 +866,7 @@
     <svg id="race-chart" viewBox="0 0 820 300" role="img" aria-label="Account value of the competitors"></svg>
     <div class="src" style="margin-top:4px">Equity curves — account value including open positions, sampled every 5 minutes. <b>Change</b> (the default) starts every line at 0 so accounts of different sizes share one scale; <b>%</b> and <b>$</b> show the level. Dashed lines and * = paper accounts, no real money.</div>
     <!-- SEASON-FLIP: was "Season 3 is closed…". Rewrite at the next season boundary. -->
-    <div class="src" style="margin-top:2px"><b>Season 5</b> — 30 days. Six AI desks trade real money (Greta on Hyperliquid; Kenny, Danny, Gina, Luna and Garry on their own Lighter accounts), Qwen, Hana and Quentin trade paper under the same rules, and the human trades by hand on Extended. Every live seat started at $500; everyone is ranked on return net of model spend. <a href="#/rules">The rules, fixed before the first trade →</a></div>
+    <div class="src" style="margin-top:2px"><b>Season 5</b> — 30 days. Six AI desks trade real money (Greta on Hyperliquid; Kenny, Danny, Gina, Luna and Garry on their own Lighter accounts), Quinn, Hana and Quentin trade paper under the same rules, and the human trades by hand on Extended. Every live seat started at $500; everyone is ranked on return net of model spend. <a href="#/rules">The rules, fixed before the first trade →</a></div>
   </div>
   <div class="kicker stats-kicker">The season in numbers</div>
   <div class="tape-grid" id="season-stats" style="margin-top:8px"></div>
@@ -1505,7 +1509,7 @@ function s5Verdict(d) {   // the headline on the table's own measure — one num
   return { man: man, best: best, mean: mean, n: mach.length, belowMan: mach.filter(function (a) { return a.retNetPct < man.retNetPct; }).length };
 }
 var ACTORS = {
-  qwen:     { label: "Qwen",     model: "Qwen 3.7 Max", short: "Qwen 3.7",  color: "#8a6414",
+  qwen:     { label: "Quinn Qwen", model: "Qwen 3.7 Max", short: "Quinn",  color: "#8a6414",
     style: "Scanner volume — screens the whole altcoin board every cycle",
     blurb: "The scanner. Alibaba's Qwen 3.7 Max, called through OpenRouter, screens the whole altcoin board every cycle and fires more picks than any other desk — the one permanent paper account. Its paper trades close only at their stop or their target — there is no trailing stop on paper, so its record is a read of idea quality and is not like-for-like with the live desks, whose winners are often cut short at breakeven by the trail. Until 2 Aug 2026 the seat ran a 9-billion-parameter Qwen on a gaming GPU at home; that local model still writes the daily column and the X posts." },
   // [#614] two PAPER-ONLY desks (14 Oct 2026): the live desks' own prompt, gates and cadence on a $500 paper seat — paperOnly
@@ -1515,7 +1519,7 @@ var ACTORS = {
     blurb: "Anthropic's newest small model, Claude Haiku 5.5, on the exact prompt, data and rules the live desks get, every report and every scan — a $500 paper account from 14 October 2026. Paper trades close only at their stop or their target (no trailing stop on paper), so compare its record with the live seats as a signal-quality read, not like-for-like P&L." },
   qwen38:   { paperOnly: true, label: "Quentin Qwen", model: "Qwen 3.8 Flash", short: "Quentin", color: "#5c940d",
     style: "Capped reasoning — thinks a little, then commits",
-    blurb: "Alibaba's Qwen 3.8 Flash on the live desks' own prompt and rules, every report and every scan — a $500 paper account from 14 October 2026. Left to think freely it never finished an answer, so its reasoning is capped. A separate desk from Qwen, the scanner. Paper trades close only at their stop or their target (no trailing stop on paper)." },
+    blurb: "Alibaba's Qwen 3.8 Flash on the live desks' own prompt and rules, every report and every scan — a $500 paper account from 14 October 2026. Left to think freely it never finished an answer, so its reasoning is capped. A separate desk from Quinn Qwen, the scanner. Paper trades close only at their stop or their target (no trailing stop on paper)." },
   openclaw: { retired: true, retiredRecord: "2W–0L", label: "Sonny Sonnet", model: "Claude Sonnet 5", short: "Sonny", color: "#2563c4",
     style: "Confirmation-first majors — level-anchored entries, tight stops",
     blurb: "The house AI, retired from the trading rotation mid-Season 4 (Aug 2026) to preserve API budget — it went out on a 2-0 final week. Claude still writes the fleet's weekly lessons and every trade's post-mortem behind the scenes." },
@@ -4304,15 +4308,15 @@ function renderCalls(d) {
   // scoreboard
   var any = c.board.some(function (x) { return x.scored > 0; });
   var h = "<div class='ec-h'><b>Scoreboard</b><span class='src'>every call since 8 Oct, checked " + esc(String(c.horizonH)) + "h after its brief, after taker fees · " + esc(String(c.briefs)) + " brief" + (c.briefs === 1 ? "" : "s") + " so far</span></div>" +
-    "<div style='overflow-x:auto'><table class='data'><tr><th>Picker</th><th class='rt'>Briefs</th><th class='rt'>Calls</th><th class='rt'>Scored</th><th class='rt'>Hit target</th><th class='rt'>Stopped</th><th class='rt'>Open at 12h</th><th class='rt'>Net R</th><th class='rt'>Per call</th><th>Whose levels</th></tr>";
+    "<div class='xfade'><div style='overflow-x:auto'><table class='data'><tr><th>Picker</th><th class='rt'>Briefs</th><th class='rt'>Calls</th><th class='rt'>Scored</th><th class='rt'>Hit target</th><th class='rt'>Stopped</th><th class='rt'>Open at 12h</th><th class='rt'>Net R</th><th class='rt'>Per call</th><th>Whose levels</th></tr>";
   c.board.forEach(function (x) {
     var col = (ACTORS[x.key] || {}).color || "#555", small = x.scored > 0 && x.scored < (c.minRead || 20);
     var lv = x.key === "screen" ? "<span class='src'>its own rulebook</span>" : [["own", "its own"], ["shortlist", "the screen's"]].map(function (o) { var a = x[o[0]]; return a && a.scored ? o[1] + " " + a.scored + ": " + ecR(a.netR) : null; }).filter(Boolean).join(" · ") || "<span class='src'>—</span>";
     h += "<tr><td><span class='swatch' style='background:" + col + "'></span><b>" + esc(x.label) + "</b> <span class='src'>" + esc(x.model || "") + "</span></td><td class='rt'>" + (x.asked != null ? x.asked : x.briefs) + (x.noCall ? " <span class='src'>(" + x.noCall + " no call)</span>" : "") + (x.failed ? " <span class='src'>(" + x.failed + " no answer)</span>" : "") + "</td><td class='rt'>" + x.calls + (x.pending ? " <span class='src'>(" + x.pending + " not yet due)</span>" : "") + "</td><td class='rt'>" + x.scored + "</td><td class='rt up'>" + x.target + "</td><td class='rt down'>" + x.stop + "</td><td class='rt'>" + x.open + "</td>" +
       "<td class='rt " + (x.netR > 0 ? "up" : x.netR < 0 ? "down" : "") + "'><b>" + esc(ecR(x.netR)) + "</b></td><td class='rt'>" + esc(ecR(x.avgR)) + (small ? " <span class='src'>too few to read</span>" : "") + "</td><td>" + lv + "</td></tr>";
   });
-  h += "</table></div>" + (any ? "<p class='src' style='margin:-8px 0 0'>A picker that makes no call scores nothing for that brief (counted under Briefs), so compare <b>Net R</b> across pickers, not the per-call average. Under " + esc(String(c.minRead || 20)) + " scored calls is too few to read.</p>" : "<p class='src' style='margin:-8px 0 0'>Nothing has reached its 12-hour check yet. The first results appear here the moment they are scored — wins and losses alike.</p>");
-  bEl.innerHTML = h;
+  h += "</table></div></div>" + (any ? "<p class='src' style='margin:-8px 0 0'>A picker that makes no call scores nothing for that brief (counted under Briefs), so compare <b>Net R</b> across pickers, not the per-call average. Under " + esc(String(c.minRead || 20)) + " scored calls is too few to read.</p>" : "<p class='src' style='margin:-8px 0 0'>Nothing has reached its 12-hour check yet. The first results appear here the moment they are scored — wins and losses alike.</p>");
+  bEl.innerHTML = h; xfadeWire(bEl);
   // latest brief
   var b = c.latest;
   lEl.innerHTML = "<div class='ec-h'><b>Latest brief — " + esc(ecWhen(b.at)) + "</b><span class='src'>" + (b.screened != null ? esc(String(b.screened)) + " markets read · " + esc(String(b.setups)) + " had a setup" : "") + (b.context ? " · news context " + esc(b.context) : "") + "</span></div>" +
@@ -4320,14 +4324,21 @@ function renderCalls(d) {
     (b.pickers.length < 2 ? "<p class='src'>This brief went out before the two models joined (8 Oct). From the next brief, Gemini's and DeepSeek's calls appear beside the screen's.</p>" : "");
   // earlier briefs
   if (!c.history || !c.history.length) { hEl.innerHTML = ""; return; }
-  var t = "<div class='ec-h'><b>Earlier briefs</b><span class='src'>newest first</span></div><div style='overflow-x:auto'><table class='data'><tr><th>Brief</th><th>Picker</th><th>Calls and how they ended</th></tr>";
+  var t = "<div class='ec-h'><b>Earlier briefs</b><span class='src'>newest first</span></div><div class='xfade'><div style='overflow-x:auto'><table class='data'><tr><th>Brief</th><th>Picker</th><th>Calls and how they ended</th></tr>";
   c.history.forEach(function (hb) {
     hb.pickers.forEach(function (k, i) {
       var calls = k.error ? "<span class='src'>no answer</span>" : !k.picks.length ? "<span class='src'>no call</span>" : k.picks.map(function (p) { return "<span class='" + (p.dir === "LONG" ? "up" : "down") + "'>" + esc(p.asset) + " " + esc(p.dir) + "</span>" + (p.origin === "own" ? "<span class='ec-tag own'>own</span>" : "") + ecResult(p, c.horizonH, hb.at); }).join(" &nbsp; ");
       t += "<tr><td class='src' style='white-space:nowrap'>" + (i === 0 ? esc(ecWhen(hb.at)) : "") + "</td><td><span class='swatch' style='background:" + ((ACTORS[k.key] || {}).color || "#555") + "'></span>" + esc(k.label) + "</td><td>" + calls + "</td></tr>";
     });
   });
-  hEl.innerHTML = t + "</table></div>";
+  hEl.innerHTML = t + "</table></div></div>"; xfadeWire(hEl);
+}
+function xfadeWire(root) {
+  Array.prototype.forEach.call(root.querySelectorAll(".xfade"), function (w) {
+    var sc = w.firstElementChild; if (!sc) return;
+    var upd = function () { w.classList.toggle("more", sc.scrollLeft + sc.clientWidth < sc.scrollWidth - 2); };
+    sc.addEventListener("scroll", upd, { passive: true }); window.addEventListener("resize", upd); upd();
+  });
 }
 function renderReferee(d) {
   var el = $("hw-referee-body"); if (!el) return;
