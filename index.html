@@ -1726,9 +1726,16 @@ function fetchMacroStrip() {
 
 // ── [T2] hero indicator line + sticky-nav score + the disagreement teaser ──
 function renderHero(d) {
-  var closed = (d.archive || []).length, open = (d.openTrades || []).filter(function (t) { return t.venue !== "PAPER"; }).length + (((d.manualBook || {}).positions) || []).length;   // machines' live rows + the human's book
+  // [19 Oct] counted the SAME way on both sides and split: the closed total held machine real-money, paper AND
+  // human closes while the open total dropped paper — "87 closed · 6 open" mixed three populations.
+  var lane = function (t) { return t.venue === "PAPER" ? "paper" : (t.actor === "manual" || t.actor === "human") ? "human" : "machine"; };
+  var cnt = function (list) { var c = { machine: 0, paper: 0, human: 0 }; list.forEach(function (t) { c[lane(t)]++; }); return c; };
+  var cc = cnt(d.archive || []), oc = cnt(d.openTrades || []);
+  oc.human += (((d.manualBook || {}).positions) || []).length;   // the human's book
+  var closed = cc.machine + cc.paper + cc.human, open = oc.machine + oc.paper + oc.human;
+  var split = function (c) { return c.machine + " machine real-money · " + c.paper + " paper · " + c.human + " human"; };
   var gen = d.generatedAt ? new Date(d.generatedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Africa/Johannesburg" }) : "";
-  var el = $("hero-ind"); if (el) el.innerHTML = "<span class='livedot'></span> LIVE · <b>" + closed + "</b> closed trades · <b>" + open + "</b> open positions" + (gen ? " · updated " + esc(gen) + " SAST" : "");
+  var el = $("hero-ind"); if (el) el.innerHTML = "<span class='livedot'></span> LIVE · <b>" + closed + "</b> closed trades (" + split(cc) + ") · <b>" + open + "</b> open (" + split(oc) + ")" + (gen ? " · updated " + esc(gen) + " SAST" : "");
   var al = $("audit-link"); if (al) al.textContent = closed ? "Audit all " + closed + " trades →" : "No trades closed yet — the archive →";   // [S5 D8] day 1: no "Audit all 0 trades"
   // [#460] prefer the NORMALISED verdict: return from each seat's own starting capital, on the
   // realized (transfer-proof) basis. The absolute-balance figure it replaces was decided by a
@@ -2080,9 +2087,10 @@ function renderBookLine(d) {
   var el = $("book-line"); if (!el) return;
   var b = d && d.book;
   if (!b) { el.classList.add("hidden"); return; }
-  var m = function (x) { return (x >= 0 ? "+" : "−") + "$" + Math.abs(x).toFixed(0); };
+  // [19 Oct] netUsd is position SIZE (long − short notional), not P&L — "+$162" read as a profit.
+  var m = function (x) { return Math.abs(x) < 0.5 ? "$0" : "$" + Math.abs(x).toFixed(0) + (x > 0 ? " long" : " short"); };
   el.innerHTML = !b.n ? "<b>The machines&#39; live book now:</b> flat — no real-money position open."
-    : "<b>The machines&#39; live book now:</b> " + b.n + " real-money position" + (b.n > 1 ? "s" : "") + " · " + b.longs + " long / " + b.shorts + " short · net " + m(b.netUsd)
+    : "<b>The machines&#39; live book now:</b> " + b.n + " real-money position" + (b.n > 1 ? "s" : "") + " · " + b.longs + " long / " + b.shorts + " short · net exposure " + m(b.netUsd)
       + " (" + (b.assets || []).map(function (x) { return esc(x.asset) + " " + m(x.netUsd); }).join(", ") + ")"
       + (b.oneWay ? " — <b>all one direction</b>: a move against it hits every open position at once" : "");
   el.classList.remove("hidden");
