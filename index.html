@@ -1779,7 +1779,9 @@ function renderHero(d) {
 function renderHeadline(d) {
   var v = d.verdict;
   // [T2c] the race kicker is the question now (static); the season facts live in the hero kicker once
-  try { var t0 = Date.parse(d.since); if (isFinite(t0)) { var dayN = Math.max(1, Math.ceil((Date.now() - t0) / 864e5)); $("hero-kicker").textContent = "Season " + SEASON + " · day " + dayN + (SEASON_DAYS[SEASON] ? (dayN > SEASON_DAYS[SEASON] ? " — season complete (" + SEASON_DAYS[SEASON] + " days)" : " of " + SEASON_DAYS[SEASON]) : "") + " · since " + new Date(t0).toLocaleDateString("en-GB", { day: "numeric", month: "long" }); } } catch (e) {}
+  // [20 Oct] the day count runs from the season's exact start instant (seasonStart) — the daily card's clock, and the one that ends a 30-day
+  // season on day 30; d.since is a bare date (00:00 UTC), which read a day ahead of the card and would have printed "day 31" on the last day
+  try { var t0 = Date.parse(d.seasonStart || d.since); if (isFinite(t0)) { var dayN = Math.max(1, Math.ceil((Date.now() - t0) / 864e5)); $("hero-kicker").textContent = "Season " + SEASON + " · day " + dayN + (SEASON_DAYS[SEASON] ? (dayN > SEASON_DAYS[SEASON] ? " — season complete (" + SEASON_DAYS[SEASON] + " days)" : " of " + SEASON_DAYS[SEASON]) : "") + " · since " + new Date(t0).toLocaleDateString("en-GB", { day: "numeric", month: "long" }); } } catch (e) {}
   // [#460] THE NORMALISED VERDICT. The old headline compared absolute end balances and called
   // "the machine" whichever desk was highest at that moment. Three things were wrong with it:
   // the seats did not start equal (the human's began at $518.25 against a machine mean of
@@ -2026,7 +2028,8 @@ function renderHook(d) {
   var bar = d.standings.slice().sort(function (a, b) { return (b.account || 0) - (a.account || 0); });
   var leader = bar[0], human = null, humanRank = 0;
   bar.forEach(function (a, i) { if (a.key === "manual") { human = a; humanRank = i + 1; } });
-  var day = Math.max(1, Math.floor((Date.now() - new Date(d.since + "T00:00:00Z").getTime()) / 864e5) + 1);
+  var _t0 = Date.parse(d.seasonStart || (d.since + "T00:00:00Z"));   // [20 Oct] same clock as the hero kicker and the card
+  var day = Math.max(1, Math.ceil((Date.now() - _t0) / 864e5));
   var lm = ACTORS[leader.key] || { label: leader.label, model: "" };
   var bits = ["<b>Day " + day + "</b> of Season " + SEASON];
   if (leader.key === "manual") bits.push("the human leads the machines at <b>" + money(leader.account) + "</b>");
