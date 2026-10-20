@@ -2602,7 +2602,15 @@ function renderDeskPage(d, key) {
   if (!key && d && d.desks && d.desks.length) { key = d.desks[0].key; _deskKey = key; }   // [3 Sep] #/desks default
   renderDeskTabs(d, key);
   var x = deskFind(d, key), meta = ACTORS[key] || {};
-  if (!x) { $("desk-title").textContent = "Desk"; body.innerHTML = "<span class='src'>No desk page for '" + esc(key || "") + "' yet — the feed publishes one per active desk.</span>"; return; }
+  if (!x) {
+    // [20 Oct] clear the previous desk's sub-line — it stayed on screen (Quentin's blurb under "Desk" on #/desk/manual)
+    $("desk-title").textContent = meta.label || "Desk";
+    $("desk-sub").innerHTML = meta.blurb ? esc(meta.blurb) : "";
+    body.innerHTML = key === "manual"
+      ? "<span class='src'>The human has no desk page — no prompt, no model, no code gates to analyse. Every closed trade is in <a href='#/archive'>the archive</a>, each with its post-mortem.</span>"
+      : "<span class='src'>No desk page for '" + esc(key || "") + "' yet — the feed publishes one per active desk.</span>";
+    return;
+  }
   var color = meta.color || "var(--ink)";
   $("desk-kicker").textContent = "One desk, one cell of the experiment";
   $("desk-title").innerHTML = "<span style='color:" + color + "'>" + esc(x.label) + "</span> <span class='src' style='font-size:14px'>" + esc(x.model) + " · " + esc(x.live ? String(x.venue).toUpperCase() + " · live" : "paper") + "</span>";
