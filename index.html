@@ -2105,7 +2105,13 @@ function renderBenchmark(d) {
   var b = d && d.benchmark && d.benchmark.btc;
   if (!b) { el.classList.add("hidden"); return; }
   var since = new Date(b.startDate + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
-  el.innerHTML = "<b>Benchmark:</b> " + money(d.startCapital || 500, 0) + " simply held in BTC since " + esc(since) + " would be <b>" + money(b.value, 0) + "</b> (" + (b.retPct >= 0 ? "+" : "−") + Math.abs(b.retPct).toFixed(1) + "%) — BTC $" + Math.round(b.start).toLocaleString("en-US") + " → $" + Math.round(b.now).toLocaleString("en-US") + ". A passive yardstick, not a risk-matched rival: it holds one asset, all the time, with no stop.";
+  // [20 Oct] how many live AI desks are ahead of the yardstick, on the ranking's own measure (seat return net of transfers and
+  // model spend) — the line the daily card leads with. Seats with no figure are not counted.
+  var _live = (d.standings || []).filter(function (a) { return a.key !== "manual" && a.paper !== true && a.key !== "qwen" && a.venue && String(a.venue).toUpperCase() !== "PAPER"; })
+    .map(function (a) { return S5_RANK ? a.retNetPct : a.retPct; }).filter(function (v) { return v != null && isFinite(v); });
+  var _ahead = _live.filter(function (v) { return v > b.retPct; }).length;
+  var vs = _live.length ? " <b>" + (_ahead === _live.length ? "All " + _live.length : _ahead + " of " + _live.length) + " live AI desks are ahead of it</b>" + (S5_RANK ? " (net of model spend)" : "") + "." : "";
+  el.innerHTML = "<b>Benchmark:</b> " + money(d.startCapital || 500, 0) + " simply held in BTC since " + esc(since) + " would be <b>" + money(b.value, 0) + "</b> (" + (b.retPct >= 0 ? "+" : "−") + Math.abs(b.retPct).toFixed(1) + "%) — BTC $" + Math.round(b.start).toLocaleString("en-US") + " → $" + Math.round(b.now).toLocaleString("en-US") + ". A passive yardstick, not a risk-matched rival: it holds one asset, all the time, with no stop." + vs;
   el.classList.remove("hidden");
 }
 // [#492] open-interest change — who is adding or cutting positions, measured in coins (price move stripped out), on the
@@ -2231,9 +2237,17 @@ function renderStandings(d) {
       // [#501] S5: yesterday's rank on the ranking's own measure (yesterday's account vs the seat, less today's spend — spend moves cents a day)
       var _seatOf = {}; (d.standings || []).forEach(function (a) { var st = parseFloat((d.seasonSeats || {})[a.key]); _seatOf[a.key] = { seat: st > 0 ? st : parseFloat(d.startCapital), cost: a.key === "manual" ? 0 : (parseFloat(a.costUsd) || 0), xnet: parseFloat(a.transfersNet) || 0 }; });
       var yv = function (k, v) { if (!S5_RANK) return v; var o = _seatOf[k]; return (o && o.seat > 0) ? (v - o.xnet - o.seat - o.cost) / o.seat : v; };   // [#507] net of transfers
-      var y = Object.keys(bs).filter(function (k) { return Array.isArray(bs[k]) && bs[k].length >= L && isFinite(bs[k][L - 2]); })
-        .map(function (k) { return { k: k, v: yv(k, bs[k][L - 2]) }; }).sort(function (a, b) { return b.v - a.v; });
-      y.forEach(function (o, i) { prevRank[o.k] = i + 1; });
+      // [20 Oct] yesterday is ranked the way TODAY's table is numbered: live group first, then paper, continuous — one mixed
+      // list put every live seat "up" and every paper seat "down" whenever a paper account led. A seat with no figure today
+      // (the human's blank S5 return) is unranked and gets no arrow, so it is left out of yesterday's order too.
+      var _today = {}; (d.standings || []).forEach(function (a) { _today[a.key] = a; });
+      var _ranked = function (a) { return a && isFinite(_stdVal(a, sk)); };
+      var y = Object.keys(bs).filter(function (k) { return Array.isArray(bs[k]) && bs[k].length >= L && isFinite(bs[k][L - 2]) && _ranked(_today[k]); })
+        .map(function (k) { return { k: k, v: yv(k, bs[k][L - 2]), paper: isPaperRow(_today[k]) }; })
+        .sort(function (a, b) { return (a.paper - b.paper) || (b.v - a.v); });
+      var _liveRows = (d.standings || []).filter(function (a) { return !isPaperRow(a); }).length;   // today's paper group starts after EVERY live row
+      var _n = { live: 0, paper: 0 };
+      y.forEach(function (o) { var g = o.paper ? "paper" : "live"; _n[g]++; prevRank[o.k] = (o.paper ? _liveRows : 0) + _n[g]; });
     }
   } catch (e) {}
   var defaultSort = sk === (S5_RANK ? "retNetPct" : "account") && sd === -1;   // [#501]
@@ -2254,7 +2268,7 @@ function renderStandings(d) {
       if (!groupShown[g]) { groupShown[g] = true; h += "<tr class='std-group'><td colspan='12'>" + (g === "live" ? "Live championship — real money" : "Lab — paper account, same rules, no capital") + "</td></tr>"; }
     }
     var mv = "";
-    if (defaultSort && prevRank[a.key]) { var dlt = prevRank[a.key] - (i + 1); mv = dlt > 0 ? " <span class='mv up' title='up " + dlt + " since yesterday'>▲" + dlt + "</span>" : dlt < 0 ? " <span class='mv down' title='down " + (-dlt) + " since yesterday'>▼" + (-dlt) + "</span>" : " <span class='mv' title='unchanged since yesterday'>·</span>"; }
+    if (defaultSort && prevRank[a.key] && isFinite(_stdVal(a, sk))) { var dlt = prevRank[a.key] - (i + 1); mv = dlt > 0 ? " <span class='mv up' title='up " + dlt + " since yesterday'>▲" + dlt + "</span>" : dlt < 0 ? " <span class='mv down' title='down " + (-dlt) + " since yesterday'>▼" + (-dlt) + "</span>" : " <span class='mv' title='unchanged since yesterday'>·</span>"; }
     var isPaper = a.paper === true || a.key === "qwen" || !a.venue || String(a.venue).toUpperCase() === "PAPER";
     var hasVenue = a.venue && String(a.venue).toUpperCase() !== "PAPER";
     var venue = isPaper
@@ -3689,7 +3703,14 @@ function renderIntel(d) {
     var summary = r.intelligence.replace(/^SUMMARY\s*/i, "").split(/\n\s*\n/)[0];
     $("intel-body").textContent = summary;
   }
-  if (r.xPost) { $("xpost").classList.remove("hidden"); $("xpost").innerHTML = "“" + esc(r.xPost) + "” <span class='src'>— @thebotexchang3</span>"; }
+  // [20 Oct] quote only what @thebotexchang3 actually SENT (the feed's lastXPost, from the x_posts ledger). r.xPost is the
+  // report's local-model line — never posted since the card post replaced it, and still in the old brand — so it is not shown.
+  var xp = $("xpost"), lp = d.lastXPost;
+  if (xp && lp && lp.text) {
+    var when = new Date(lp.postedAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Africa/Johannesburg" });
+    xp.innerHTML = "“" + esc(String(lp.text).split(/\n\s*\n/)[0]) + "” <span class='src'>— @thebotexchang3, " + esc(when) + " SAST</span>";
+    xp.classList.remove("hidden");
+  } else if (xp) xp.classList.add("hidden");
 }
 // ── social intel rail: narratives, radar coins, tweet of the day ──
 function renderIntelRail(d) {
