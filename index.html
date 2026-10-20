@@ -4642,6 +4642,16 @@ function renderHome(d) {
       "<div style='display:flex;height:8px;margin:8px 0 4px;background:rgba(255,255,255,.06)'>" + seg("filled", wf.filled, "#1e7a3a") + seg("dropped", wf.dropped, "#b5473a") + seg("expired", wf.expired, "#8a6414") + seg("cancelled at a season end", wf.cancelled || 0, "#3a4a5a") + seg("pending", wf.pending, "#556") + "</div>" +
       "<span style='color:#1e7a3a'>■</span> filled · <span style='color:#b5473a'>■</span> dropped · <span style='color:#8a6414'>■</span> expired · <span style='color:#889'>■</span> pending" +
       "</div>";
+    // [Fix #663] the desks' own cancels, replayed forward from the moment each watch was withdrawn (daily, bot stash chain)
+    var cr = d.cancelReplay;
+    if (cr && cr.cancels) {
+      var sgn = function (x) { return (x >= 0 ? "+" : "−") + Math.abs(x).toFixed(1) + "R"; };
+      funnelH += "<div class='src' style='margin-top:6px'><b>Were the desks right to cancel?</b> This season the live desks withdrew <b>" + cr.cancels + "</b> of their own watches. " +
+        "Replayed forward from each cancel, " + cr.noFill + " never came back to the trigger and <b>" + cr.filled + "</b> would still have filled — " + cr.w + " won, " + cr.l + " lost" + (cr.open ? ", " + cr.open + " still open" : "") +
+        ": <b class='" + cls(-cr.netR) + "'>" + (cr.netR < 0 ? sgn(-cr.netR) + " the desks did not lose" : sgn(cr.netR) + " they gave up") + "</b>" +
+        (cr.long && cr.long.filled ? " (longs: " + cr.long.w + " of " + cr.long.filled + " would have won)" : "") + ". " +
+        "An upper bound on fills — the live engine refuses some fills this replay allows. Updated daily.</div>";
+    }
     if (wf.dropReasons && wf.dropReasons.length) {
       funnelH += "<div class='src' style='margin-top:6px'><b>Why they were dropped:</b> " + wf.dropReasons.slice(0, 7).map(function (r) { return esc(REASON[r.reason] || r.reason) + " " + r.n; }).join(" · ") + "</div>";
     }
