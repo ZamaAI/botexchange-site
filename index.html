@@ -2504,7 +2504,11 @@ function renderChart(d) {
 function renderPlayers(d) {
   var byKey = {};
   (d.standings || []).forEach(function (a) { byKey[a.key] = a; });
-  var order = (d.standings || []).slice().sort(function (a, b) { return b.account - a.account; }).map(function (a) { return a.key; });
+  // [20 Oct] the cards follow the table: live seats (incl. the human) first, then the paper lab, each on the ranking's own
+  // measure (S5: return net of transfers and model spend). Sorting on raw account $ put two paper accounts at the top.
+  var _rk = S5_RANK ? "retNetPct" : "retPct";
+  var _isP = function (a) { return a.paper === true || a.key === "qwen" || !a.venue || String(a.venue).toUpperCase() === "PAPER"; };
+  var order = (d.standings || []).slice().sort(function (a, b) { return (_isP(a) - _isP(b)) || (_stdVal(b, _rk) - _stdVal(a, _rk)); }).map(function (a) { return a.key; });
   if (!order.length) order = Object.keys(ACTORS);
   $("players-grid").innerHTML = order.map(function (k) {
     var meta = ACTORS[k]; if (!meta) return "";
@@ -2512,7 +2516,9 @@ function renderPlayers(d) {
     var venue = k === "manual" ? venueHtml("Extended · live", "EXTENDED") : (k === "qwen" || meta.paperOnly) ? "Paper account"
       : (s ? venueHtml(esc(String(s.venue).toUpperCase()) + (s.paper ? " · paper" : " · live"), s.venue) : "");
     var stat = s
-      ? "<span>" + money(s.account, 0) + " <span class='" + cls(s.retPct) + "'>" + pct(s.retPct, 1) + "</span></span>" +
+      ? "<span>" + money(s.account, 0) + " " + (S5_RANK && s.retNetPct != null
+          ? "<span class='" + cls(s.retNetPct) + "' title='Return from this seat&#39;s own start, net of transfers and model spend — the Season-5 ranking'>" + pct(s.retNetPct, 1) + "</span> <span class='src'>net</span>"
+          : "<span class='" + cls(s.retPct) + "'>" + pct(s.retPct, 1) + "</span>") + "</span>" +
         "<span>" + s.wins + "W–" + s.losses + "L" + (s.be != null ? " · " + esc(String(s.be)) + " BE" : "") + (s.wr !== "N/A" ? " · " + esc(s.wr) + "%" : "") + "</span>"
       : "";
     return "<div class='pcard' style='border-top-color:" + meta.color + "'>" +
