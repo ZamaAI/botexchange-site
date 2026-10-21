@@ -3655,7 +3655,8 @@ function renderThisWeek(d) {
         "<span class='tw-sym'>" + esc(e.symbol) + "</span> <span class='tw-meta'>" + esc(e.result ? "reported" :
           (e.date && e.date < new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Johannesburg" }) && (!e.when || /tbd/i.test(e.when)) ? "no result published yet" : (e.when || ""))) +
         (e.universe ? " · <span title='Tradeable by the fleet'>◆</span>" : "") + "</span>" +
-        "<br><span class='tw-est'>est " + eps(e.epsEst) + (e.epsPrior != null ? " · yr-ago " + eps(e.epsPrior) : "") + "</span>" + res + "</div>";
+        // [Fix #667] once reported, the badge's own consensus is the estimate shown — a second source's figure would read twice
+        "<br><span class='tw-est'>" + (e.result ? "" : "est " + eps(e.epsEst)) + (e.epsPrior != null ? (e.result ? "" : " · ") + "yr-ago " + eps(e.epsPrior) : "") + "</span>" + res + "</div>";
     });
     // The day's OTHER events from the main calendar feed: token unlocks (all), crypto events
     // (market-wide HIGH only — asset-scoped MED demos/AMAs are noise here), FOMC (skipped when
