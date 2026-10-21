@@ -339,6 +339,9 @@
   .cal-add:hover { border-color: var(--accent); }
   .cal-add-all { float: right; text-transform: none; letter-spacing: 0; }
   .cal-item.has-add { grid-template-columns: 58px 1fr auto auto; }
+  .cal-sub { font-size: 12.5px; line-height: 2; margin: -4px 0 14px; }
+  .cal-sub a.cal-add { text-decoration: none; margin-left: 4px; }
+  .cal-sub #cal-copy { margin-left: 4px; }
   .calplan .cp-d { display: block; font: 700 11px var(--mono); color: var(--ink3); margin-bottom: 3px; }
   .calplan .cp-d .mo { color: var(--accent); }
   .calplan .cp-ev { display: block; margin: 2px 0; padding: 1px 5px; border-radius: 2px; font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: var(--bg2); color: var(--ink2); }
@@ -1077,6 +1080,13 @@
   <div class="kicker">Forward calendar</div>
   <h2 class="sec">What could swing markets</h2>
   <p class="sub">Macro prints from FRED release dates, the FOMC schedule, earnings and token unlocks — the same event risk the trading desks are fed. Reported earnings show the result and how the stock took it. Tap any day in the planner for its full list; add any event to your own calendar.</p>
+  <!-- [#673] subscribe once: calendar.ics in the public data repo, rebuilt when an event changes (results included) -->
+  <div class="cal-sub">
+    <b>Subscribe</b> — the whole calendar in your own, kept up to date (new dates appear; earnings gain their result):
+    <a class="cal-add" href="webcal://raw.githubusercontent.com/ZamaAI/botexchange-data/main/calendar.ics" title="Apple Calendar / Outlook desktop">Apple / Outlook</a>
+    <a class="cal-add" href="https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Fraw.githubusercontent.com%2FZamaAI%2Fbotexchange-data%2Fmain%2Fcalendar.ics" target="_blank" rel="noopener" title="Opens Google Calendar with the subscription ready to add">Google</a>
+    <button type="button" class="cal-add" id="cal-copy" data-url="https://raw.githubusercontent.com/ZamaAI/botexchange-data/main/calendar.ics" title="Copy the feed URL for any other calendar app">Copy link</button>
+  </div>
   <div class="tw hidden" id="thisweek">
     <div class="tw-h" id="tw-h">This week</div>
     <div class="tw-days" id="tw-days"></div>
@@ -3835,6 +3845,12 @@ function icsDownload(events, name) {
   } catch (err) {}
 }
 document.addEventListener("click", function (ev) {
+  var cp = ev.target.closest && ev.target.closest("#cal-copy");
+  if (cp) {
+    var u = cp.getAttribute("data-url"), done = function () { cp.textContent = "Copied ✓"; setTimeout(function () { cp.textContent = "Copy link"; }, 2000); };
+    try { navigator.clipboard.writeText(u).then(done, function () { window.prompt("Copy the calendar link:", u); }); } catch (e2) { window.prompt("Copy the calendar link:", u); }
+    return;
+  }
   var b = ev.target.closest && ev.target.closest("[data-ics]");
   if (b) {
     var k = b.getAttribute("data-ics");
@@ -3920,7 +3936,7 @@ function renderNotes(d) {
   var TZ = { timeZone: "Africa/Johannesburg" };
   var shown = notesExpanded ? ns : ns.slice(0, 4);
   var h = shown.map(function (n, i) {
-    var a = ACTORS[n.brain] || { label: n.brain, color: "#888", model: "" };
+    var a = n.brain === "research" ? { label: "Research desk", color: "#5b6b7a", model: "" } : (ACTORS[n.brain] || { label: n.brain, color: "#888", model: "" });   // [#672] the column is not a trading desk
     var when = new Date(n.ts).toLocaleString("en-GB", Object.assign({ day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }, TZ));
     var kind = n.kind === "intraday" ? "intraday scan" : n.kind === "column" ? "research column" : "report cycle";
     return "<div class='note'><div class='l1'><span class='actor-tag' style='color:" + a.color + "'>" + esc(a.label) + "</span>" +
@@ -4256,13 +4272,14 @@ function renderWhaleFeed(d) {
   if (wf.at) h += "<tr><td colspan='6'><span class='src'>Via Cielo · updated " + new Date(wf.at).toLocaleString("en-GB", Object.assign({ day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }, TZ)) + " SAST · refreshed each report cycle</span></td></tr>";
   $("whale-rows").innerHTML = h;
 }
-// ── the research column (Qwen, 2×/day) ──
+// ── the research column (2×/day; the writing model is in the feed, #672) ──
 function renderColumn(d) {
   if (!d.column || !d.column.text) return;
   $("column-box").classList.remove("hidden");
   $("column-body").textContent = d.column.text;
   var TZ = { timeZone: "Africa/Johannesburg" };
-  $("column-stamp").textContent = "Qwen · the research desk · " + new Date(d.column.ts).toLocaleString("en-GB", Object.assign({ day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }, TZ)) + " SAST · published 06:00 & 18:00";
+  // [#672] the writer comes from the feed (Claude Haiku 5.5 since 21 Oct; the local Qwen before) — it was a hard-coded "Qwen"
+  $("column-stamp").textContent = (d.column.model || "Qwen") + " · the research desk · " + new Date(d.column.ts).toLocaleString("en-GB", Object.assign({ day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }, TZ)) + " SAST · published 06:00 & 18:00";
 }
 // ── prediction markets rail ──
 function renderPredictions(d) {
