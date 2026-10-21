@@ -403,6 +403,8 @@
   .wlchip.lo { color: var(--down); background: #fbeae9; border: 1px solid #f0cfcd; }
   .wlchip.be { color: var(--ink3); background: #f0efec; border: 1px solid #ddd9d2; }
   .actor-tag { font-size: 11px; font-weight: 600; }
+  .erpill { font: 700 9.5px var(--mono); letter-spacing: .06em; color: var(--watch); border: 1px solid currentColor; border-radius: 2px; padding: 1px 7px; white-space: nowrap; }
+  .cal-sub .cal-phone { display: block; margin-top: 6px; color: var(--ink2); font-size: 12px; }
   .smpill { font: 700 9.5px var(--mono); letter-spacing: .06em; color: var(--accent); background: #e7f0eb; border: 1px solid #c8ddd1; border-radius: 2px; padding: 1px 7px; white-space: nowrap; }
   .lvls { font-family: var(--mono); font-size: 12px; color: var(--ink2); margin-top: 3px; }
   .why { color: var(--ink2); font-size: 12.5px; margin-top: 3px; }
@@ -1084,13 +1086,14 @@
   <div class="cal-sub">
     <b>Subscribe</b> — the whole calendar in your own, kept up to date (new dates appear; earnings gain their result):
     <a class="cal-add" href="webcal://raw.githubusercontent.com/ZamaAI/botexchange-data/main/calendar.ics" title="Apple Calendar / Outlook desktop">Apple / Outlook</a>
-    <a class="cal-add" href="https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Fraw.githubusercontent.com%2FZamaAI%2Fbotexchange-data%2Fmain%2Fcalendar.ics" target="_blank" rel="noopener" title="Opens Google Calendar with the subscription ready to add">Google</a>
+    <a class="cal-add" href="https://calendar.google.com/calendar/r?cid=webcal%3A%2F%2Fraw.githubusercontent.com%2FZamaAI%2Fbotexchange-data%2Fmain%2Fcalendar.ics" target="_blank" rel="noopener" title="Opens Google Calendar with the subscription ready to add — on a computer">Google (on a computer)</a>
     <button type="button" class="cal-add" id="cal-copy" data-url="https://raw.githubusercontent.com/ZamaAI/botexchange-data/main/calendar.ics" title="Copy the feed URL for any other calendar app">Copy link</button>
+    <span class="cal-phone">On a phone: iPhone — tap Apple. Android — Google's app cannot add a subscription; add it once at calendar.google.com on a computer (Other calendars → + → From URL, paste the link) and it syncs to the phone. Google first fills a new subscription within a few hours, then refreshes it about twice a day.</span>
   </div>
   <div class="tw hidden" id="thisweek">
     <div class="tw-h" id="tw-h">This week</div>
     <div class="tw-days" id="tw-days"></div>
-    <div class="src" style="padding:8px 14px 10px">Each day: the top reporters by size (◆ = tradeable by the fleet; estimates from the Nasdaq calendar, ✅ / ❌ fills in against consensus as each print lands), high-impact macro via the ForexFactory weekly calendar, plus token unlocks and major crypto events. Times shown in your timezone. The full list is in the calendar below.</div>
+    <div class="src" style="padding:8px 14px 10px">Each day: the top reporters by size (◆ = tradeable by the fleet; consensus estimates from Yahoo Finance (Nasdaq's where Yahoo has none), ✅ / ❌ fills in against that consensus as each print lands), high-impact macro via the ForexFactory weekly calendar, plus token unlocks and major crypto events. Times shown in your timezone. The full list is in the calendar below.</div>
   </div>
   <div class="cal-cols">
   <div>
@@ -2886,6 +2889,34 @@ function copyBtn(t) {
 }
 var COPY_NOTE = "<div class='copynote'><b>Copy on Lighter / Hyperliquid</b> opens that market on the venue (our referral link) — it does <b>not</b> place or pre-fill anything. The venue opens on Buy/Long by default: set the side (LONG or SHORT) yourself, enter the stop and target shown on the row, and choose your own size and leverage. The row's entry and R/R are the desk's at its own fill, not what is available to you now. None of this is advice — every desk here is a machine with a public record, including its losses.</div>";
 // [#359] a small link to a trade's own room, on every row that has an id
+// [#674] a stock that reports within 3 days carries event risk the levels do not show — say so on its row and its page.
+// From the feed's calendar (EARNINGS rows) and This Week (the consensus estimate). Upcoming prints only.
+function earnSoon(d, asset) {
+  var sym = String(asset || "").replace(/^xyz:/i, "").toUpperCase(); if (!sym || !d) return null;
+  var et = function (ms) { return new Date(ms).toLocaleDateString("en-CA", { timeZone: "America/New_York" }); };
+  var today = et(Date.now()), until = et(Date.now() + 3 * 864e5);
+  var nyH = parseInt(new Date().toLocaleString("en-US", { timeZone: "America/New_York", hour: "2-digit", hour12: false }), 10);
+  var wk = ((d.weekAhead && d.weekAhead.earnings) || []).filter(function (e) { return e.symbol === sym; });
+  var cands = wk.map(function (e) { return { date: e.date, when: e.when, est: e.epsEst, result: e.result }; });
+  (d.calendar || []).forEach(function (e) {
+    if (e.type !== "EARNINGS" || String(e.event).split(" ")[0] !== sym) return;
+    if (cands.some(function (c) { return c.date === e.date; })) return;
+    var m = String(e.event).match(/\((BMO|AMC)\)/); cands.push({ date: e.date, when: m ? m[1] : "TBD", est: null });
+  });
+  var hit = cands.filter(function (c) {
+    if (c.result || !c.date || c.date < today || c.date > until) return false;
+    return !(c.date === today && c.when === "BMO" && nyH >= 10);       // this morning's print is out
+  }).sort(function (a, b) { return a.date < b.date ? -1 : 1; })[0];
+  if (!hit) return null;
+  var day = hit.date === today ? "today" : new Date(hit.date + "T12:00:00Z").toLocaleDateString("en-GB", { weekday: "short", timeZone: "UTC" });
+  var when = hit.when === "BMO" ? " before the open" : hit.when === "AMC" ? " after the close" : "";
+  var est = hit.est != null && isFinite(hit.est) ? " · est " + (hit.est < 0 ? "−$" : "$") + Math.abs(hit.est).toFixed(2) + " EPS" : "";
+  return { short: "REPORTS " + day.toUpperCase(), text: "Reports earnings " + day + when + est };
+}
+function earnPill(d, asset) {
+  var e = earnSoon(d, asset);
+  return e ? "<span class='erpill' title='" + esc(e.text) + " — a stock can gap through its stop on the print'>" + esc(e.short) + "</span>" : "";
+}
 function tradeLink(id) { return id == null ? "" : " <a class='tlink' href='#/t/" + esc(id) + "' title='This trade&#39;s own page — share it'>#" + esc(id) + "</a>"; }
 // [#359] THE TRADE ROOM — one page per trade, from the feed (openTrades first, then the archive).
 // Reached by link only: #/t/<id> in-site, or thebotexchange.com/t/<id> (a Pages Function serves
@@ -2934,6 +2965,7 @@ function renderTradePage(d, id) {
     "<div class='tr-grid'><div>" +
     "<div class='tr-levels'>" + lv.map(function (x) { return "<div class='lv'><div class='k'>" + esc(x[0]) + "</div><div class='v'>" + (typeof x[1] === "number" ? esc(fmtLvl(x[1])) : esc(x[1] == null ? "—" : x[1])) + "</div></div>"; }).join("") + "</div>" +
     (!closed && t.stop != null && t.target != null ? posBar(t, oi) : "") +
+    (!closed && earnSoon(d, t.asset) ? "<div class='flatnote' style='margin-top:14px'><b>" + esc(earnSoon(d, t.asset).text) + ".</b> A stock can gap through its stop on the print — the stop limits the loss only while it trades.</div>" : "") +
     (thesis ? "<div class='why' style='margin-top:14px'><b>The thesis:</b> " + esc(thesis) + "</div>" : "<div class='src' style='margin-top:14px'>No thesis was published for this trade.</div>") +
     (closed && t.exitReason ? "<div class='why' style='margin-top:10px'><b>What happened:</b> " + esc(t.exitReason) + "</div>" : "") +
     (!closed && copyBtn(t) ? COPY_NOTE : "") +
@@ -3049,6 +3081,7 @@ function renderFloor(d) {
         ? "<span class='pill live'>" + esc(t.venue) + " · LIVE</span>" + copyBtn(t)
         : ((t.actor === "qwen" || (ACTORS[t.actor] || {}).paperOnly) ? "" : "<span class='pill paper' title='Tracked on paper — not a live order (agent benched or venue-unrouted)'>PAPER</span>")) +
       (t.smartMoney ? "<span class='smpill' title='Top Hyperliquid accounts hold this same trade'>TOP BOOKS AGREE ×" + esc(t.smartMoney) + "</span>" : "") +
+      earnPill(d, t.asset) +
       "<span class='outc'><span class='livepnl' data-pnl='" + i + "'></span> <span class='num'>conv " + esc(t.conviction) + "/10</span></span></div>" +
       "<div class='lvls'>entry " + money(e, e < 10 ? 4 : 2) + " · stop " + (t.levelsApprox ? "≈" : "") + money(s, s < 10 ? 4 : 2) +
       (t.trailed ? " <span title='The risk engine has trailed this stop from its original level — profit locked in'>🔒 trailed</span>" : "") +
@@ -3074,7 +3107,7 @@ function renderFloor(d) {
   waits.forEach(function (t) {
     h += "<div class='titem'><div class='l1'><span class='asset'>" + esc(t.asset) + "</span>" +
       "<span class='dirpill " + (t.direction === "SHORT" ? "s" : "l") + "'>" + esc(t.direction) + "</span>" +
-      actorTag(actorKeyOf(t.brain)) +
+      actorTag(actorKeyOf(t.brain)) + earnPill(d, t.asset) +
       // The feed has carried `conviction` on watch-list items all along and this rendered only
       // the WATCHING badge. Conviction is what separates "idly noted" from "one condition away
       // from a real position", and it is the same 1-10 scale shown on open trades.
