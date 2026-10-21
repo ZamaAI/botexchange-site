@@ -342,6 +342,9 @@
   .rule { border: none; border-top: 1px solid var(--line); margin: 26px 0; }
 
   table.std { width: 100%; border-collapse: collapse; }
+  /* [#670] the week-by-week table borrows the standings look but none of its phone column rules (min-width on col 2, cols 7-8 hidden) */
+  table.std.wk th, table.std.wk td { display: table-cell; min-width: 0; padding-left: 5px; padding-right: 5px; }
+  table.std.wk { max-width: 680px; }
   /* [15 Oct] compact by default: the 8 columns that tell the story; Model spend / Avg R / Max drawdown / In RISK_ON behind "More columns" */
   table.std.compact th:nth-child(8), table.std.compact td:nth-child(8), table.std.compact th:nth-child(10), table.std.compact td:nth-child(10),
   table.std.compact th:nth-child(11), table.std.compact td:nth-child(11), table.std.compact th:nth-child(12), table.std.compact td:nth-child(12) { display: none; }
@@ -856,6 +859,13 @@
   <div class="src hidden" id="xfer-line" style="margin-top:4px"></div>
   <div class="src hidden" id="std-note" style="margin-top:4px">Grey win rates rest on fewer than 8 wins and losses — too small a sample to mean much yet. Trade counts are in the Record column.</div>
   </details>
+  <!-- [#670] the season week by week: the race's own measure per week, so the weeks add up to the Season column. Feed seasonWeeks; hidden until a week is complete. -->
+  <div class="hidden" id="weeks-box" style="margin-top:22px">
+    <div class="kicker">The season, week by week</div>
+    <p class="sub" id="weeks-lead" style="margin:6px 0 8px"></p>
+    <div style="overflow-x:auto"><table class="std wk" id="weeks-table" aria-label="Each desk's return, week by week"></table></div>
+    <div class="src" style="margin-top:6px"><span id="weeks-star"></span>Each week is the change in the desk's season return — its account net of transfers and model spend, on its $500 seat — so the weeks add up to the Season column. Bitcoin is buy-and-hold over the same days. Real money only; paper trades are not in it.</div>
+  </div>
   <div class="home-grid" style="margin-top:22px">
     <div class="hw w12" id="hw-live"><h3>Live trades — every open position</h3><div id="hw-live-body"><span class="src">Open positions load with the feed.</span></div></div>
     <div class="hw w12" id="hw-closes"><h3>Recent closes — with the post-mortem</h3><div id="hw-closes-body"><span class="src">Closed trades load with the feed.</span></div></div>
@@ -2004,6 +2014,44 @@ function renderSeasonHistory(d) {
   if (elW) elW.textContent = wins;
   if (elR) elR.textContent = trades ? Math.round(wins / trades * 100) + "%" : "—";
   if (elP) { elP.textContent = trades ? signedMoney(pnl) : "—"; elP.className = trades ? pnlCls(pnl) : ""; }
+}
+
+// [#670] the season week by week (feed seasonWeeks, newest first). The lead tells the newest COMPLETE week as a story; the
+// table shows every week, the one in progress marked "so far". All figures come from the feed — nothing is computed here
+// beyond formatting (Bitcoin's season figure is the feed's btcSeasonPct, from the same marks as its weeks).
+function renderWeeks(d) {
+  var box = $("weeks-box"), sw = d.seasonWeeks;
+  if (!box) return;
+  var done = sw && sw.weeks ? sw.weeks.filter(function (w) { return w.complete; }) : [];
+  if (!done.length) { box.classList.add("hidden"); return; }
+  var L = done[0], newest = sw.weeks[0], cols = sw.weeks.slice().reverse();
+  var day = function (iso) { return seasonDayShort(Date.parse(iso), true); };
+  var first = function (s) { return esc(String(s || "").split(" ")[0]); };
+  var tradeTxt = function (t) { return first(t.label) + "&#39;s " + esc(t.asset) + " " + esc(String(t.direction || "").toLowerCase()) + " <span class='" + pnlCls(t.pnlUsd) + "'>" + signedMoney(t.pnlUsd) + "</span>" + tradeLink(t.id); };
+  var range = function (w) { var a = day(w.from), b = day(w.to); return a.split(" ")[1] === b.split(" ")[1] ? a.split(" ")[0] + "–" + b : a + "–" + b; };
+  var h = "<b>Week " + L.n + "</b> (" + range(L) + "): ";
+  if (L.top && L.bottom && L.top.key !== L.bottom.key) h += esc(L.top.label) + " did best (" + pct(L.top.weekPts) + "), " + esc(L.bottom.label) + " worst (" + pct(L.bottom.weekPts) + "). ";
+  if (L.btc && L.btc.pct != null) h += "Bitcoin " + pct(L.btc.pct, 1) + "; " + L.beatBtc + " of " + L.desks.length + " desks beat it. ";
+  h += L.closes.n + " trade" + (L.closes.n === 1 ? "" : "s") + " closed (" + L.closes.w + "W " + L.closes.l + "L " + L.closes.be + "BE).";
+  if (L.best) h += " Best: " + tradeTxt(L.best) + ".";
+  if (L.worst) h += " Worst: " + tradeTxt(L.worst) + ".";
+  $("weeks-lead").innerHTML = h;
+  var head = "<tr><th>Desk</th>" + cols.map(function (w) {
+    return "<th class='rt' title='" + esc(range(w)) + "'>Wk " + w.n + (w.complete ? "" : "<span class='src'>*</span>") + "</th>";
+  }).join("") + "<th class='rt'>Season</th></tr>";
+  var cell = function (v) { return "<td class='rt " + clsZ(v, 1) + "'>" + pct(v, 1) + "</td>"; };   // one decimal: five columns fit a phone
+  var rows = newest.desks.map(function (nd) {
+    return "<tr><td title='" + esc(nd.label + (nd.model ? " — " + nd.model : "")) + "'>" + first(nd.label) + "</td>" + cols.map(function (w) {
+      var x = (w.desks || []).filter(function (r) { return r.key === nd.key; })[0];
+      return x ? cell(x.weekPts) : "<td class='rt'>—</td>";
+    }).join("") + cell(nd.retEnd) + "</tr>";
+  }).join("");
+  var btcSeason = sw.btcSeasonPct != null ? sw.btcSeasonPct : null;   // the weeks' own marks, so the row adds up
+  rows += "<tr style='color:var(--ink3)'><td>BTC held</td>" + cols.map(function (w) { return cell(w.btc ? w.btc.pct : null); }).join("") + cell(btcSeason) + "</tr>";
+  $("weeks-table").innerHTML = head + rows;
+  var cur = sw.weeks[0];
+  $("weeks-star").textContent = cur.complete ? "" : "* Week " + cur.n + " so far (" + range(cur) + ", in progress). ";
+  box.classList.remove("hidden");
 }
 
 // ── small-sample honesty: win rates on <8 closed trades render grey (they're noise, and
@@ -5314,7 +5362,7 @@ function renderAll(d) {
   } catch (e) {}
   _feedLast = d;   // [#323]
   _feedForReveal = d;
-  renderStamps(d); renderStrip(d.market); renderHeadline(d); renderFleetPnl(d); renderSeasonHistory(d); try { renderRules(d); } catch (e) {} renderStandings(d); renderReferee(d); try { renderCalls(d); } catch (e) {} try { renderHero(d); } catch (e) {}
+  renderStamps(d); renderStrip(d.market); renderHeadline(d); renderFleetPnl(d); renderSeasonHistory(d); try { renderRules(d); } catch (e) {} renderStandings(d); try { renderWeeks(d); } catch (e) {} renderReferee(d); try { renderCalls(d); } catch (e) {} try { renderHero(d); } catch (e) {}
   try { renderHook(d); } catch (e) {}
   renderChart(d); renderPlayers(d); renderSeasonStats(d); renderLearned(d); renderFloor(d); renderRiskIndex(d); renderDesk(d); try { renderVolPanel(d); } catch (e) {}   /* [#516] */ try { if (_deskKey || location.hash === "#/desks" || location.hash.indexOf("#/desk/") === 0) renderDeskPage(d, _deskKey); } catch (e) {} try { if (location.hash.indexOf("#/t/") === 0) renderTradePage(d, location.hash.slice(4)); } catch (e) {} renderHLWhales(d); renderTopTraders(d); renderLighterWhales(d); renderCalendar(d); renderCalMonth(d); renderThisWeek(d); renderIntel(d); renderIntelRail(d);
   // [#289] the risk-rules card reads the FEED's enforced limits — the static prose went
