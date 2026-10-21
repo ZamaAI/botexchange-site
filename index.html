@@ -3324,10 +3324,12 @@ function renderDesk(d) {
     }
   }
   if (md && md.etf && (md.etf.BTC || md.etf.ETH || md.etf.SOL)) {
-    h += "<table class='data'><caption>ETF flows" + (md.etf.BTC && md.etf.BTC.date ? " (data for " + esc(md.etf.BTC.date) + ")" : "") + blockAsOf(md, "etf") + "</caption>";
+    // [Fix #666] a provisional day (issuers still reporting) is published labelled; the last complete day sits beside it
+    h += "<table class='data'><caption>ETF flows" + (md.etf.BTC && md.etf.BTC.date ? " (data for " + esc(md.etf.BTC.date) + (md.etf.BTC.provisional ? " — partial, issuers still reporting" : "") + ")" : "") + blockAsOf(md, "etf") + "</caption>";
     ["BTC", "ETH", "SOL"].forEach(function (k) {
       var e = md.etf[k]; if (!e) return;
-      h += "<tr><td>" + k + " ETF</td><td class='rt " + cls(e.latestM) + "'>" + (e.latestM >= 0 ? "+" : "−") + "$" + Math.abs(e.latestM).toFixed(1) + "M</td>" +
+      var pv = e.provisional ? " <span class='src'>partial" + (e.prior && isFinite(e.prior.flowM) ? " · " + esc(e.prior.date) + " " + (e.prior.flowM >= 0 ? "+" : "−") + "$" + Math.abs(e.prior.flowM).toFixed(1) + "M final" : "") + "</span>" : "";
+      h += "<tr><td>" + k + " ETF" + pv + "</td><td class='rt " + cls(e.latestM) + "'>" + (e.latestM >= 0 ? "+" : "−") + "$" + Math.abs(e.latestM).toFixed(1) + "M</td>" +
         "<td class='rt " + cls(e.weekM) + "'>" + (e.weekM >= 0 ? "+" : "−") + "$" + Math.abs(e.weekM).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "M/7d</td></tr>";
     });
     h += "</table>";
@@ -4561,6 +4563,7 @@ function renderHome(d) {
     // [15 Oct] an outflow printed as "$1.3M" (red, no minus) and no row said which day it was; the week now sits beside the day
     var dd = e.date && /^\d{4}-\d{2}-\d{2}$/.test(e.date) ? new Date(e.date + "T12:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "";
     var sg = function (v) { return (v >= 0 ? "+" : "−") + "$" + Math.abs(v).toFixed(1) + "M"; };
+    if (dd && e.provisional) dd += " · partial";   // [Fix #666] issuers still reporting
     f += "<div class='row'><span>" + k + " ETF" + (dd ? " <span class='src'>" + esc(dd) + "</span>" : "") + (isFinite(e.weekM) ? " <span class='src'>· 7d " + sg(e.weekM) + "</span>" : "") + "</span><b class='" + (e.latestM >= 0 ? "pos" : "neg") + "'>" + sg(e.latestM) + "</b></div>";
   });
   if (md.liq) f += "<div class='row'><span>24h liquidations</span><b>$" + (md.liq.longM || 0).toFixed(1) + "M L / $" + (md.liq.shortM || 0).toFixed(1) + "M S</b></div>";
