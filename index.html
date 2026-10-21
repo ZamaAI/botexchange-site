@@ -448,6 +448,7 @@
   .box { border: 1px solid var(--line); margin-bottom: 20px; }
   .box-h { background: var(--bg2); border-bottom: 1px solid var(--line); padding: 8px 12px; font-size: 12px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
   .box-b { padding: 10px 12px; }
+  .cal-act { display: block; color: var(--ink2); font-size: 11.5px; margin-top: 2px; }
   .cal-item { display: grid; grid-template-columns: 58px 1fr auto; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line2); font-size: 12.5px; align-items: baseline; }
   .cal-item:last-child { border-bottom: none; }
   .cal-date { font-family: var(--mono); font-weight: 700; }
@@ -1081,7 +1082,7 @@
 <div class="page" data-page="calendar">
   <div class="kicker">Forward calendar</div>
   <h2 class="sec">What could swing markets</h2>
-  <p class="sub">Macro prints from FRED release dates, the FOMC schedule, earnings and token unlocks — the same event risk the trading desks are fed. Reported earnings show the result and how the stock took it. Tap any day in the planner for its full list; add any event to your own calendar.</p>
+  <p class="sub">Macro prints from FRED release dates, the FOMC schedule, earnings and token unlocks — the same event risk the trading desks are fed. Reported earnings show the result and how the stock took it; CPI, payrolls, GDP and the other US releases show their figure once it lands. Tap any day in the planner for its full list; add any event to your own calendar.</p>
   <!-- [#673] subscribe once: calendar.ics in the public data repo, rebuilt when an event changes (results included) -->
   <div class="cal-sub">
     <b>Subscribe</b> — the whole calendar in your own, kept up to date (new dates appear; earnings gain their result):
@@ -3784,6 +3785,8 @@ function renderThisWeek(d) {
   }
   $("tw-days").innerHTML = h;
 }
+// [#676] a landed macro release carries its figure (FRED, the morning of the release)
+function calAct(e) { return e && e.actual ? "<span class='cal-act'>Result: " + esc(e.actual) + "</span>" : ""; }
 function renderCalendar(d) {
   _calAddList = [];   // [#671] the add buttons index this list — rebuilt with each render
   var items = d.calendar || [];
@@ -3799,7 +3802,7 @@ function renderCalendar(d) {
   var h = "";
   items.forEach(function (e) {
     var dt = /^\d{4}-\d{2}-\d{2}$/.test(e.date) ? new Date(e.date + "T12:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : esc(e.date);
-    h += "<div class='cal-item has-add'><span class='cal-date'>" + dt + "</span><span>" + esc(e.event) + "</span>" + impBadge(e) + calAddBtn(e) + "</div>";
+    h += "<div class='cal-item has-add'><span class='cal-date'>" + dt + "</span><span>" + esc(e.event) + calAct(e) + "</span>" + impBadge(e) + calAddBtn(e) + "</div>";
   });
   h += "<div class='src' style='margin-top:8px'>Auto-fed from FRED release dates (CPI, NFP, GDP, PCE…), the FOMC schedule, universe earnings, token-unlock detectors and the crypto event calendar (upgrades, activations, governance votes). Solid HIGH = market-wide; outlined HIGH = high for that asset only. Agents holding through a high-impact event get automatic risk alerts.</div>";
   $("cal-body").innerHTML = h;
@@ -3847,7 +3850,7 @@ function renderCalDay(key) {
   var evs = (_calFeed.calendar || []).filter(function (e) { return e.date === key; });
   var title = new Date(key + "T12:00:00Z").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
   host.innerHTML = "<h4>" + esc(title) + "</h4>" + (evs.length ? evs.map(function (e) {
-    return "<div class='cal-item'><span>" + esc(e.event) + "</span>" + impBadge(e) + calAddBtn(e) + "</div>";
+    return "<div class='cal-item'><span>" + esc(e.event) + calAct(e) + "</span>" + impBadge(e) + calAddBtn(e) + "</div>";
   }).join("") : "<div class='src'>Nothing on the calendar for this day.</div>");
   host.classList.remove("hidden");
 }
@@ -3864,7 +3867,7 @@ function icsText(events) {
     var d0 = e.date.replace(/-/g, ""), d1 = new Date(Date.parse(e.date + "T12:00:00Z") + 864e5).toISOString().slice(0, 10).replace(/-/g, "");
     var uid = (e.date + "-" + String(e.event)).replace(/[^A-Za-z0-9]+/g, "-").slice(0, 80) + "@thebotexchange.com";
     lines.push("BEGIN:VEVENT", "UID:" + uid, "DTSTAMP:" + stamp, "DTSTART;VALUE=DATE:" + d0, "DTEND;VALUE=DATE:" + d1,
-      "SUMMARY:" + x(e.event), "DESCRIPTION:" + x((e.impact ? e.impact + " impact · " : "") + (e.type || "") + " · from thebotexchange.com/#/calendar"), "TRANSP:TRANSPARENT", "END:VEVENT");
+      "SUMMARY:" + x(e.event), "DESCRIPTION:" + x((e.actual ? "Result: " + e.actual + ". " : "") + (e.impact ? e.impact + " impact · " : "") + (e.type || "") + " · from thebotexchange.com/#/calendar"), "TRANSP:TRANSPARENT", "END:VEVENT");
   });
   lines.push("END:VCALENDAR");
   return lines.join("\r\n") + "\r\n";
