@@ -328,6 +328,17 @@
   .calplan .cp-cell:nth-child(7n) { border-right: none; }
   .calplan .cp-cell.dim { background: var(--bg2); }
   .calplan .cp-cell.today { box-shadow: inset 0 0 0 2px var(--accent); }
+  /* [#671] tappable days + the day view under the planner + add-to-calendar buttons */
+  .calplan .cp-cell[data-day] { cursor: pointer; }
+  .calplan .cp-cell[data-day]:hover { background: #f3f6f1; }
+  .calplan .cp-cell.sel { background: #eef4ec; }
+  .cal-dayview { border: 1px solid var(--line); border-top: none; padding: 10px 14px 12px; }
+  .cal-dayview h4 { margin: 0 0 6px; font-size: 13px; }
+  .cal-dayview .cal-item { grid-template-columns: 1fr auto auto; }
+  .cal-add { font: 600 10.5px var(--mono); color: var(--accent); background: none; border: 1px solid var(--line); border-radius: 2px; padding: 1px 6px; cursor: pointer; white-space: nowrap; }
+  .cal-add:hover { border-color: var(--accent); }
+  .cal-add-all { float: right; text-transform: none; letter-spacing: 0; }
+  .cal-item.has-add { grid-template-columns: 58px 1fr auto auto; }
   .calplan .cp-d { display: block; font: 700 11px var(--mono); color: var(--ink3); margin-bottom: 3px; }
   .calplan .cp-d .mo { color: var(--accent); }
   .calplan .cp-ev { display: block; margin: 2px 0; padding: 1px 5px; border-radius: 2px; font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: var(--bg2); color: var(--ink2); }
@@ -794,6 +805,7 @@
   <a href="#/markets" data-page="markets">Markets</a>
   <a href="#/charts" data-page="charts">Charts</a>
   <a href="#/news" data-page="news">News &amp; Intel</a>
+  <a href="#/calendar" data-page="calendar">Calendar</a>
   <a href="#/bots" data-page="bots">The Bots</a>
   <a href="#/models" data-page="models">Model Lab</a>
   <a href="#/calls" data-page="calls">Extended Calls</a>
@@ -1020,7 +1032,6 @@
   <div id="level-chart"></div>
 </div>
 <div class="page" data-page="news">
-  <div class="subnav" role="navigation" aria-label="Section pages"><a href="#/news" class="on" aria-current="page">The wire</a><a href="#/calendar">Calendar</a></div>
 
   <div class="kicker">News &amp; social — what the desk is reading</div>
   <h2 class="sec" id="wire">The wire</h2>
@@ -1063,20 +1074,22 @@
   </div>
 </div>
 <div class="page" data-page="calendar">
-  <div class="subnav" role="navigation" aria-label="Section pages"><a href="#/news">The wire</a><a href="#/calendar" class="on" aria-current="page">Calendar</a></div>
   <div class="kicker">Forward calendar</div>
   <h2 class="sec">What could swing markets</h2>
-  <p class="sub">Macro prints from FRED release dates, the FOMC schedule, universe earnings and token unlocks — the same event risk the trading desks are fed.</p>
+  <p class="sub">Macro prints from FRED release dates, the FOMC schedule, earnings and token unlocks — the same event risk the trading desks are fed. Reported earnings show the result and how the stock took it. Tap any day in the planner for its full list; add any event to your own calendar.</p>
   <div class="tw hidden" id="thisweek">
     <div class="tw-h" id="tw-h">This week</div>
     <div class="tw-days" id="tw-days"></div>
     <div class="src" style="padding:8px 14px 10px">Each day: the top reporters by size (◆ = tradeable by the fleet; estimates from the Nasdaq calendar, ✅ / ❌ fills in against consensus as each print lands), high-impact macro via the ForexFactory weekly calendar, plus token unlocks and major crypto events. Times shown in your timezone. The full list is in the calendar below.</div>
   </div>
   <div class="cal-cols">
+  <div>
   <div class="calplan" id="cal-month"><div style="padding:14px" class="src">The month planner draws with the feed.</div></div>
+  <div class="cal-dayview hidden" id="cal-dayview" aria-live="polite"></div>
+  </div>
   <div class="cal-side">
   <div class="box" id="calendar">
-    <div class="box-h">Event calendar — what could swing markets</div>
+    <div class="box-h">Event calendar — what could swing markets <button type="button" class="cal-add cal-add-all" data-ics="all" title="Every upcoming event as one .ics file — opens in Google Calendar, Apple Calendar or Outlook">Download all (.ics)</button></div>
     <div class="box-b" id="cal-body"><span class="src">Macro prints, crypto unlocks and earnings that could move the book.</span></div>
   </div>
   </div>
@@ -3697,6 +3710,8 @@ function renderThisWeek(d) {
         var sp = isFinite(e.surprisePct) ? " (" + (e.surprisePct >= 0 ? "+" : "") + Number(e.surprisePct).toFixed(1) + "%)" : "";
         res = "<br><span class='tw-res " + (e.result === "BEAT" ? "beat'>✅ BEAT " : "miss'>❌ MISS ") +
           esc(eps(e.epsActual)) + " vs " + esc(eps(e.epsConsensus != null ? e.epsConsensus : e.epsEst)) + " est" + sp + "</span>";
+        // [#671] how the stock took it: BMO = that session vs the close before; AMC = the next session vs the report day
+        if (e.reaction && isFinite(e.reaction.pct)) res += "<br><span class='tw-meta' title='" + (e.when === "AMC" ? "Reported after the close: the next session against the report day&#39;s close" : "Reported before the open: that session against the previous close") + "'>stock <b class='" + clsZ(e.reaction.pct, 1) + "'>" + pct(e.reaction.pct, 1) + "</b> " + (e.reaction.soFar ? "so far" : e.when === "AMC" ? "next day" : "on the day") + "</span>";
       }
       rows += "<div class='tw-row' title='" + esc(e.name || e.symbol) + (e.universe ? " — in the fleet’s tradeable universe" : "") + "'>" +
         // [#502] a company that has already reported read "TBD" beside its BEAT/MISS; a past day with no result says so
@@ -3727,6 +3742,7 @@ function renderThisWeek(d) {
   $("tw-days").innerHTML = h;
 }
 function renderCalendar(d) {
+  _calAddList = [];   // [#671] the add buttons index this list — rebuilt with each render
   var items = d.calendar || [];
   if (!items.length) { $("cal-body").innerHTML = "<span class='src'>No high-impact events on the radar.</span>"; return; }
   // Feed now carries the full macro (FRED) + earnings + unlock lanes — keep every HIGH
@@ -3740,7 +3756,7 @@ function renderCalendar(d) {
   var h = "";
   items.forEach(function (e) {
     var dt = /^\d{4}-\d{2}-\d{2}$/.test(e.date) ? new Date(e.date + "T12:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : esc(e.date);
-    h += "<div class='cal-item'><span class='cal-date'>" + dt + "</span><span>" + esc(e.event) + "</span>" + impBadge(e) + "</div>";
+    h += "<div class='cal-item has-add'><span class='cal-date'>" + dt + "</span><span>" + esc(e.event) + "</span>" + impBadge(e) + calAddBtn(e) + "</div>";
   });
   h += "<div class='src' style='margin-top:8px'>Auto-fed from FRED release dates (CPI, NFP, GDP, PCE…), the FOMC schedule, universe earnings, token-unlock detectors and the crypto event calendar (upgrades, activations, governance votes). Solid HIGH = market-wide; outlined HIGH = high for that asset only. Agents holding through a high-impact event get automatic risk alerts.</div>";
   $("cal-body").innerHTML = h;
@@ -3772,10 +3788,70 @@ function renderCalMonth(d) {
       return "<span class='cp-ev " + (e.impact === "HIGH" ? (isAssetHigh(e) ? "ha" : "h") : "") + "' title='" + esc(e.event) + "'>" + esc(lab) + "</span>";
     }).join("");
     if (evs.length > 3) chips += "<span class='cp-ev'>+" + (evs.length - 3) + " more</span>";
-    cells += "<div class='cp-cell" + (wd >= 5 ? " dim" : "") + (key === todayKey ? " today" : "") + "'><span class='cp-d'>" + day.getDate() + mo + "</span>" + chips + "</div>";
+    cells += "<div class='cp-cell" + (wd >= 5 ? " dim" : "") + (key === todayKey ? " today" : "") + (key === _calSel ? " sel" : "") +
+      "' data-day='" + key + "' role='button' tabindex='0' aria-label='" + esc(day.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }) + " — " + evs.length + " event" + (evs.length === 1 ? "" : "s")) + "'><span class='cp-d'>" + day.getDate() + mo + "</span>" + chips + "</div>";
   }
   host.innerHTML = head + "<div class='cp-grid'>" + cells + "</div>";
+  _calFeed = d;
+  renderCalDay(_calSel || todayKey);
 }
+// [#671] the planner's day view: every event of the tapped day in full, each with its own add-to-calendar button.
+var _calFeed = null, _calSel = null;
+function renderCalDay(key) {
+  var host = $("cal-dayview"); if (!host || !_calFeed) return;
+  _calSel = key;
+  [].slice.call(document.querySelectorAll(".calplan .cp-cell[data-day]")).forEach(function (c) { c.classList.toggle("sel", c.getAttribute("data-day") === key); });
+  var evs = (_calFeed.calendar || []).filter(function (e) { return e.date === key; });
+  var title = new Date(key + "T12:00:00Z").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+  host.innerHTML = "<h4>" + esc(title) + "</h4>" + (evs.length ? evs.map(function (e) {
+    return "<div class='cal-item'><span>" + esc(e.event) + "</span>" + impBadge(e) + calAddBtn(e) + "</div>";
+  }).join("") : "<div class='src'>Nothing on the calendar for this day.</div>");
+  host.classList.remove("hidden");
+}
+// [#671] add-to-calendar: one all-day VEVENT per event (the feed's calendar rows are date-only), built in the browser —
+// no server, no account. RFC 5545 text escaping; UID stable per event so a re-import updates rather than duplicates.
+var _calAddList = [];
+function calAddBtn(e) { _calAddList.push(e); return "<button type='button' class='cal-add' data-ics='" + (_calAddList.length - 1) + "' title='Add to your calendar (.ics)'>+ Add</button>"; }
+function icsText(events) {
+  var x = function (t) { return String(t || "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n"); };
+  var stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
+  var lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//The Bot Exchange//Calendar//EN", "CALSCALE:GREGORIAN", "X-WR-CALNAME:The Bot Exchange — market calendar"];
+  events.forEach(function (e) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(e.date)) return;
+    var d0 = e.date.replace(/-/g, ""), d1 = new Date(Date.parse(e.date + "T12:00:00Z") + 864e5).toISOString().slice(0, 10).replace(/-/g, "");
+    var uid = (e.date + "-" + String(e.event)).replace(/[^A-Za-z0-9]+/g, "-").slice(0, 80) + "@thebotexchange.com";
+    lines.push("BEGIN:VEVENT", "UID:" + uid, "DTSTAMP:" + stamp, "DTSTART;VALUE=DATE:" + d0, "DTEND;VALUE=DATE:" + d1,
+      "SUMMARY:" + x(e.event), "DESCRIPTION:" + x((e.impact ? e.impact + " impact · " : "") + (e.type || "") + " · from thebotexchange.com/#/calendar"), "TRANSP:TRANSPARENT", "END:VEVENT");
+  });
+  lines.push("END:VCALENDAR");
+  return lines.join("\r\n") + "\r\n";
+}
+function icsDownload(events, name) {
+  try {
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([icsText(events)], { type: "text/calendar;charset=utf-8" }));
+    a.download = name; document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  } catch (err) {}
+}
+document.addEventListener("click", function (ev) {
+  var b = ev.target.closest && ev.target.closest("[data-ics]");
+  if (b) {
+    var k = b.getAttribute("data-ics");
+    if (k === "all") {
+      var today = new Date().toLocaleDateString("en-CA");
+      icsDownload(((_calFeed && _calFeed.calendar) || []).filter(function (e) { return e.date >= today; }), "botexchange-calendar.ics");
+    } else { var e = _calAddList[+k]; if (e) icsDownload([e], String(e.event).replace(/[^A-Za-z0-9]+/g, "-").slice(0, 40) + ".ics"); }
+    return;
+  }
+  var c = ev.target.closest && ev.target.closest(".calplan .cp-cell[data-day]");
+  if (c) renderCalDay(c.getAttribute("data-day"));
+});
+document.addEventListener("keydown", function (ev) {
+  if (ev.key !== "Enter" && ev.key !== " ") return;
+  var c = ev.target.closest && ev.target.closest(".calplan .cp-cell[data-day]");
+  if (c) { ev.preventDefault(); renderCalDay(c.getAttribute("data-day")); }
+});
 function renderIntel(d) {
   var r = d.report;
   if (!r) return;
@@ -6493,7 +6569,7 @@ function mlMethod(d) {
     news:     { t: "News & Intel — The Bot Exchange",
                 d: "Curated crypto and macro headlines, on-chain intelligence and the desk column — refreshed with every report cycle." },
     calendar: { t: "Calendar — The Bot Exchange",
-                d: "The week ahead in market-moving events: FOMC, CPI, jobs data and megacap earnings, with impact ratings." },
+                d: "The week ahead in market-moving events: FOMC, CPI, jobs data and megacap earnings — with each result, how the stock took it, and one-tap add to your own calendar." },
     direction: { t: "Paper Trade (BTC / ETH) — The Bot Exchange",
                 d: "BTC and ETH on Hyperliquid, refreshed every 15 minutes: where the biggest accounts are long or short, funding, open interest, and which way a panel of AI models leans — each scored on a public paper record." },
     archive:  { t: "Archive — The Bot Exchange",
@@ -6512,8 +6588,8 @@ function mlMethod(d) {
     [].slice.call(document.querySelectorAll(".page")).forEach(function (p) {
       p.classList.toggle("active", p.getAttribute("data-page") === name);
     });
-    // [15 Oct] Desks lives under The Bots and Calendar under News & Intel (12 nav items → 10); their routes still work
-    var NAV_PARENT = { desks: "bots", calendar: "news" };
+    // [15 Oct] Desks lives under The Bots (12 nav items → 10). [#671, 21 Oct, operator] Calendar is its own tab again (→ 11).
+    var NAV_PARENT = { desks: "bots" };
     navLinks.forEach(function (a) { var dp = a.getAttribute("data-page"); a.classList.toggle("active", dp === name || dp === NAV_PARENT[name] || (a.getAttribute("data-group") === "intel" && !!INTEL_PAGES[name])); });
     // [T2] Market intel sub-nav: shown on the four terminal rooms, marks the current one
     var sn = document.getElementById("intel-subnav");
