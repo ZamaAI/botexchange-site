@@ -795,6 +795,11 @@
 .rs-coin { font-family: "JetBrains Mono", monospace; font-weight: 700; letter-spacing: .06em; }
 .rs-name { font-weight: 600; font-size: 1.05em; margin: 4px 0; }
 .rs-th { font-size: .92em; margin: 8px 0; color: var(--ink2, #4d5a50); }
+.rs-v { font-size: .78em; font-weight: 600; padding: 1px 6px; border: 1px solid var(--line); margin-left: 4px; }
+.rs-rep { font-size: .82em; margin-top: 2px; }
+.rs-super { border: 1px solid #c9a227; background: #fdf6e3; color: #6b5310; padding: 10px 12px; margin: 8px 0; font-size: .95em; }
+.rs-super a, .rs-vers a { font-weight: 600; color: var(--accent, #114e3c); }
+.rs-vers { margin: 6px 0; }
 .rs-sc { display: flex; gap: 16px; font-size: .9em; border-top: 1px solid var(--line); padding-top: 8px; }
 .rs-head { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; align-items: flex-start; margin: 8px 0 12px; }
 .rs-h { font-size: 1.5em; margin: 4px 0; }
@@ -5615,14 +5620,26 @@ function rsD30(n) {
   if (s.result === "OPEN") return "<b>OPEN</b> <span class='src'>" + (s.r != null ? (s.r > 0 ? "+" : "") + esc(s.r) + "R at day 30" : "") + "</span>";
   return "<b>" + esc(s.result) + "</b>";
 }
+// [#714] every published version stays on the record; the list and the headline score use the LATEST version per coin
+function rsVer(n) { var m = / v(\d+)$/.exec(n.id || ""); return m ? +m[1] : 1; }
+function rsVersionsOf(notes, coin) { return notes.filter(function (n) { return n.coin === coin; }).sort(function (a, b) { return rsVer(a) - rsVer(b) || a.publishedAt - b.publishedAt; }); }
+function rsLatestPerCoin(notes) {
+  var by = {}, out = [];
+  notes.forEach(function (n) { var b = by[n.coin]; if (!b || rsVer(n) > rsVer(b) || (rsVer(n) === rsVer(b) && n.publishedAt > b.publishedAt)) by[n.coin] = n; });
+  notes.forEach(function (n) { if (by[n.coin] === n) out.push(n); });
+  return out.sort(function (a, b) { return b.publishedAt - a.publishedAt; });
+}
 function rsRender(slug) {
-  var notes = (_rs.index && _rs.index.notes) || [], L = $("rs-list"), N = $("rs-note"), S = $("rs-summary");
+  var all = (_rs.index && _rs.index.notes) || [], notes = rsLatestPerCoin(all), L = $("rs-list"), N = $("rs-note"), S = $("rs-summary");
   var d7 = notes.filter(function (n) { return n.score && n.score.d7 && n.score.d7.right != null; }), right = d7.filter(function (n) { return n.score.d7.right; }).length;
-  S.innerHTML = notes.length ? notes.length + " note" + (notes.length > 1 ? "s" : "") + " published · 7-day direction " + (d7.length ? right + " of " + d7.length + " right" : "not scored yet") + " · scored on hourly closes, so a wick between two closes is not counted." : "";
-  var one = slug ? notes.filter(function (n) { return n.slug === slug; })[0] : null;
+  S.innerHTML = notes.length ? notes.length + " coin" + (notes.length > 1 ? "s" : "") + " covered" + (all.length > notes.length ? " (" + all.length + " notes incl. earlier versions)" : "") + " · 7-day direction " + (d7.length ? right + " of " + d7.length + " right" : "not scored yet") + " (latest version per coin) · scored on hourly closes, so a wick between two closes is not counted." : "";
+  var one = slug ? all.filter(function (n) { return n.slug === slug; })[0] : null;
   if (slug && !one) { L.innerHTML = ""; N.innerHTML = "<p class='src'>No note " + esc(slug) + " — <a href='#/research'>all research reports</a>.</p>"; return; }
   if (one) {
-    L.innerHTML = "<p><a href='#/research'>← All research reports</a></p>";
+    var vers = rsVersionsOf(all, one.coin), newest = vers[vers.length - 1];
+    L.innerHTML = "<p><a href='#/research'>← All research reports</a></p>" +
+      (newest !== one ? "<div class='rs-super'>Superseded by <a href='#/research/" + esc(newest.slug) + "'>v" + rsVer(newest) + " (" + esc(rsDate(newest.publishedAt)) + ") →</a> This version stays on the record and keeps its own score.</div>" : "") +
+      (vers.length > 1 ? "<p class='src rs-vers'>Versions: " + vers.map(function (v) { return v === one ? "<b>v" + rsVer(v) + "</b>" : "<a href='#/research/" + esc(v.slug) + "'>v" + rsVer(v) + "</a>"; }).join(" · ") + "</p>" : "");
     N.innerHTML = "<div class='rs-head'><div><div class='kicker'>" + esc(one.id) + " · published " + esc(rsDate(one.publishedAt)) + "</div><h3 class='rs-h'>" + esc(one.name) + " <span class='src'>" + esc(one.coin) + "</span></h3>" +
       "<p>" + rsVerdict(one.verdict) + " · " + esc(one.decision) + " · risk class " + esc(one.bucket) + "</p>" +
       "<p class='src'>7 days: " + rsD7(one) + " · 30 days: " + rsD30(one) + "</p>" +
@@ -5640,7 +5657,9 @@ function rsRender(slug) {
   N.innerHTML = "";
   if (!notes.length) { L.innerHTML = "<div class='box'><div class='box-b'><p><b>The first research note is on its way.</b> Each note is a dated, sourced read on one token with a single decision — and it is scored here at 7 and 30 days, right or wrong.</p></div></div>"; return; }
   L.innerHTML = "<div class='rs-grid'>" + notes.map(function (n) {
-    return "<a class='rs-card' href='#/research/" + esc(n.slug) + "'><div class='rs-top'><span class='rs-coin'>" + esc(n.coin) + "</span><span class='src'>" + esc(rsDate(n.publishedAt)) + "</span></div>" +
+    var v = rsVer(n), vn = rsVersionsOf(all, n.coin).length;
+    return "<a class='rs-card' href='#/research/" + esc(n.slug) + "'><div class='rs-top'><span class='rs-coin'>" + esc(n.coin) + (v > 1 ? " <span class='rs-v'>v" + v + "</span>" : "") + "</span><span class='src'>" + esc(rsDate(n.publishedAt)) + "</span></div>" +
+      (vn > 1 ? "<div class='src rs-rep'>replaces " + rsVersionsOf(all, n.coin).filter(function (x) { return x !== n; }).map(function (x) { return "v" + rsVer(x); }).join(", ") + " · earlier versions on the note page</div>" : "") +
       "<div class='rs-name'>" + esc(n.name) + "</div><div>" + rsVerdict(n.verdict) + " · <b>" + esc(n.decision) + "</b> · <span class='src'>" + esc(n.bucket) + "</span></div>" +
       "<p class='rs-th'>" + esc(n.thesis) + "</p><div class='rs-sc'><span>7d " + rsD7(n) + "</span><span>30d " + rsD30(n) + "</span></div></a>";
   }).join("") + "</div>";
