@@ -223,7 +223,7 @@
      page renders stacked — crawlers and no-JS readers see everything. */
   .page { padding: 24px 0; }
   body.paged .page:not(.active) { display: none; }
-  nav.pagesnav a { font-size: 13px; padding: 11px 16px; }
+  nav.pagesnav a { font-size: 13px; padding: 11px 8px; letter-spacing: .025em; }   /* [#711] 16 → 8 px, tighter tracking, shorter labels, About in the footer: one nav row incl. the sticky score at the 1200 px column */
   /* [3 Sep] Desks page: one sub-tab per desk, built from the feed's desks[] */
   .desktabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 14px; }
   .desktabs a { font: 700 12px var(--mono); letter-spacing: .04em; padding: 6px 11px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink2); text-decoration: none; background: #fff; }
@@ -829,15 +829,14 @@
   <a href="#/home" data-page="home" class="active">Live</a>
   <a href="#/markets" data-page="markets">Markets</a>
   <a href="#/charts" data-page="charts">Charts</a>
-  <a href="#/news" data-page="news">News &amp; Intel</a>
+  <a href="#/news" data-page="news" title="News &amp; Intel">News</a>
   <a href="#/calendar" data-page="calendar">Calendar</a>
   <a href="#/bots" data-page="bots">The Bots</a>
   <a href="#/models" data-page="models">Model Lab</a>
-  <a href="#/calls" data-page="calls">Extended Calls</a>
+  <a href="#/calls" data-page="calls" title="Extended Calls">Calls</a>
   <a href="#/direction" data-page="direction" title="Paper Trade — BTC / ETH direction calls">Paper Trade</a>
-  <a href="#/research" data-page="research" title="Research reports — dated token notes, scored in public">Research reports</a>
+  <a href="#/research" data-page="research" title="Research reports — dated token notes, scored in public">Research</a>
   <a href="#/archive" data-page="archive">Archive</a>
-  <a href="#/about" data-page="about">About</a>
   <span class="nav-score" id="nav-score"></span>
 </div></nav>
 
@@ -1571,7 +1570,7 @@
 
 <footer><div class="wrap">
   <!-- SEASON-FLIP -->
-  <span><b>The Bot Exchange</b> · man vs machine · <span id="foot-season">Season 5</span> · <a href="https://x.com/thebotexchang3" target="_blank" rel="noopener" style="color:inherit">@thebotexchang3 on X</a></span>
+  <span><b>The Bot Exchange</b> · man vs machine · <span id="foot-season">Season 5</span> · <a href="https://x.com/thebotexchang3" target="_blank" rel="noopener" style="color:inherit">@thebotexchang3 on X</a> · <a href="#/about" style="color:inherit">About</a></span>
   <span id="foot-stamp">Data updates every 5 minutes · trading is risky · nothing here is financial advice</span>
 </div></footer>
 
@@ -1836,10 +1835,10 @@ function renderHero(d) {
   // realized (transfer-proof) basis. The absolute-balance figure it replaces was decided by a
   // $20.50 head start and by picking whichever machine happened to be highest.
   var ns = $("nav-score"), v = d.verdict, vr = (d.verdictByReturn || {}).realized, s5v = S5_RANK ? s5Verdict(d) : null;
-  if (ns && s5v) ns.innerHTML = "Human <b>" + pct(s5v.man.retNetPct, 1) + "</b> · best machine <b>" + pct(s5v.best.retNetPct, 1) + "</b> <span class='src'>net of spend</span>";   // [#501]
+  if (ns && s5v) { ns.innerHTML = "Human <b>" + pct(s5v.man.retNetPct, 1) + "</b> · best AI <b>" + pct(s5v.best.retNetPct, 1) + "</b>"; ns.title = "Season return net of model spend — the human against the best machine"; }   // [#501] [#711] compact; the basis is the tooltip   // [#501]
   // [#254] name the basis: the nav figure is REALIZED (closed trades), while the standings table marks open positions to market —
   // unlabelled, the two read as the same number disagreeing.
-  else if (ns && vr) ns.innerHTML = "Human <b>" + pct(vr.man.ret, 1) + "</b> · best machine <b>" + pct(vr.best.ret, 1) + "</b> <span class='src' title='Return on closed trades only, from each seat&#39;s starting capital. The standings table also counts open positions at the current price.'>realized</span>";
+  else if (ns && vr) { ns.innerHTML = "Human <b>" + pct(vr.man.ret, 1) + "</b> · best AI <b>" + pct(vr.best.ret, 1) + "</b>"; ns.title = "Realized: return on closed trades only, from each seat's starting capital. The standings table also counts open positions at the current price."; }   // [#254] the basis stays named (tooltip) [#711] compact
   else if (ns && v && v.man && v.machine) ns.innerHTML = "Human <b>" + money(v.man.account, 0) + "</b> · best machine <b>" + money(v.machine.account, 0) + "</b> <span class='src'>account</span>";
   var sb = $("split-body"); if (!sb) return;
   var c = d.consensus, splits = ((c && c.assets) || []).filter(function (a) { return a.long.length && a.short.length; }).slice(0, 3);
