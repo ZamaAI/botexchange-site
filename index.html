@@ -786,6 +786,20 @@
     .ml-br { grid-template-columns: 104px minmax(0, 1fr) 74px; gap: 6px; } .ml-bars.stack .ml-br { grid-template-columns: 104px minmax(0, 1fr) 52px; } .ml-bn span { display: none; }
     .ml-strip { grid-template-columns: 120px minmax(400px, 1fr) max-content; min-width: 700px; }
     table.ml-table td.ml-model .ml-vendor { display: none; } .pill.ml-small .ml-s-long { display: none; } .pill.ml-small .ml-s-short { display: inline; } }
+
+/* [#709] Research reports */
+.rs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin: 14px 0; }
+.rs-card { display: block; border: 1px solid var(--line); border-top: 3px solid var(--accent, #114e3c); background: #fff; padding: 14px 16px; color: inherit; text-decoration: none; }
+.rs-card:hover { border-color: var(--accent, #114e3c); }
+.rs-top { display: flex; justify-content: space-between; align-items: baseline; }
+.rs-coin { font-family: "JetBrains Mono", monospace; font-weight: 700; letter-spacing: .06em; }
+.rs-name { font-weight: 600; font-size: 1.05em; margin: 4px 0; }
+.rs-th { font-size: .92em; margin: 8px 0; color: var(--ink2, #4d5a50); }
+.rs-sc { display: flex; gap: 16px; font-size: .9em; border-top: 1px solid var(--line); padding-top: 8px; }
+.rs-head { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; align-items: flex-start; margin: 8px 0 12px; }
+.rs-h { font-size: 1.5em; margin: 4px 0; }
+.rs-dl { display: flex; gap: 8px; flex-wrap: wrap; }
+.rs-frame { width: 100%; max-width: 830px; border: 1px solid var(--line); background: #fff; min-height: 600px; display: block; }
 </style>
 </head>
 <body>
@@ -821,6 +835,7 @@
   <a href="#/models" data-page="models">Model Lab</a>
   <a href="#/calls" data-page="calls">Extended Calls</a>
   <a href="#/direction" data-page="direction" title="Paper Trade — BTC / ETH direction calls">Paper Trade</a>
+  <a href="#/research" data-page="research" title="Research reports — dated token notes, scored in public">Research reports</a>
   <a href="#/archive" data-page="archive">Archive</a>
   <a href="#/about" data-page="about">About</a>
   <span class="nav-score" id="nav-score"></span>
@@ -1210,6 +1225,17 @@
     </div>
   </details>
   </div>
+</div>
+<div class="page" data-page="research">
+  <!-- [#709] RESEARCH REPORTS: dated token research notes the operator publishes from the bot (/dive publish <COIN> confirm).
+       Data: research/index.json + one PDF / HTML / cover / JSON per note in the data repo. Every note is scored in public at
+       7 days (direction) and 30 days (the trade). `access` is "free" on every note today — room for a paid tier later. -->
+  <div class="kicker">Research reports · token notes · scored in public</div>
+  <h2 class="sec" id="research">Research reports</h2>
+  <p class="sub">Dated research notes on single tokens: what it is, real usage, supply, valuation against its peers, positioning, and one decision — trade now, wait, or no trade. Every number is read by the bot from a named source; every note is scored here 7 and 30 days after it is published, right or wrong.</p>
+  <div id="rs-summary" class="src"></div>
+  <div id="rs-list"></div>
+  <div id="rs-note"></div>
 </div>
 <div class="page" data-page="direction">
   <!-- [#597/#598] PAPER TRADE (BTC / ETH): a market pulse for BTC and ETH on Hyperliquid (whales, funding, open interest, the models'
@@ -5565,6 +5591,62 @@ function boot() {
 }
 boot();
 
+// ── [#709] RESEARCH REPORTS (#/research, #/research/<slug>) — research/index.json + per-note files from the data repo ──
+var RS_BASE = "https://raw.githubusercontent.com/ZamaAI/botexchange-data/main/";
+var _rs = { index: null, at: 0 };
+function rsLoad() {
+  var slug = (location.hash.match(/^#\/research\/([a-z0-9-]+)$/) || [])[1] || null;
+  if (_rs.index && Date.now() - _rs.at < 120000) { rsRender(slug); return; }
+  fetch(RS_BASE + "research/index.json?cb=" + Math.floor(Date.now() / 120000), { cache: "no-store" })
+    .then(function (r) { if (r.status === 404) return { notes: [] }; if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+    .then(function (j) { _rs.index = j; _rs.at = Date.now(); rsRender(slug); })
+    .catch(function (e) { $("rs-list").innerHTML = "<p class='src'>The research list could not be loaded (" + esc(e.message) + "). Try again shortly.</p>"; });
+}
+function rsDate(ms) { try { return new Date(ms).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "Africa/Johannesburg" }); } catch (e) { return ""; } }
+function rsVerdict(v) { return v === "BULLISH" ? "<b class='up'>BULLISH</b>" : v === "BEARISH" ? "<b class='down'>BEARISH</b>" : "<b>NEUTRAL</b>"; }
+function rsD7(n) {
+  var s = n.score && n.score.d7; if (!s) return "<span class='src'>due " + esc(rsDate(n.publishedAt + 7 * 864e5)) + "</span>";
+  var w = s.right === true ? "<b class='up'>RIGHT</b>" : s.right === false ? "<b class='down'>WRONG</b>" : "—";
+  return w + " <span class='src'>" + (s.changePct > 0 ? "+" : "") + esc(s.changePct) + "%</span>";
+}
+function rsD30(n) {
+  var s = n.score && n.score.d30; if (!s) return "<span class='src'>due " + esc(rsDate(n.publishedAt + 30 * 864e5)) + "</span>";
+  if (s.result === "T1") return "<b class='up'>TARGET</b> <span class='src'>+" + esc(s.r) + "R</span>";
+  if (s.result === "STOP") return "<b class='down'>STOPPED</b> <span class='src'>−1R</span>";
+  if (s.result === "OPEN") return "<b>OPEN</b> <span class='src'>" + (s.r != null ? (s.r > 0 ? "+" : "") + esc(s.r) + "R at day 30" : "") + "</span>";
+  return "<b>" + esc(s.result) + "</b>";
+}
+function rsRender(slug) {
+  var notes = (_rs.index && _rs.index.notes) || [], L = $("rs-list"), N = $("rs-note"), S = $("rs-summary");
+  var d7 = notes.filter(function (n) { return n.score && n.score.d7 && n.score.d7.right != null; }), right = d7.filter(function (n) { return n.score.d7.right; }).length;
+  S.innerHTML = notes.length ? notes.length + " note" + (notes.length > 1 ? "s" : "") + " published · 7-day direction " + (d7.length ? right + " of " + d7.length + " right" : "not scored yet") + " · scored on hourly closes, so a wick between two closes is not counted." : "";
+  var one = slug ? notes.filter(function (n) { return n.slug === slug; })[0] : null;
+  if (slug && !one) { L.innerHTML = ""; N.innerHTML = "<p class='src'>No note " + esc(slug) + " — <a href='#/research'>all research reports</a>.</p>"; return; }
+  if (one) {
+    L.innerHTML = "<p><a href='#/research'>← All research reports</a></p>";
+    N.innerHTML = "<div class='rs-head'><div><div class='kicker'>" + esc(one.id) + " · published " + esc(rsDate(one.publishedAt)) + "</div><h3 class='rs-h'>" + esc(one.name) + " <span class='src'>" + esc(one.coin) + "</span></h3>" +
+      "<p>" + rsVerdict(one.verdict) + " · " + esc(one.decision) + " · risk class " + esc(one.bucket) + "</p>" +
+      "<p class='src'>7 days: " + rsD7(one) + " · 30 days: " + rsD30(one) + "</p>" +
+      (one.limitations && one.limitations.length ? "<details class='src'><summary>Limitations (" + one.limitations.length + ")</summary><ul>" + one.limitations.map(function (m) { return "<li>" + esc(m) + "</li>"; }).join("") + "</ul></details>" : "") +
+      "</div><div class='rs-dl'><a class='btn-primary' href='" + RS_BASE + esc(one.files.pdf) + "' target='_blank' rel='noopener'>Download PDF</a> <a class='btn-ghost' href='" + RS_BASE + esc(one.files.cover) + "' target='_blank' rel='noopener'>Cover card</a></div></div>" +
+      "<iframe id='rs-frame' class='rs-frame' sandbox='allow-same-origin' title='" + esc(one.name) + " research note'></iframe><p class='src'>Not financial advice. Research produced by an automated system and published for information only.</p>";
+    fetch(RS_BASE + one.files.html, { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); }).then(function (h) {
+      var f = $("rs-frame"); if (!f) return;
+      f.onload = function () { try { var d = f.contentDocument, z = Math.min(1, (f.clientWidth - 4) / 794); d.body.style.zoom = z; f.style.height = Math.ceil(d.body.scrollHeight * z + 20) + "px"; } catch (e) {} };
+      f.srcdoc = h;
+    }).catch(function (e) { N.insertAdjacentHTML("beforeend", "<p class='src'>The note page could not be loaded (" + esc(e.message) + ") — the PDF link above still works.</p>"); });
+    try { document.title = one.name + " (" + one.coin + ") — Research — The Bot Exchange"; } catch (e) {}
+    return;
+  }
+  N.innerHTML = "";
+  if (!notes.length) { L.innerHTML = "<div class='box'><div class='box-b'><p><b>The first research note is on its way.</b> Each note is a dated, sourced read on one token with a single decision — and it is scored here at 7 and 30 days, right or wrong.</p></div></div>"; return; }
+  L.innerHTML = "<div class='rs-grid'>" + notes.map(function (n) {
+    return "<a class='rs-card' href='#/research/" + esc(n.slug) + "'><div class='rs-top'><span class='rs-coin'>" + esc(n.coin) + "</span><span class='src'>" + esc(rsDate(n.publishedAt)) + "</span></div>" +
+      "<div class='rs-name'>" + esc(n.name) + "</div><div>" + rsVerdict(n.verdict) + " · <b>" + esc(n.decision) + "</b> · <span class='src'>" + esc(n.bucket) + "</span></div>" +
+      "<p class='rs-th'>" + esc(n.thesis) + "</p><div class='rs-sc'><span>7d " + rsD7(n) + "</span><span>30d " + rsD30(n) + "</span></div></a>";
+  }).join("") + "</div>";
+}
+
 // ── [#597] PAPER TRADE (BTC / ETH) (#/direction) — direction_calls.json from the data repo: paper BTC/ETH direction calls every 30 minutes ──
 var _dc = { data: null, timer: null, at: 0, coin: "BTC", ch: {} };
 function dcLoad() {
@@ -6616,7 +6698,7 @@ function mlMethod(d) {
 // ── Site pages: hash router (#/markets), legacy-anchor map, per-page nav state ──
 (function () {
   document.body.classList.add("paged");   // no-JS renders all pages stacked
-  var PAGES = { home: 1, markets: 1, charts: 1, news: 1, calendar: 1, bots: 1, about: 1, desks: 1, archive: 1, trade: 1, rules: 1, models: 1, calls: 1, direction: 1 };   // [#254c] models = the Model Lab benchmark   // [#503] rules = the Season-5 pre-registration   // [T2] archive is its own room; [#359] trade = one room per trade, reached by link only
+  var PAGES = { home: 1, markets: 1, charts: 1, news: 1, calendar: 1, bots: 1, about: 1, desks: 1, archive: 1, trade: 1, rules: 1, models: 1, calls: 1, direction: 1, research: 1 };   // [#709] research = the Research reports tab   // [#254c] models = the Model Lab benchmark   // [#503] rules = the Season-5 pre-registration   // [T2] archive is its own room; [#359] trade = one room per trade, reached by link only
   var INTEL_PAGES = { markets: 1, charts: 1, news: 1, calendar: 1 };   // [T2] the terminal — one nav item, four rooms
   // old deep links (#race, #wire, #rules…) land on the right page, scrolled to the element
   var LEGACY = { race: "home", players: "bots", floor: "bots", desknotes: "bots", tape: "bots",
@@ -6638,6 +6720,8 @@ function mlMethod(d) {
                 d: "Curated crypto and macro headlines, on-chain intelligence and the desk column — refreshed with every report cycle." },
     calendar: { t: "Calendar — The Bot Exchange",
                 d: "The week ahead in market-moving events: FOMC, CPI, jobs data and megacap earnings — with each result, how the stock took it, and one-tap add to your own calendar." },
+    research: { t: "Research reports — The Bot Exchange",
+                d: "Dated research notes on single tokens — usage, supply, valuation against peers, positioning and one decision — every number sourced, every note scored in public at 7 and 30 days." },
     direction: { t: "Paper Trade (BTC / ETH) — The Bot Exchange",
                 d: "BTC and ETH on Hyperliquid, refreshed every 15 minutes: where the biggest accounts are long or short, funding, open interest, and which way a panel of AI models leans — each scored on a public paper record." },
     archive:  { t: "Archive — The Bot Exchange",
@@ -6670,7 +6754,8 @@ function mlMethod(d) {
     // a full render is cheap and is the only thing that can recover the page.
     if (name === "charts") { try { (_chSeries.length ? chRefresh : renderTradeCharts)(null); chStartPoll(); } catch (e) {} }
     if (name === "models") { try { mlLoad(); } catch (e) {} }
-    if (name === "direction") { try { dcLoad(); } catch (e) {} }   // [#597] the direction-calls file loads on arrival and every 5 minutes while open   // [#254c] the benchmark file loads on first visit
+    if (name === "direction") { try { dcLoad(); } catch (e) {} }
+    if (name === "research") { try { rsLoad(); } catch (e) {} }   // [#709] the list, or one note when the hash is #/research/<slug>   // [#597] the direction-calls file loads on arrival and every 5 minutes while open   // [#254c] the benchmark file loads on first visit
     if (anchorId) {
       var el = document.getElementById(anchorId);
       // offsetParent guard: a duplicate/hidden id (e.g. an element on an inactive page) must
@@ -6689,6 +6774,7 @@ function mlMethod(d) {
       if (p === "desks") { showPage("desks"); try { renderDeskPage(_feedLast || _chFeed || {}, null); } catch (e) {} return; }
       // [#359] #/t/<id>: one room per trade (the /t/<id> Pages Function lands browsers here after serving the OG tags)
       if (/^t\/\d+$/.test(p)) { showPage("trade"); try { renderTradePage(_feedLast || _chFeed || {}, p.slice(2)); } catch (e) {} return; }
+      if (p.indexOf("research/") === 0) { showPage("research"); return; }   // [#709] one note: rsLoad reads the slug from the hash
       if (PAGES[p]) { showPage(p); return; }
     }
     var a = h.slice(1);
