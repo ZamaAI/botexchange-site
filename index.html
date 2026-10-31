@@ -5774,7 +5774,7 @@ function dcReal(d) {
   var h = "<div class='dc-real'><h3>Real money</h3><div class='rs'>" + esc((S.seats || []).join(", ") || "One model") + "’s calls on papertrade.xyz since " + esc(L.since ? dcT(L.since, true) : "—") +
     " · $" + esc(Number(S.margin).toFixed(2)) + " × " + esc(S.leverage) + " per trade · stops at −$" + esc(S.dailyStop) + " a day and −$" + esc(S.hardStop) + " in total. A small test, not advice." + (small ? " Too few trades to judge yet." : "") + "</div>";
   h += "<div class='dc-rk'>" + kpi("Result", usd(L.total), dcCls(L.total)) + kpi("Today", usd(L.today), dcCls(L.today)) + kpi("Won / lost", L.wins + " / " + L.losses) + kpi("Average win", usd(L.avgWin), "up") + kpi("Average loss", usd(L.avgLoss), "down") +
-    (L.compared ? kpi("Model said", usd(L.model), dcCls(L.model)) : "") + (L.paper ? kpi("PAPER earned", esc(L.paper.toLocaleString("en-US"))) : "") + "</div>";
+    (L.compared ? kpi("Model said", usd(L.model), dcCls(L.model)) : "") + "</div>";
   if (L.pending) h += "<div class='rs'>" + L.pending + " closed trade" + (L.pending > 1 ? "s" : "") + " waiting for the venue’s payout figure, not counted yet.</div>";
   h += "<div id='dc-real-ch'>" + dcChart("real", "Real result, cumulative", "What the venue actually paid, after every close.", L.curve, { min: 2, ref: 0, fmt: function (v) { return usd(v); }, empty: "The graph starts after the first closed trade." }) + "</div>";
   if (L.open.length) h += "<div class='dc-rw'><table class='dc-rt'><tr><th>Open now</th><th>Side</th><th>Entry</th><th>Stop</th><th>Target</th><th>Now</th><th>Since</th></tr>" + L.open.map(function (o) {
