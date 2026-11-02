@@ -5772,7 +5772,7 @@ function dcReal(d) {
   var how = { target: "target", "wrong-at": "stop", "board-closed": "flip", "close-resend": "closed", liquidated: "liquidated", gone: "closed outside the bot" };
   var S = L.stake || {}, small = L.trades < 30;
   var h = "<div class='dc-real'><h3>Real money</h3><div class='rs'>" + esc((S.seats || []).join(", ") || "One model") + "’s calls on papertrade.xyz since " + esc(L.since ? dcT(L.since, true) : "—") +
-    " · $" + esc(Number(S.margin).toFixed(2)) + " × " + esc(S.leverage) + " per trade · stops at −$" + esc(S.dailyStop) + " a day and −$" + esc(S.hardStop) + " in total. A small test, not advice." + (small ? " Too few trades to judge yet." : "") + "</div>";
+    " · $" + esc(Number(S.margin).toFixed(2)) + " × " + esc(S.leverage) + " per trade" + (Number(S.margin) === 25 ? " since 2 Nov ($12.50 before)" : "") + " · stops at −$" + esc(S.dailyStop) + " a day and −$" + esc(S.hardStop) + " in total. A small test, not advice." + (small ? " Too few trades to judge yet." : "") + "</div>";
   h += "<div class='dc-rk'>" + kpi("Result", usd(L.total), dcCls(L.total)) + kpi("Today", usd(L.today), dcCls(L.today)) + kpi("Won / lost", L.wins + " / " + L.losses) + kpi("Average win", usd(L.avgWin), "up") + kpi("Average loss", usd(L.avgLoss), "down") +
     (L.compared ? kpi("Model said", usd(L.model), dcCls(L.model)) : "") + "</div>";
   if (L.pending) h += "<div class='rs'>" + L.pending + " closed trade" + (L.pending > 1 ? "s" : "") + " waiting for the venue’s payout figure, not counted yet.</div>";
