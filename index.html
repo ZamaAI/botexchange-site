@@ -4830,7 +4830,7 @@ function renderCup(d) {
   }
   (c.positions || []).forEach(function (p) {
     h += "<div class='titem' style='padding:6px 0'><div class='l1'><span class='asset'>" + esc(p.coin) + "</span>" +
-      "<span class='dirpill " + (p.side === "SHORT" ? "s" : "l") + "'>" + esc(p.side) + "</span><span class='pill live'>COINBASE</span>" +
+      "<span class='dirpill " + (p.side === "SHORT" ? "s" : "l") + "'>" + esc(p.side) + "</span><span class='pill live'>COINBASE</span>" + (p.who === "beam" ? "<span class='pill paper' style='border-color:#0052ff;color:#0052ff' title='Beam 1.0 — the AI half, its own isolated position'>BEAM</span>" : p.who === "human" ? "<span class='pill paper' title='The human'>HUMAN</span>" : "") +
       "<span class='outc'>" + (p.pnlPct != null ? "<span class='num " + cls(p.pnlPct) + "'>" + pct(p.pnlPct, 2) + "</span>" : "") + "</span></div>" +
       "<div class='src' style='margin-top:2px'>entry " + money(p.entry, p.entry != null && p.entry < 10 ? 4 : 2) + "</div></div>";
   });
