@@ -924,6 +924,7 @@
     <a class="src" href="#/rules">Every dated change since the season started →</a>
   </div>
   <div class="home-grid" style="margin-top:22px">
+    <div class="hw w12 hidden" id="hw-cup"><h3>Coinbase Champions Cup — the AI + Human seat</h3><div id="hw-cup-body"></div></div>
     <div class="hw w12" id="hw-live"><h3>Live trades — every open position</h3><div id="hw-live-body"><span class="src">Open positions load with the feed.</span></div></div>
     <div class="hw w12" id="hw-closes"><h3>Recent closes — with the post-mortem</h3><div id="hw-closes-body"><span class="src">Closed trades load with the feed.</span></div></div>
   </div>
@@ -4737,7 +4738,34 @@ function subFloorBadge(rr, openedAt, actor) {
     : "Planned reward-to-risk under the 2:1 floor at fill — see About for how the floor is applied.";
   return " <span class='pill paper' title='" + esc(why) + "' style='cursor:help'>below 2:1 floor</span>";
 }
+// [#743] Coinbase Champions Cup (4–25 Nov 2026): one real account the human and a model share. Scored the
+// competition's way — adjusted PnL over a capital base of at least 100 USDC. The book shows entry + live % only.
+function renderCup(d) {
+  var c = d.coinbaseCup, box = $("hw-cup");
+  if (!box) return;
+  if (!c || c.equity == null) { box.classList.add("hidden"); return; }
+  var h = "<div class='row'><span>Account equity" + (c.stale ? " <span class='src'>· last read " + esc(dcAgo(Date.parse(c.at))) + "</span>" : "") + "</span><b>" + money(c.equity) + " USDC</b></div>";
+  if (c.adjPnl != null) h += "<div class='row'><span>Cup P&amp;L <span class='src'>· since " + money(c.startEquity) + (c.startBasis === "first-sample" ? " (first read)" : "") + "</span></span><b class='num " + cls(c.adjPnl) + "'>" + money(c.adjPnl) + " · " + pct(c.pnlPct, 2) + "</b></div>";
+  var sr = c.series || [];
+  if (sr.length >= 2) {
+    var vs = sr.map(function (x) { return x.v; }), lo = Math.min.apply(null, vs), hi = Math.max.apply(null, vs), W = 600, H = 60, rg = (hi - lo) || 1;
+    var pts = vs.map(function (v, i) { return (i / (vs.length - 1) * W).toFixed(1) + "," + (H - 4 - (v - lo) / rg * (H - 8)).toFixed(1); }).join(" ");
+    h += "<svg viewBox='0 0 " + W + " " + H + "' preserveAspectRatio='none' style='width:100%;height:60px;display:block;margin:6px 0' aria-label='Cup equity, hourly'><polyline fill='none' stroke='currentColor' stroke-width='1.5' vector-effect='non-scaling-stroke' points='" + pts + "'/></svg>";
+  }
+  (c.positions || []).forEach(function (p) {
+    h += "<div class='titem' style='padding:6px 0'><div class='l1'><span class='asset'>" + esc(p.coin) + "</span>" +
+      "<span class='dirpill " + (p.side === "SHORT" ? "s" : "l") + "'>" + esc(p.side) + "</span><span class='pill live'>COINBASE</span>" +
+      "<span class='outc'>" + (p.pnlPct != null ? "<span class='num " + cls(p.pnlPct) + "'>" + pct(p.pnlPct, 2) + "</span>" : "") + "</span></div>" +
+      "<div class='src' style='margin-top:2px'>entry " + money(p.entry, p.entry != null && p.entry < 10 ? 4 : 2) + "</div></div>";
+  });
+  if (!(c.positions || []).length) h += "<div class='row'><span>Flat</span><b>0 open</b></div>";
+  h += "<div class='src' style='margin-top:6px'>Coinbase Advanced perps competition, 4–25 Nov. P&amp;L % uses the competition's rule: a capital base of at least 100 USDC." +
+    (c.depositsBasis === "assumed-zero" ? " Deposits are not visible to us and are assumed zero." : "") + (c.live ? "" : " The cup has ended.") + "</div>";
+  $("hw-cup-body").innerHTML = h;
+  box.classList.remove("hidden");
+}
 function renderHome(d) {
+  try { renderCup(d); } catch (e) { console.warn("cup panel", e); }
   // pulse: F&G + regimes + corr
   var m = d.market || {}, p = "";
   if (m.fearGreed) p += "<div class='row'><span>Crypto Fear &amp; Greed</span><b>" + esc(m.fearGreed.value) + " — " + esc(m.fearGreed.classification) + "</b></div>";
