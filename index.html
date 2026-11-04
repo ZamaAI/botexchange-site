@@ -2379,11 +2379,11 @@ var CUP_URL = "https://www.coinbase.com/trading-competition/0fba5b34-1297-4eb1-b
 // [#745] the AI + Human seat: one real Coinbase account the human and Beam (the model) both trade, in the Coinbase
 // Champions Cup (4–25 Nov). Not a Season-5 seat, so it sits UNRANKED in the live group; its return is the cup's own
 // measure (P&L since the cup start over a capital base of at least 100 USDC), said so in the cell's title.
-function cupStdRow(d) {
+function cupStdRow(d, n) {
   var c = d.coinbaseCup; if (!c || c.equity == null) return "";
   var b = c.beam && !c.beam.error ? c.beam : null, dash = "<span class='src'>—</span>";
   var spend = b ? b.costUsd : null, net = c.adjPnl != null ? c.adjPnl - (spend || 0) : null;
-  return "<tr class='std-cup'><td class='num'><span class='src' title='Plays the Coinbase Champions Cup, not Season 5 — not ranked here'>·</span></td>" +
+  return "<tr class='std-cup'><td class='num' title='Plays the Coinbase Champions Cup (its own measure), listed with the live seats'>" + (n ? n : "<span class='src'>·</span>") + "</td>" +
     "<td><span class='swatch' style='background:#0052ff'></span><span class='who-name'>AI + Human</span> <span class='who-model'>· Beam 1.0 + the human</span>" +
     "<span class='who-style'>One Coinbase account, both trade — Coinbase Champions Cup, 4–25 Nov</span></td>" +
     "<td class='std-venue'><a class='venue-link' href='" + CUP_URL + "' target='_blank' rel='noopener' title='The Coinbase Champions Cup leaderboard'>Coinbase</a><span class='pill live'>LIVE</span></td>" +
@@ -2398,6 +2398,7 @@ function cupStdRow(d) {
 }
 function renderStandings(d) {
   _stdData = d;
+  var _cupOn = !!(d.coinbaseCup && d.coinbaseCup.equity != null);   // [#749] the AI + Human row takes the number after the live group
   var sk = _stdSort.key, sd = _stdSort.dir;
   var rows = (d.standings || []).slice().sort(function (a, b) { return (_stdVal(b, sk) - _stdVal(a, sk)) * (sd === -1 ? 1 : -1); });
   // [T2] league-table furniture: yesterday's rank (from the daily series) → movement arrows, and
@@ -2420,7 +2421,7 @@ function renderStandings(d) {
         .sort(function (a, b) { return (a.paper - b.paper) || (b.v - a.v); });
       var _liveRows = (d.standings || []).filter(function (a) { return !isPaperRow(a); }).length;   // today's paper group starts after EVERY live row
       var _n = { live: 0, paper: 0 };
-      y.forEach(function (o) { var g = o.paper ? "paper" : "live"; _n[g]++; prevRank[o.k] = (o.paper ? _liveRows : 0) + _n[g]; });
+      y.forEach(function (o) { var g = o.paper ? "paper" : "live"; _n[g]++; prevRank[o.k] = (o.paper ? _liveRows + (_cupOn ? 1 : 0) : 0) + _n[g]; });
     }
   } catch (e) {}
   var defaultSort = sk === (S5_RANK ? "retNetPct" : "account") && sd === -1;   // [#501]
@@ -2438,16 +2439,16 @@ function renderStandings(d) {
     var meta = ACTORS[a.key] || { label: a.label, model: "", color: "#888" };
     if (defaultSort) {
       var g = isPaperRow(a) ? "paper" : "live";
-      if (!groupShown[g]) { if (g === "paper" && !groupShown.cup) { groupShown.cup = true; h += cupStdRow(d); } groupShown[g] = true; h += "<tr class='std-group'><td colspan='12'>" + (g === "live" ? "Live championship — real money" : "Lab — paper account, same rules, no capital") + "</td></tr>"; }
+      if (!groupShown[g]) { if (g === "paper" && !groupShown.cup) { groupShown.cup = true; h += cupStdRow(d, rows.filter(function (a) { return !isPaperRow(a); }).length + 1); } groupShown[g] = true; h += "<tr class='std-group'><td colspan='12'>" + (g === "live" ? "Live championship — real money" : "Lab — paper account, same rules, no capital") + "</td></tr>"; }
     }
-    var mv = "";
-    if (defaultSort && prevRank[a.key] && isFinite(_stdVal(a, sk))) { var dlt = prevRank[a.key] - (i + 1); mv = dlt > 0 ? " <span class='mv up' title='up " + dlt + " since yesterday'>▲" + dlt + "</span>" : dlt < 0 ? " <span class='mv down' title='down " + (-dlt) + " since yesterday'>▼" + (-dlt) + "</span>" : " <span class='mv' title='unchanged since yesterday'>·</span>"; }
+    var mv = "", rk = i + 1 + (defaultSort && _cupOn && isPaperRow(a) ? 1 : 0);   // [#749]
+    if (defaultSort && prevRank[a.key] && isFinite(_stdVal(a, sk))) { var dlt = prevRank[a.key] - rk; mv = dlt > 0 ? " <span class='mv up' title='up " + dlt + " since yesterday'>▲" + dlt + "</span>" : dlt < 0 ? " <span class='mv down' title='down " + (-dlt) + " since yesterday'>▼" + (-dlt) + "</span>" : " <span class='mv' title='unchanged since yesterday'>·</span>"; }
     var isPaper = a.paper === true || a.key === "qwen" || !a.venue || String(a.venue).toUpperCase() === "PAPER";
     var hasVenue = a.venue && String(a.venue).toUpperCase() !== "PAPER";
     var venue = isPaper
       ? (hasVenue ? venueHtml(esc(a.venue), a.venue) + " " : "") + "<span class='pill paper'" + (hasVenue ? "" : " style='margin-left:0'") + ">PAPER</span>"
       : venueHtml(esc(a.venue), a.venue) + (a.seasonMove ? "<span class='pill paper' title='Moved to paper by the season rule'>PAPER · RULE</span>" : "<span class='pill live'>LIVE</span>");
-    h += "<tr><td class='num'>" + (i + 1) + mv + "</td>" +
+    h += "<tr><td class='num'>" + rk + mv + "</td>" +
       "<td><span class='swatch' style='background:" + meta.color + "'></span><span class='who-name'>" + esc(meta.model) + "</span> <span class='who-model'>· " + esc(meta.label) + "</span>" +
       (meta.style ? "<span class='who-style'>" + esc(meta.style) + "</span>" : "") + modelRunHtml(a) + seasonMoveHtml(a) + "</td>" +
       "<td class='std-venue'>" + venue + "</td>" +
@@ -2475,7 +2476,7 @@ function renderStandings(d) {
       "<td class='rt num' title='Deepest fall of this account from its own running peak this season (hourly samples)'>" + (a.maxDDPct == null ? "<span class='src'>—</span>" : (a.maxDDPct < 0 ? "−" : "") + Math.abs(a.maxDDPct).toFixed(1) + "%") + "</td>" +
       "<td class='rt num' title='Share of closed trades entered while the crypto regime read RISK_ON'>" + (a.riskOnPct == null ? "<span class='src'>—</span>" : esc(String(a.riskOnPct)) + "%") + "</td></tr>";
   });
-  if (!groupShown.cup) h += cupStdRow(d);   // [#745] no paper group (or a non-default sort): the seat goes last
+  if (!groupShown.cup) h += cupStdRow(d, defaultSort ? rows.length + 1 : null);   // [#745] no paper group (or a non-default sort): the seat goes last
   // [T2] retired desks: one grey line, record kept in About — never ranked, never hidden
   var retired = Object.keys(ACTORS).filter(function (k) { return !(d.standings || []).some(function (a) { return a.key === k; }) && ACTORS[k].retired; });
   if (retired.length) h += "<tr class='std-group'><td colspan='12' style='font-weight:400'>Retired in Season 4: " + retired.map(function (k) { return esc(ACTORS[k].label) + " (" + esc(ACTORS[k].model) + ")" + (ACTORS[k].retiredRecord ? " " + esc(ACTORS[k].retiredRecord) : ""); }).join(", ") + " — record kept in <a href='#/about'>About</a>.</td></tr>";
