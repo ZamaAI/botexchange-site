@@ -846,7 +846,7 @@
   <a href="#/calendar" data-page="calendar">Calendar</a>
   <a href="#/bots" data-page="bots">The Bots</a>
   <a href="#/models" data-page="models">Model Lab</a>
-  <a href="#/calls" data-page="calls" title="Extended Calls">Extended</a>
+  <a href="#/calls" data-page="calls" title="Trading calls — Beam on Coinbase (live) and the Extended brief (scored)">Calls</a>
   <a href="#/direction" data-page="direction" title="Paper Trade — BTC / ETH direction calls">Paper Trade</a>
   <a href="#/research" data-page="research" title="Research reports — dated token notes, scored in public">Research</a>
   <a href="#/archive" data-page="archive">Archive</a>
@@ -924,7 +924,7 @@
     <a class="src" href="#/rules">Every dated change since the season started →</a>
   </div>
   <div class="home-grid" style="margin-top:22px">
-    <div class="hw w12 hidden" id="hw-cup"><h3>Coinbase Champions Cup — the AI + Human seat</h3><div id="hw-cup-body"></div></div>
+    <div class="hw w12 hidden" id="hw-cup"><h3><a href="https://www.coinbase.com/trading-competition/0fba5b34-1297-4eb1-b603-dba830ad6fc2" target="_blank" rel="noopener" style="color:inherit">Coinbase Champions Cup</a> — the AI + Human seat</h3><div id="hw-cup-body"></div></div>
     <div class="hw w12" id="hw-live"><h3>Live trades — every open position</h3><div id="hw-live-body"><span class="src">Open positions load with the feed.</span></div></div>
     <div class="hw w12" id="hw-closes"><h3>Recent closes — with the post-mortem</h3><div id="hw-closes-body"><span class="src">Closed trades load with the feed.</span></div></div>
   </div>
@@ -1371,6 +1371,7 @@
        Data: static data/model_board.json (committed with the page, never the live feed). Prompts/answers are NEVER rendered. -->
   <div class="kicker">Model Lab · benchmark</div>
   <h2 class="sec" id="models">Which AI model trades best on the same inputs?</h2>
+  <p class="sub" style="max-width:980px;border-left:3px solid #0052ff;padding-left:10px"><b>From the Lab to real money:</b> Beam 1.0 (Reflection), the Lab's leader, now trades a real account — the AI half of the <b>AI + Human</b> seat in the <a href="https://www.coinbase.com/trading-competition/0fba5b34-1297-4eb1-b603-dba830ad6fc2" target="_blank" rel="noopener">Coinbase Champions Cup</a> (since 4 Nov). <a href="#/calls">Every Beam call and trade →</a></p>
   <div class="ml-ans" id="ml-answer"><h3>Who's best?</h3><p class="src">Loading the three tests…</p></div>
   <p class="sub" id="ml-method" style="max-width:980px">Loading the benchmark…</p>
   <div class="ml-filters" id="ml-filters"></div>
@@ -1422,8 +1423,11 @@
   <!-- [#565] EXTENDED CALLS: the bot's twice-daily Extended brief in public. Data: feed.extendedCalls (built from the bot's own
        pick log; the page never triggers a model call). A rules-only screen and four models (#740: two guests from 4 Nov) each make up to three calls on
        Extended's liquid perps; every call is checked 12 hours later against real 15-minute bars. Candidates, not advice. -->
-  <div class="kicker">Extended Calls · Final Arc competition · 7 Oct – 3 Nov</div>
-  <h2 class="sec" id="calls">A rulebook and four AI models call Extended perps. Every call is scored.</h2>
+  <div class="kicker">Trading calls · Coinbase cup (live) · Extended brief (scored)</div>
+  <h2 class="sec" id="cb-calls-h">Beam trades the AI half of a real Coinbase account. Every call and every trade is here.</h2>
+  <p class="sub" style="max-width:900px">Eight times a day (00:20, 03:20 … 21:20 SAST) the same rules-only screen reads Coinbase's most liquid crypto perps and lists every setup it finds. <b>Beam 1.0</b> — the model that led the Model Lab — reads that shortlist with the desk report and headlines, and either picks up to three or passes. A pick is traded at once: its own isolated position, sized to risk 5% of the account at the stop, with the stop and target resting on the exchange. Beam's limits run on its own results only, never on the human's. <a href="https://www.coinbase.com/trading-competition/0fba5b34-1297-4eb1-b603-dba830ad6fc2" target="_blank" rel="noopener">The Champions Cup leaderboard on Coinbase →</a></p>
+  <div id="cb-calls"><span class="src">Beam's calls load with the feed.</span></div>
+  <h2 class="sec" id="calls" style="margin-top:34px">A rulebook and four AI models call Extended perps. Every call is scored.</h2>
   <p class="sub" style="max-width:900px">Twice a day (06:12 and 18:12 SAST) a rules-only screen reads Extended's most liquid perps — crypto, plus commodities, indices, FX and stocks — and proposes up to three trades from price, range and funding alone. Four AI models (Gemini and DeepSeek since 8 Oct; Beam 1.0 and Mercury 3 from 4 Nov) then read the same markets <i>and the news</i>, and either take the screen's setups or make calls of their own, with their own stop and target. Twelve hours later each call is checked on real 15-minute bars: target first, stop first, or still open, after taker fees. Nothing is removed afterwards.</p>
   <p class="sub" style="max-width:900px"><a id="ec-cta" class="ec-cta hidden" target="_blank" rel="sponsored noopener">Trade these markets on Extended →</a> <span class="src" id="ec-cta-note"></span></p>
   <div id="ec-board"></div>
@@ -2369,6 +2373,7 @@ function renderTransferLine(d) {
   });
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", apply); else apply();
 })();
+var CUP_URL = "https://www.coinbase.com/trading-competition/0fba5b34-1297-4eb1-b603-dba830ad6fc2";   // [#746] the Coinbase Champions Cup leaderboard (operator 4 Nov)
 // [#745] the AI + Human seat: one real Coinbase account the human and Beam (the model) both trade, in the Coinbase
 // Champions Cup (4–25 Nov). Not a Season-5 seat, so it sits UNRANKED in the live group; its return is the cup's own
 // measure (P&L since the cup start over a capital base of at least 100 USDC), said so in the cell's title.
@@ -2379,7 +2384,7 @@ function cupStdRow(d) {
   return "<tr class='std-cup'><td class='num'><span class='src' title='Plays the Coinbase Champions Cup, not Season 5 — not ranked here'>·</span></td>" +
     "<td><span class='swatch' style='background:#0052ff'></span><span class='who-name'>AI + Human</span> <span class='who-model'>· Beam 1.0 + the human</span>" +
     "<span class='who-style'>One Coinbase account, both trade — Coinbase Champions Cup, 4–25 Nov</span></td>" +
-    "<td class='std-venue'>" + venueHtml("Coinbase", "Coinbase") + "<span class='pill live'>LIVE</span></td>" +
+    "<td class='std-venue'><a class='venue-link' href='" + CUP_URL + "' target='_blank' rel='noopener' title='The Coinbase Champions Cup leaderboard'>Coinbase</a><span class='pill live'>LIVE</span></td>" +
     "<td class='rt num' style='font-weight:700'>" + money(c.equity) + "</td>" +
     "<td class='rt num " + clsZ(c.pnlPct, 1) + "' title='The cup&#39;s own measure: P&amp;L since the cup start (" + esc(money(c.startEquity)) + ") over a capital base of at least 100 USDC'>" + (c.pnlPct == null ? dash : pct(c.pnlPct, 1)) +
       "<span class='std-sub'>cup P&amp;L " + (c.adjPnl == null ? "—" : (c.adjPnl >= 0 ? "+" : "−") + money(Math.abs(c.adjPnl), 2)) + "</span></td>" +
@@ -2677,7 +2682,7 @@ function renderPlayers(d) {
   var _isP = function (a) { return a.paper === true || a.key === "qwen" || !a.venue || String(a.venue).toUpperCase() === "PAPER"; };
   var order = (d.standings || []).slice().sort(function (a, b) { return (_isP(a) - _isP(b)) || (_stdVal(b, _rk) - _stdVal(a, _rk)); }).map(function (a) { return a.key; });
   if (!order.length) order = Object.keys(ACTORS);
-  $("players-grid").innerHTML = order.map(function (k) {
+  var _cards = order.map(function (k) {
     var meta = ACTORS[k]; if (!meta) return "";
     var s = byKey[k];
     var venue = k === "manual" ? venueHtml("Extended · live", "EXTENDED") : (k === "qwen" || meta.paperOnly) ? "Paper account"
@@ -2704,7 +2709,21 @@ function renderPlayers(d) {
         return bits.length ? "<div class='src' style='margin-top:6px'>" + bits.join(" · ") + "</div>" : "";
       })() +
       ((d.desks || []).some(function (x) { return x.key === k; }) ? "<div class='src' style='margin-top:6px'><a href='#/desk/" + esc(k) + "'>Desk page →</a></div>" : "") + "</div>";   // [#323]
-  }).join("");
+  });
+  // [#746] the AI + Human seat (Coinbase cup) after the live seats, before the paper lab
+  var c = d.coinbaseCup;
+  if (c && c.equity != null) {
+    var b = c.beam && !c.beam.error ? c.beam : null;
+    var cupCard = "<div class='pcard' style='border-top-color:#0052ff'><div class='p-name' style='color:#0052ff'>AI + Human</div>" +
+      "<div class='p-model'>Beam 1.0 + the human · <a class='venue-link' href='" + CUP_URL + "' target='_blank' rel='noopener'>Coinbase · live</a></div>" +
+      "<div class='p-blurb'>One real Coinbase account in the Champions Cup (4–25 Nov). The human trades by hand; Beam 1.0 — the Model Lab's leader — picks from the rules-only screen 8× a day and trades its own isolated positions, stops on the exchange.</div>" +
+      "<div class='p-stat'><span>" + money(c.equity, 0) + " <span class='" + clsZ(c.pnlPct, 1) + "' title='The cup&#39;s own measure'>" + pct(c.pnlPct, 1) + "</span> <span class='src'>cup</span></span>" +
+      "<span>Beam " + (b ? b.wins + "W–" + b.losses + "L" + (b.open ? " · " + b.open + " open" : "") : "—") + "</span></div>" +
+      "<div class='src' style='margin-top:6px'><a href='#/calls'>Beam's calls →</a></div></div>";
+    var firstPaper = order.findIndex(function (k) { var a = byKey[k]; return a ? _isP(a) : !!(ACTORS[k] && ACTORS[k].paperOnly); });
+    _cards.splice(firstPaper < 0 ? _cards.length : firstPaper, 0, cupCard);
+  }
+  $("players-grid").innerHTML = _cards.join("");
 }
 
 // ── [#323] per-desk page ──
@@ -4606,7 +4625,40 @@ function ecCard(k, b, horizonH) {
   if (m) h += "<div class='ec-meta'>" + m + "</div>";
   return h + "</div>";
 }
+// [#746] Beam's lane on Coinbase: live trades (levels + result) and every decision (picks, or why it passed).
+function renderBeamCalls(d) {
+  var host = $("cb-calls"); if (!host) return;
+  var c = d.coinbaseCup, k = c && c.calls;
+  if (!k || k.error) { host.innerHTML = "<span class='src'>Beam's calls are not in this feed yet.</span>"; return; }
+  var t2 = function (iso) { return iso ? new Date(iso).toLocaleString("en-GB", { timeZone: "Africa/Johannesburg", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"; };
+  var px = function (v) { return v == null ? "—" : (Math.abs(v) >= 100 ? v.toFixed(2) : Math.abs(v) >= 1 ? v.toFixed(4) : v.toPrecision(4)); };
+  var b = c.beam && !c.beam.error ? c.beam : null;
+  var h = "<div class='row' style='max-width:900px'><span>Beam on Coinbase</span><b>" + (b ? b.wins + "W–" + b.losses + "L · " + b.open + " open · P&amp;L " + (b.pnl >= 0 ? "+" : "−") + money(Math.abs(b.pnl), 2) + " · model spend " + money(b.costUsd, 2) + " · " + b.decisions + " decisions" : "—") + "</b></div>";
+  if ((k.trades || []).length) {
+    h += "<div class='ml-wrap'><table class='data'><tr><th>Opened</th><th>Market</th><th class='rt'>Entry</th><th class='rt'>Stop</th><th class='rt'>Target</th><th>Result</th><th class='rt'>R</th><th class='rt'>P&amp;L</th><th>Beam's reason</th></tr>";
+    k.trades.forEach(function (t) {
+      var res = t.state === "open" ? "<span class='pill live'>OPEN</span>" : esc(t.closeReason || "closed");
+      h += "<tr><td class='num'>" + esc(t2(t.at)) + "</td><td><b>" + esc(t.asset) + "</b> <span class='dirpill " + (t.dir === "SHORT" ? "s" : "l") + "'>" + esc(t.dir) + "</span></td>" +
+        "<td class='rt num'>" + px(t.entry) + "</td><td class='rt num'>" + px(t.stop) + "</td><td class='rt num'>" + px(t.target) + "</td><td>" + res + "</td>" +
+        "<td class='rt num " + (t.r == null ? "" : cls(t.r)) + "'>" + (t.r == null ? "—" : (t.r >= 0 ? "+" : "−") + Math.abs(t.r).toFixed(2) + "R") + "</td>" +
+        "<td class='rt num " + (t.pnl == null ? "" : cls(t.pnl)) + "'>" + (t.pnl == null ? "—" : (t.pnl >= 0 ? "+" : "−") + money(Math.abs(t.pnl), 2)) + "</td>" +
+        "<td class='src'>" + esc(t.why || "") + "</td></tr>";
+    });
+    h += "</table></div>";
+  } else h += "<p class='src'>No trades yet — Beam has passed on every shortlist so far.</p>";
+  if ((k.decisions || []).length) {
+    h += "<details class='ml-sec' open><summary>Every decision, newest first</summary><div class='ml-wrap'><table class='data'><tr><th>When</th><th>Decision</th><th>Beam's read of the tape</th></tr>";
+    k.decisions.forEach(function (x) {
+      var what = x.picks && x.picks.length ? x.picks.map(function (p) { return "<b>" + esc(p.a) + " " + esc(p.d) + "</b>" + (p.why ? " — " + esc(p.why) : ""); }).join("<br>")
+        : x.passed ? "Passed — " + esc(x.passed) : x.skipped ? "<span class='src'>" + esc(x.skipped) + "</span>" : "<span class='src'>no pick</span>";
+      h += "<tr><td class='num'>" + esc(t2(x.at)) + (x.mode && x.mode !== "live" ? " <span class='pill paper'>" + esc(String(x.mode).toUpperCase()) + "</span>" : "") + "</td><td>" + what + "</td><td class='src'>" + esc(x.view || "") + "</td></tr>";
+    });
+    h += "</table></div></details>";
+  }
+  host.innerHTML = h;
+}
 function renderCalls(d) {
+  try { renderBeamCalls(d); } catch (e) { console.warn("beam calls", e); }
   var bEl = $("ec-board"), lEl = $("ec-latest"), hEl = $("ec-history"); if (!bEl || !lEl || !hEl) return;
   var cta = $("ec-cta"), url = (window.VENUE_LINKS || {}).EXTENDED;
   if (cta && url) { cta.href = url; cta.classList.remove("hidden"); var cn = $("ec-cta-note"); if (cn) cn.textContent = /[?&](ref|referral|invite|code)=|\/(join|ref|invite|r)\//i.test(url) ? "Our referral link — it opens the venue and places nothing." : "Opens the venue; it places nothing."; }
@@ -4780,7 +4832,10 @@ function renderCup(d) {
       "<div class='src' style='margin-top:2px'>entry " + money(p.entry, p.entry != null && p.entry < 10 ? 4 : 2) + "</div></div>";
   });
   if (!(c.positions || []).length) h += "<div class='row'><span>Flat</span><b>0 open</b></div>";
-  h += "<div class='src' style='margin-top:6px'>Coinbase Advanced perps competition, 4–25 Nov. P&amp;L % uses the competition's rule: a capital base of at least 100 USDC." +
+  var b = c.beam && !c.beam.error ? c.beam : null;
+  if (b) h += "<div class='row'><span>Beam's trades <span class='src'>· the AI half</span></span><b>" + b.wins + "W–" + b.losses + "L" + (b.open ? " · " + b.open + " open" : "") + (b.closed ? " · " + (b.pnl >= 0 ? "+" : "−") + money(Math.abs(b.pnl), 2) : "") + "</b></div>";
+  h += "<a class='more' href='#/calls'>Every Beam call and trade →</a> <a class='more' href='" + CUP_URL + "' target='_blank' rel='noopener'>The cup leaderboard on Coinbase →</a>";
+  h += "<div class='src' style='margin-top:6px'>Coinbase Advanced perps competition, 4–25 Nov. One real account: the human trades it by hand and Beam 1.0 trades its own isolated positions, every one with a stop on the exchange. P&amp;L % uses the competition's rule: a capital base of at least 100 USDC." +
     (c.depositsBasis === "assumed-zero" ? " Deposits are not visible to us and are assumed zero." : "") + (c.live ? "" : " The cup has ended.") + "</div>";
   $("hw-cup-body").innerHTML = h;
   box.classList.remove("hidden");
