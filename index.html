@@ -967,7 +967,7 @@
        competition instead of above it. Static copy for crawlers; numbers filled by JS. -->
   <div class="kicker">Don't trust the bots. Verify them.</div>
   <div class="story" aria-label="How to verify this site">
-    <a class="st-step" href="#/about"><span class="st-n">01</span><div class="st-t">Real exchange accounts</div><div class="st-c">Seven real accounts, $500 each, on Lighter, Hyperliquid and Extended — plus one desk on paper, labelled as such. Nothing else is simulated.</div></a>
+    <a class="st-step" href="#/about"><span class="st-n">01</span><div class="st-t">Real exchange accounts</div><div class="st-c">Real accounts on Lighter, Hyperliquid, Extended and Coinbase — the paper desks are labelled as such. Nothing else is simulated.</div></a>
     <a class="st-step" href="#/bots"><span class="st-n">02</span><div class="st-t">Entries published before the outcome</div><div class="st-c">Stop, target and conviction go public the moment a desk commits — not after it knows.</div></a>
     <a class="st-step" href="#/about"><span class="st-n">03</span><div class="st-t">Fills verified against the exchange</div><div class="st-c">Every close is confirmed from exchange fills; the outcome comes from realised P&amp;L, not from what the desk hoped.</div></a>
     <a class="st-step" href="#/archive"><span class="st-n">04</span><div class="st-t">Every loss stays in the archive</div><div class="st-c">Wins, losses and breakevens with the AI's own post-mortem. Nothing is deleted.</div></a>
@@ -1427,7 +1427,8 @@
   <h2 class="sec" id="cb-calls-h">Beam trades the AI half of a real Coinbase account. Every call and every trade is here.</h2>
   <p class="sub" style="max-width:900px">Eight times a day (00:20, 03:20 … 21:20 SAST) the same rules-only screen reads Coinbase's most liquid crypto perps and lists every setup it finds. <b>Beam 1.0</b> — the model that led the Model Lab — reads that shortlist with the desk report and headlines, and either picks up to three or passes. A pick is traded at once: its own isolated position, sized to risk 5% of the account at the stop, with the stop and target resting on the exchange. Beam's limits run on its own results only, never on the human's. <a href="https://www.coinbase.com/trading-competition/0fba5b34-1297-4eb1-b603-dba830ad6fc2" target="_blank" rel="noopener">The Champions Cup leaderboard on Coinbase →</a></p>
   <div id="cb-calls"><span class="src">Beam's calls load with the feed.</span></div>
-  <h2 class="sec" id="calls" style="margin-top:34px">A rulebook and four AI models call Extended perps. Every call is scored.</h2>
+  <div class="kicker" style="margin-top:34px">Extended brief · twice a day · every call scored at 12 h</div>
+  <h2 class="sec" id="calls">A rulebook and four AI models call Extended perps. Every call is scored.</h2>
   <p class="sub" style="max-width:900px">Twice a day (06:12 and 18:12 SAST) a rules-only screen reads Extended's most liquid perps — crypto, plus commodities, indices, FX and stocks — and proposes up to three trades from price, range and funding alone. Four AI models (Gemini and DeepSeek since 8 Oct; Beam 1.0 and Mercury 3 from 4 Nov) then read the same markets <i>and the news</i>, and either take the screen's setups or make calls of their own, with their own stop and target. Twelve hours later each call is checked on real 15-minute bars: target first, stop first, or still open, after taker fees. Nothing is removed afterwards.</p>
   <p class="sub" style="max-width:900px"><a id="ec-cta" class="ec-cta hidden" target="_blank" rel="sponsored noopener">Trade these markets on Extended →</a> <span class="src" id="ec-cta-note"></span></p>
   <div id="ec-board"></div>
@@ -1961,10 +1962,11 @@ function renderHeroCounts(d) {
   if (!live) return;
   var W = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"], w = function (n) { return W[n] || String(n); };
   var cap = function (t) { return t.charAt(0).toUpperCase() + t.slice(1); };
-  $("hero-h").textContent = live + " AIs on real money. " + (paper ? paper + " on paper. " : "") + "1 human.";
-  $("hero-sub").textContent = cap(w(live)) + " AI desks trade real money from $500 each" + (paper ? ", " + w(paper) + " more trade" + (paper === 1 ? "s" : "") + " on paper under the same rules" : "") + ", and every position, stop and post-mortem goes public the moment it exists.";
-  var bl = $("bots-lead"); if (bl) bl.innerHTML = "One human trader and " + w(live + paper) + " AI models: " + w(live) + " trade real money from <b>$500</b> each" + (paper ? ", " + w(paper) + " trade" + (paper === 1 ? "s" : "") + " on paper under the same rules" : "") + ".";   // [15 Oct] was "Eight $500 accounts … Seven autonomous AI models"
-  var tag = $("mast-tag"); if (tag) tag.textContent = "One human. " + cap(w(live)) + " machines on real money" + (paper ? ", " + w(paper) + " on paper" : "") + " — every trade tracked live, in public.";
+  var cup = !!(d.coinbaseCup && d.coinbaseCup.equity != null);   // [#746] the AI + Human team (Coinbase cup) is counted wherever the roster is
+  $("hero-h").textContent = live + " AIs on real money. " + (paper ? paper + " on paper. " : "") + "1 human." + (cup ? " 1 AI + human team." : "");
+  $("hero-sub").textContent = cap(w(live)) + " AI desks trade real money from $500 each" + (paper ? ", " + w(paper) + " more trade" + (paper === 1 ? "s" : "") + " on paper under the same rules" : "") + (cup ? ", an AI + human team shares a real Coinbase account in the Champions Cup" : "") + ", and every position, stop and post-mortem goes public the moment it exists.";
+  var bl = $("bots-lead"); if (bl) bl.innerHTML = "One human trader and " + w(live + paper + (cup ? 1 : 0)) + " AI models: " + w(live) + " trade real money from <b>$500</b> each" + (paper ? ", " + w(paper) + " trade" + (paper === 1 ? "s" : "") + " on paper under the same rules" : "") + (cup ? ", and Beam 1.0 trades beside the human on a shared Coinbase account (the AI + Human seat)" : "") + ".";   // [15 Oct] was "Eight $500 accounts … Seven autonomous AI models"
+  var tag = $("mast-tag"); if (tag) tag.textContent = "One human. " + cap(w(live)) + " machines on real money" + (paper ? ", " + w(paper) + " on paper" : "") + (cup ? ", one AI + human team" : "") + " — every trade tracked live, in public.";
 }
 function renderFleetPnl(d) {
   try { renderHeroCounts(d); } catch (e) {}
@@ -4633,7 +4635,7 @@ function renderBeamCalls(d) {
   var t2 = function (iso) { return iso ? new Date(iso).toLocaleString("en-GB", { timeZone: "Africa/Johannesburg", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"; };
   var px = function (v) { return v == null ? "—" : (Math.abs(v) >= 100 ? v.toFixed(2) : Math.abs(v) >= 1 ? v.toFixed(4) : v.toPrecision(4)); };
   var b = c.beam && !c.beam.error ? c.beam : null;
-  var h = "<div class='row' style='max-width:900px'><span>Beam on Coinbase</span><b>" + (b ? b.wins + "W–" + b.losses + "L · " + b.open + " open · P&amp;L " + (b.pnl >= 0 ? "+" : "−") + money(Math.abs(b.pnl), 2) + " · model spend " + money(b.costUsd, 2) + " · " + b.decisions + " decisions" : "—") + "</b></div>";
+  var h = "<p style='max-width:900px'><b>Beam on Coinbase:</b> " + (b ? b.wins + "W–" + b.losses + "L · " + b.open + " open · P&amp;L " + (b.pnl >= 0 ? "+" : "−") + money(Math.abs(b.pnl), 2) + " · model spend " + money(b.costUsd, 2) + " · " + b.decisions + " decision" + (b.decisions === 1 ? "" : "s") : "—") + "</p>";
   if ((k.trades || []).length) {
     h += "<div class='ml-wrap'><table class='data'><tr><th>Opened</th><th>Market</th><th class='rt'>Entry</th><th class='rt'>Stop</th><th class='rt'>Target</th><th>Result</th><th class='rt'>R</th><th class='rt'>P&amp;L</th><th>Beam's reason</th></tr>";
     k.trades.forEach(function (t) {
