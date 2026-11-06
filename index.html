@@ -1426,6 +1426,12 @@
     <p class="sub" id="ml-ops-sub"></p>
     <div class="ml-wrap"><table class="data ml-table" id="ml-ops"></table></div>
   </details>
+  <!-- [S6] operator 6 Nov: "extended can be shown under the lab" — the human's own Extended account, outside the competition -->
+  <details class="ml-sec hidden" id="ml-ext-box">
+    <summary>Outside the competition: the human's own Extended account</summary>
+    <p class="sub" id="ml-ext-sub"></p>
+    <div class="ml-wrap"><table class="data ml-table" id="ml-ext"></table></div>
+  </details>
   <div class="ml-foot" id="ml-foot"></div>
 </div>
 <div class="page" data-page="calls">
@@ -1855,7 +1861,7 @@ function renderHero(d) {
   var lane = function (t) { return t.venue === "PAPER" ? "paper" : (t.actor === "manual" || t.actor === "human") ? "human" : "machine"; };
   var cnt = function (list) { var c = { machine: 0, paper: 0, human: 0 }; list.forEach(function (t) { c[lane(t)]++; }); return c; };
   var cc = cnt(d.archive || []), oc = cnt(d.openTrades || []);
-  oc.human += (((d.manualBook || {}).positions) || []).length;   // the human's book
+  if (!humanOnCup(d)) oc.human += (((d.manualBook || {}).positions) || []).length;   // the human's book ([S6] Extended is under the Lab, outside the competition)
   var closed = cc.machine + cc.paper + cc.human, open = oc.machine + oc.paper + oc.human;
   var split = function (c) { return c.machine + " machine real-money · " + c.paper + " paper · " + c.human + " human"; };
   var gen = d.generatedAt ? new Date(d.generatedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Africa/Johannesburg" }) : "";
@@ -1972,11 +1978,12 @@ function renderHeroCounts(d) {
   if (!live) return;
   var W = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"], w = function (n) { return W[n] || String(n); };
   var cap = function (t) { return t.charAt(0).toUpperCase() + t.slice(1); };
-  var cup = !!(d.coinbaseCup && d.coinbaseCup.equity != null);   // [#746] the AI + Human team (Coinbase cup) is counted wherever the roster is
-  $("hero-h").textContent = live + " AIs on real money. " + (paper ? paper + " on paper. " : "") + "1 human." + (cup ? " 1 AI + human team." : "");
-  $("hero-sub").textContent = cap(w(live)) + " AI desks trade real money from $500 each" + (paper ? ", " + w(paper) + " more trade" + (paper === 1 ? "s" : "") + " on paper under the same rules" : "") + (cup ? ", an AI + human team shares a real Coinbase account in the Champions Cup" : "") + ", and every position, stop and post-mortem goes public the moment it exists.";
-  var bl = $("bots-lead"); if (bl) bl.innerHTML = "One human trader and " + w(live + paper + (cup ? 1 : 0)) + " AI models: " + w(live) + " trade real money from <b>$500</b> each" + (paper ? ", " + w(paper) + " trade" + (paper === 1 ? "s" : "") + " on paper under the same rules" : "") + (cup ? ", and Beam 1.0 trades beside the human on a shared Coinbase account (the AI + Human seat)" : "") + ".";   // [15 Oct] was "Eight $500 accounts … Seven autonomous AI models"
-  var tag = $("mast-tag"); if (tag) tag.textContent = "One human. " + cap(w(live)) + " machines on real money" + (paper ? ", " + w(paper) + " on paper" : "") + (cup ? ", one AI + human team" : "") + " — every trade tracked live, in public.";
+  var team = humanOnCup(d);   // [S6] the human seat is the Human + AI team (one Coinbase account)
+  var cup = !!(d.coinbaseCup && d.coinbaseCup.equity != null) && !team;   // [#746] the AI + Human team (Coinbase cup) is counted wherever the roster is
+  $("hero-h").textContent = live + " AIs on real money. " + (paper ? paper + " on paper. " : "") + (team ? "1 human + AI team." : "1 human.") + (cup ? " 1 AI + human team." : "");
+  $("hero-sub").textContent = cap(w(live)) + " AI desks trade real money from $500 each" + (paper ? ", " + w(paper) + " more trade" + (paper === 1 ? "s" : "") + " on paper under the same rules" : "") + (cup ? ", an AI + human team shares a real Coinbase account in the Champions Cup" : "") + (team ? ", the human trades beside Beam on one Coinbase account, ranked as one seat" : "") + ", and every position, stop and post-mortem goes public the moment it exists.";
+  var bl = $("bots-lead"); if (bl) bl.innerHTML = "One human trader and " + w(live + paper + (cup ? 1 : 0)) + " AI models: " + w(live) + " trade real money from <b>$500</b> each" + (paper ? ", " + w(paper) + " trade" + (paper === 1 ? "s" : "") + " on paper under the same rules" : "") + (cup ? ", and Beam 1.0 trades beside the human on a shared Coinbase account (the AI + Human seat)" : "") + (team ? ", and Beam 1.0 also trades beside the human on one Coinbase account (the Human + AI seat)" : "") + ".";   // [15 Oct] was "Eight $500 accounts … Seven autonomous AI models"
+  var tag = $("mast-tag"); if (tag) tag.textContent = (team ? "One human + AI team. " : "One human. ") + cap(w(live)) + " machines on real money" + (paper ? ", " + w(paper) + " on paper" : "") + (cup ? ", one AI + human team" : "") + " — every trade tracked live, in public.";
 }
 function renderFleetPnl(d) {
   try { renderHeroCounts(d); } catch (e) {}
@@ -2389,7 +2396,11 @@ var CUP_URL = "https://www.coinbase.com/trading-competition/0fba5b34-1297-4eb1-b
 // [#745] the AI + Human seat: one real Coinbase account the human and Beam (the model) both trade, in the Coinbase
 // Champions Cup (4–25 Nov). Not a Season-5 seat, so it sits UNRANKED in the live group; its return is the cup's own
 // measure (P&L since the cup start over a capital base of at least 100 USDC), said so in the cell's title.
+// [S6] from Season 6 the human seat IS the Coinbase cup account (bot #764: the feed's manual row reads venue Coinbase) — the
+// separate AI + Human cup row would list the same account twice, so it steps aside; the cup card keeps Beam's own record.
+function humanOnCup(d) { return ((d && d.standings) || []).some(function (a) { return a.key === "manual" && /coinbase/i.test(String(a.venue || "")); }); }
 function cupStdRow(d, n) {
+  if (humanOnCup(d)) return "";   // [S6] the Human + AI row is this account
   var c = d.coinbaseCup; if (!c || c.equity == null) return "";
   var b = c.beam && !c.beam.error ? c.beam : null, dash = "<span class='src'>—</span>";
   var spend = b ? b.costUsd : null, net = c.adjPnl != null ? c.adjPnl - (spend || 0) : null;
@@ -2408,7 +2419,7 @@ function cupStdRow(d, n) {
 }
 function renderStandings(d) {
   _stdData = d;
-  var _cupOn = !!(d.coinbaseCup && d.coinbaseCup.equity != null);   // [#749] the AI + Human row takes the number after the live group
+  var _cupOn = !!(d.coinbaseCup && d.coinbaseCup.equity != null) && !humanOnCup(d);   // [#749] the AI + Human row takes the number after the live group ([S6] not when it IS the human seat)
   var sk = _stdSort.key, sd = _stdSort.dir;
   var rows = (d.standings || []).slice().sort(function (a, b) { return (_stdVal(b, sk) - _stdVal(a, sk)) * (sd === -1 ? 1 : -1); });
   // [T2] league-table furniture: yesterday's rank (from the daily series) → movement arrows, and
@@ -3227,7 +3238,7 @@ function renderFloor(d) {
       "<div class='why'>Anticipatory entries are the fleet's #1 loss cause — agents wait for the trigger to print.</div></div>";
   });
   // The human's live book (Extended) — entry + live % only; feed omits it when flat/unreadable.
-  var mb = d.manualBook;
+  var mb = humanOnCup(d) ? null : d.manualBook;   // [S6] the Extended book is under the Lab
   if (mb && mb.positions && mb.positions.length) {
     h += "<div class='wire-h' style='margin-top:14px'>The human&#39;s book</div>";
     mb.positions.forEach(function (p) {
@@ -4826,6 +4837,22 @@ function subFloorBadge(rr, openedAt, actor) {
 }
 // [#743] Coinbase Champions Cup (4–25 Nov 2026): one real account the human and a model share. Scored the
 // competition's way — adjusted PnL over a capital base of at least 100 USDC. The book shows entry + live % only.
+// [S6] Extended under the Lab: from Season 6 the human seat is Human + AI on Coinbase, so the human's own Extended account
+// leaves the ranking and the home page and is shown here unranked — balance (newest 5-min point) + open positions.
+function renderLabExtended(d) {
+  var box = $("ml-ext-box"); if (!box) return;
+  var pos = ((d.manualBook || {}).positions) || [], el = d.equityLive || [], last = el.length ? el[el.length - 1] : null;
+  var bal = last && last.extended != null ? last.extended : null;
+  if (!humanOnCup(d) || (!pos.length && bal == null)) { box.classList.add("hidden"); return; }
+  box.classList.remove("hidden");
+  $("ml-ext-sub").innerHTML = "Not ranked: from Season 6 the human seat is <b>Human + AI</b> on Coinbase. " +
+    (bal != null ? "Extended balance <b>" + money(bal) + "</b>" + (last.ts ? " (" + esc(String(last.ts).slice(11, 16)) + " UTC)" : "") + ". " : "") +
+    (pos.length ? pos.length + " open position" + (pos.length === 1 ? "" : "s") + " (entry and live move only)." : "No open positions.");
+  $("ml-ext").innerHTML = pos.length ? "<tr><th>Asset</th><th>Side</th><th class='rt'>Entry</th><th class='rt'>Live</th></tr>" + pos.map(function (p) {
+    return "<tr><td>" + esc(p.asset) + (p.stock ? " <span class='pill paper' title='Tokenized-equity perp'>STOCK</span>" : "") + "</td><td>" + esc(p.direction) + "</td>" +
+      "<td class='rt num'>" + money(p.entry, p.entry != null && p.entry < 10 ? 4 : 2) + "</td><td class='rt num " + cls(p.pnlPct) + "'>" + (p.pnlPct == null ? "—" : pct(p.pnlPct, 2)) + "</td></tr>";
+  }).join("") : "";
+}
 function renderCup(d) {
   var c = d.coinbaseCup, box = $("hw-cup");
   if (!box) return;
@@ -4884,7 +4911,7 @@ function renderHome(d) {
       (t.thesis ? "<div class='src' style='margin-top:4px'>" + esc(smartTrim(String(t.thesis).replace(/\[[^\]]*\]/g, ""), 140)) + " <a href='#floor'>Why " + esc((ACTORS[t.actor] || {}).short || t.actor) + " took it →</a></div>" : "") + "</div>";
   });
   if (liveOT.some(function (t) { return copyBtn(t); })) l = COPY_NOTE + l;   // [#355]; note before the first button (visitor test 6 Sep)
-  var hmb = ((d.manualBook || {}).positions) || [];
+  var hmb = humanOnCup(d) ? [] : (((d.manualBook || {}).positions) || []);   // [S6] the Extended book is under the Lab
   if (hmb.length && !ot.length) l = "";   // "All desks are flat" would be untrue beside the human's open book
   hmb.forEach(function (p) {
     l += "<div class='titem' style='padding:8px 0'><div class='l1'><span class='asset'>" + esc(p.asset) + "</span>" +
@@ -5662,7 +5689,7 @@ function renderAll(d) {
   } catch (e) {}
   _feedLast = d;   // [#323]
   _feedForReveal = d;
-  renderStamps(d); renderStrip(d.market); renderHeadline(d); renderFleetPnl(d); renderSeasonHistory(d); try { renderRules(d); } catch (e) {} renderStandings(d); try { renderWeeks(d); } catch (e) {} renderReferee(d); try { renderCalls(d); } catch (e) {} try { renderHero(d); } catch (e) {}
+  renderStamps(d); renderStrip(d.market); renderHeadline(d); renderFleetPnl(d); renderSeasonHistory(d); try { renderRules(d); } catch (e) {} renderStandings(d); try { renderWeeks(d); } catch (e) {} renderReferee(d); try { renderCalls(d); } catch (e) {} try { renderHero(d); } catch (e) {} try { renderLabExtended(d); } catch (e) {}
   try { renderHook(d); } catch (e) {}
   renderChart(d); renderPlayers(d); renderSeasonStats(d); renderLearned(d); renderFloor(d); renderRiskIndex(d); renderDesk(d); try { renderVolPanel(d); } catch (e) {}   /* [#516] */ try { if (_deskKey || location.hash === "#/desks" || location.hash.indexOf("#/desk/") === 0) renderDeskPage(d, _deskKey); } catch (e) {} try { if (location.hash.indexOf("#/t/") === 0) renderTradePage(d, location.hash.slice(4)); } catch (e) {} renderHLWhales(d); renderTopTraders(d); renderLighterWhales(d); renderCalendar(d); renderCalMonth(d); renderThisWeek(d); renderIntel(d); renderIntelRail(d);
   // [#289] the risk-rules card reads the FEED's enforced limits — the static prose went
