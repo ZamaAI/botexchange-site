@@ -183,6 +183,10 @@
      real-money-only number is the one that can't quietly mislead. Reuses the existing .tile
      card (see "Reading the tape" for its other use) rather than inventing a second box style
      — capped at 300px so two short stat cards don't stretch into empty-looking bars. */
+  /* [7 Nov] Model Lab: the prompt tests — the version tree beside the results table, stacked on a phone */
+  .ml-pg { display: grid; grid-template-columns: minmax(0, 400px) minmax(0, 1fr); gap: 22px; align-items: start; }
+  .ml-pg svg { width: 100%; height: auto; display: block; color: var(--ink); }
+  @media (max-width: 760px) { .ml-pg { grid-template-columns: minmax(0, 1fr); } }
   .fleetpnl { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; max-width: 300px; margin: 0 0 8px; }
   .fleetpnl-note { font-size: 11px; color: var(--ink3); margin: 0; text-align: right; }
   @media (max-width: 760px) { .fleetpnl-note { text-align: left; } }
@@ -872,7 +876,8 @@
     <div class="src hero-ind" id="hero-ind">Standings and positions load with the feed.</div>
   </div>
     <div class="race-row-right">
-      <!-- Real-money-only P&L tiles: season total + today's change. Excludes paper accounts —
+      <!-- Real-money-only tiles: the season move on the ranking's measure (accounts at market, net of model bills and
+           transfers) + closed-trade P&L underneath. Excludes paper accounts —
            see .fleetpnl CSS comment and renderFleetPnl() for why and how. -->
       <div class="fleetpnl" id="fleetpnl">
         <!-- [15 Oct] split: the one "Season P&L" tile was ~95% the human's account (−$394 of −$416) under a headline about AIs -->
@@ -1304,6 +1309,7 @@
   <div class="kicker">Every trade, permanent record</div>
   <h2 class="sec" id="archive">The archive</h2>
   <p class="sub" id="archive-sub">Every trade this season, permanently recorded with its AI post-mortem — the same record the models learn from. Nothing is deleted.</p>
+  <div class="chips" id="arch-seasons" aria-label="Season"></div>
   <div class="chips" id="arch-chips"></div>
   <div class="arch-wrap"><table class="data" id="archive-table"></table></div>
 
@@ -1387,8 +1393,61 @@
        Data: static data/model_board.json (committed with the page, never the live feed). Prompts/answers are NEVER rendered. -->
   <div class="kicker">Model Lab · benchmark</div>
   <h2 class="sec" id="models">Which AI model trades best on the same inputs?</h2>
-  <p class="sub" style="max-width:980px;border-left:3px solid #0052ff;padding-left:10px"><b>From the Lab to real money:</b> Beam 1.0 (Reflection), the Lab's leader, now trades two real accounts — the Hyperliquid desk as <b>Benny Beam</b> (Season 6, since 6 Nov) and the AI half of the <b>AI + Human</b> seat in the <a href="https://www.coinbase.com/trading-competition/0fba5b34-1297-4eb1-b603-dba830ad6fc2" target="_blank" rel="noopener">Coinbase Champions Cup</a> (since 4 Nov). <a href="#/calls">Every Beam call and trade →</a></p>
+  <p class="sub" style="max-width:980px;border-left:3px solid #0052ff;padding-left:10px"><b>From the Lab to real money:</b> Beam 1.0 (Reflection), the Lab's leader, now trades two real accounts — the Hyperliquid desk as <b>Benny Beam</b> (Season 6, since 6 Nov) and the AI half of the <b>Human + AI</b> seat in the <a href="https://www.coinbase.com/trading-competition/0fba5b34-1297-4eb1-b603-dba830ad6fc2" target="_blank" rel="noopener">Coinbase Champions Cup</a> (since 4 Nov). <a href="#/calls">Every Beam call and trade →</a></p>
   <div class="ml-ans" id="ml-answer"><h3>Who's best?</h3><p class="src">Loading the three tests…</p></div>
+  <!-- [7 Nov] the prompt grid (#759 → #772): the same models on different versions of the desks' own prompt -->
+  <div class="box" id="ml-prompts" style="margin-top:18px">
+    <div class="box-h">Same model, different prompt — what the desks read is tested too</div>
+    <div class="box-b">
+      <p class="sub" style="margin:0 0 12px;max-width:none">The desks' prompt is cut into versions, and each is replayed on real past moments: the same saved prompt with blocks or lines deleted, never anything from after the moment. Every trade idea is played forward on the real price history and compared with 30 random entries on the same coin and side, so the market's own direction cancels out. The pass mark is written down before any call: removing something must be <b>not worse</b>, adding something must be <b>better</b>.</p>
+      <div class="ml-pg">
+        <figure style="margin:0"><svg viewBox="0 0 420 500" role="img" aria-label="Prompt versions: A full; B is A without the desks' own records; C is B without 17 rarely used blocks; D keeps only the core; E is C without three opinion lines and runs on ten desks; F is C plus four fact blocks and runs on Garry; G is F without the opinion lines.">
+        <defs><marker id="pgar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+        <g font-size="12.5" fill="currentColor">
+          <g stroke="currentColor" stroke-width="1.3" fill="none" opacity="0.7">
+            <line x1="210" y1="58" x2="210" y2="104" marker-end="url(#pgar)"/><line x1="210" y1="158" x2="210" y2="204" marker-end="url(#pgar)"/>
+            <path d="M285,40 C330,46 352,70 355,104" marker-end="url(#pgar)"/>
+            <line x1="182" y1="258" x2="98" y2="327" marker-end="url(#pgar)"/><line x1="238" y1="258" x2="322" y2="327" marker-end="url(#pgar)"/>
+            <line x1="335" y1="380" x2="335" y2="436" marker-end="url(#pgar)"/>
+          </g>
+          <g font-size="11.5" opacity="0.85">
+            <text x="202" y="86" text-anchor="end">− desks' own records</text><text x="202" y="186" text-anchor="end">− 17 rarely used blocks</text>
+            <text x="347" y="62">core only</text><text x="14" y="296">− 3 opinion lines</text><text x="298" y="296">+ 4 fact blocks</text>
+            <text x="327" y="414" text-anchor="end">− 3 opinion lines</text>
+          </g>
+          <g stroke="currentColor" stroke-width="1.2" fill="none" opacity="0.55">
+            <rect x="135" y="8" width="150" height="50" rx="6"/><rect x="135" y="108" width="150" height="50" rx="6"/><rect x="135" y="208" width="150" height="50" rx="6"/>
+            <rect x="300" y="108" width="112" height="50" rx="6" stroke-dasharray="4 3"/><rect x="260" y="440" width="150" height="50" rx="6"/>
+          </g>
+          <rect x="10" y="330" width="150" height="50" rx="6" fill="#114e3c" fill-opacity="0.1" stroke="#114e3c" stroke-width="2"/>
+          <rect x="260" y="330" width="150" height="50" rx="6" fill="#114e3c" fill-opacity="0.1" stroke="#114e3c" stroke-width="2"/>
+          <g font-weight="600">
+            <text x="210" y="29" text-anchor="middle">A · Full</text><text x="210" y="129" text-anchor="middle">B · No records</text><text x="210" y="229" text-anchor="middle">C · Lean</text>
+            <text x="356" y="129" text-anchor="middle">D · Minimal</text><text x="85" y="351" text-anchor="middle">E · No opinions</text>
+            <text x="335" y="351" text-anchor="middle">F · C + facts</text><text x="335" y="461" text-anchor="middle">G · E + facts</text>
+          </g>
+          <g font-size="10.5" opacity="0.8">
+            <text x="210" y="47" text-anchor="middle">91.5k characters</text><text x="210" y="147" text-anchor="middle">77.7k</text><text x="210" y="247" text-anchor="middle">64.4k · 5–6 Nov</text>
+            <text x="356" y="147" text-anchor="middle">31.1k · lost</text><text x="85" y="369" text-anchor="middle">63.4k · LIVE, 10 desks</text>
+            <text x="335" y="369" text-anchor="middle">66.5k · LIVE, Garry</text><text x="335" y="479" text-anchor="middle">65.6k · not adopted</text>
+          </g>
+        </g>
+      </svg>
+          <figcaption class="src" style="margin-top:6px">Each version is cut from the same saved prompt; sizes are from one desk's real report prompt (about 3.6 characters per token).</figcaption>
+        </figure>
+        <div style="min-width:0;overflow-x:auto">
+          <table class="data" style="margin:0">
+            <tr><th>Test</th><th>Question</th><th>Result</th><th>Now live</th></tr>
+            <tr><td style="white-space:nowrap">#759 · 5 Nov</td><td>Full prompt (A) against the lean one (C): 205 past moments, three models</td><td><b class="up">C +0.31R</b> per idea, on all three models and both halves</td><td>C on every desk</td></tr>
+            <tr><td style="white-space:nowrap">#768 · 6 Nov</td><td>Drop three opinion lines (E) · add four fact blocks back (F): 241 moments, two models</td><td>E <b>+0.02R</b>: not worse · F <b>−0.08R</b>: not better</td><td>E on every desk</td></tr>
+            <tr><td style="white-space:nowrap">#770 · 6 Nov</td><td>Garry's model only: E, F and G (E + facts), three runs each</td><td><b class="up">F ahead in 3 of 3 runs</b>, +0.33R; G 2 of 3</td><td>F for Garry</td></tr>
+            <tr><td style="white-space:nowrap">#772 · ~20 Nov</td><td>The check: 1–15 Nov moments that chose nothing, E, C and A (and Garry's F)</td><td class="src">pending — the pass marks were written down on 7 Nov</td><td>—</td></tr>
+          </table>
+          <p class="src" style="margin:8px 0 0">R is a result in units of the risk taken: a stop is −1R, a target at reward-to-risk 2.2 is +2.2R. The opinion lines are the regime's "how to trade it" instruction, a one-line market thesis and mentions of what X and newsletters discuss; the fact blocks are prediction-market odds, exchange flows, stablecoin supply and DeFi metrics. Every change is also a dated amendment on <a href="#/rules">the rules page</a>.</p>
+        </div>
+      </div>
+    </div>
+  </div>
   <p class="sub" id="ml-method" style="max-width:980px">Loading the benchmark…</p>
   <div class="ml-filters" id="ml-filters"></div>
   <div class="ml-hero">
@@ -2020,23 +2079,24 @@ function renderFleetPnl(d) {
   // [15 Oct] AI desks and the human are separate tiles: the human's account carried ~95% of the combined figure
   var ai = real.filter(function (s) { return s.key !== "manual"; }), man = real.filter(function (s) { return s.key === "manual"; });
   var sumPnl = function (arr) { return arr.reduce(function (sum, s) { return sum + (isFinite(s.pnl) ? s.pnl : 0); }, 0); };
-  var series = (d.seriesDaily || {}).bySource || {};
-  var dayMove = function (arr) {
-    var have = false, t = arr.reduce(function (sum, s) {
-      var x = series[s.key];
-      if (!Array.isArray(x) || x.length < 2) return sum;
-      var last = x[x.length - 1], prev = x[x.length - 2];
-      if (!isFinite(last) || !isFinite(prev)) return sum;
-      have = true; return sum + (last - prev);
-    }, 0);
-    return have ? t : null;
+  // [7 Nov, operator] the tiles show the RANKING's own measure in dollars — account at market (open positions in), less any
+  // money moved in or out (#507), less the seat's Season start and its model bill — so they agree with the table and the
+  // headline (day 1 printed "+$0.00" twice beside "+4.7%" / "+2.8%": the tiles counted closed trades only). Closed-trade
+  // P&L moves to the sub-line. renderAll() has already set a.transfersNet / a.transferUnknown on each row.
+  var seats = d.seasonSeats || {};
+  var moveOf = function (s) {
+    var seat = parseFloat(seats[s.key]), acct = parseFloat(s.account) - (isFinite(s.transfersNet) ? s.transfersNet : 0);
+    if (!(seat > 0) || !isFinite(acct) || s.transferUnknown) return null;
+    return acct - seat - (s.key === "manual" ? 0 : (parseFloat(s.costUsd) || 0));
   };
-  var aiPnl = sumPnl(ai), aiDay = dayMove(ai);
-  $("fp-season").textContent = signedMoney(aiPnl);
-  $("fp-season").className = "t-v " + pnlCls(aiPnl);
-  $("fp-season-s").textContent = aiDay == null ? "real money" : "today " + signedMoney(aiDay);
+  var sumMove = function (arr) { var have = false, t = arr.reduce(function (sum, s) { var m = moveOf(s); if (m == null) return sum; have = true; return sum + m; }, 0); return have ? t : null; };
+  var aiPnl = sumPnl(ai), aiMove = sumMove(ai), aiVal = aiMove == null ? aiPnl : aiMove;
+  $("fp-season").textContent = signedMoney(aiVal);
+  $("fp-season").className = "t-v " + pnlCls(aiVal);
+  $("fp-season").title = aiMove == null ? "Closed trades this season" : "Accounts at market (open positions included), less each desk's Season start and its model bill — the ranking's own measure";
+  $("fp-season-s").textContent = "closed trades " + signedMoney(aiPnl);
   if (man.length) {
-    var manPnl = sumPnl(man), manDay = dayMove(man);
+    var manPnl = sumPnl(man), manMove = sumMove(man), manVal = manMove == null ? manPnl : manMove;
     // [15 Oct, operator] money the human ADDED mid-season is a loan to the account, owed back — never return. Read off the
     // feed's transfer sweep (seasonTransfers), so a new deposit or a repayment updates the asterisk without a site edit.
     var tr = ((d.seasonTransfers || {}).rows || []).filter(function (r) { return r.seat === "manual"; });
@@ -2044,9 +2104,10 @@ function renderFleetPnl(d) {
     var unconf = tr.filter(function (r) { return r.net == null && isFinite(r.amount); });
     var fd = function (iso) { return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "Africa/Johannesburg" }); };
     var star = added > 0.005 ? "*" : "";
-    $("fp-human").textContent = signedMoney(manPnl) + star;
-    $("fp-human").className = "t-v " + pnlCls(manPnl);
-    $("fp-human-s").textContent = manDay == null ? "real money" : "today " + signedMoney(manDay);
+    $("fp-human").textContent = signedMoney(manVal) + star;
+    $("fp-human").className = "t-v " + pnlCls(manVal);
+    $("fp-human").title = manMove == null ? "Closed trades this season" : "The account at market (open positions included), less its Season start and any money added — the ranking's own measure";
+    $("fp-human-s").textContent = "closed trades " + signedMoney(manPnl);
     var debt = $("fp-debt");
     if (debt) debt.textContent = added > 0.005
       ? "* " + money(added) + " added this season (" + tr.filter(function (r) { return isFinite(r.net) && r.net > 0; }).map(function (r) { return fd(r.ts); }).join(", ") + ") — a loan the human will pay back, not counted as return"
@@ -2760,9 +2821,9 @@ function renderPlayers(d) {
   var c = d.coinbaseCup;
   if (c && c.equity != null) {
     var b = c.beam && !c.beam.error ? c.beam : null;
-    var cupCard = "<div class='pcard' style='border-top-color:#0052ff'><div class='p-name' style='color:#0052ff'>AI + Human</div>" +
-      "<div class='p-model'>Beam 1.0 + the human · <a class='venue-link' href='" + CUP_URL + "' target='_blank' rel='noopener'>Coinbase · live</a></div>" +
-      "<div class='p-blurb'>One real Coinbase account in the Champions Cup (4–25 Nov). The human trades by hand; Beam 1.0 — the Model Lab's leader — picks from the rules-only screen 8× a day and trades its own isolated positions, stops on the exchange.</div>" +
+    var cupCard = "<div class='pcard' style='border-top-color:#0052ff'><div class='p-name' style='color:#0052ff'>Beam's cup record</div>" +
+      "<div class='p-model'>Beam 1.0 · on the Human + AI account · <a class='venue-link' href='" + CUP_URL + "' target='_blank' rel='noopener'>Coinbase · live</a></div>" +
+      "<div class='p-blurb'>Beam's own trades on the Human + AI seat's Coinbase account in the Champions Cup (4–25 Nov), kept apart so its record stays readable. Beam 1.0 — the Model Lab's leader — picks from the rules-only screen 8× a day and trades its own isolated positions, stops on the exchange. The account as a whole is ranked as the Human + AI seat.</div>" +
       "<div class='p-stat'><span>" + money(c.equity, 0) + " <span class='" + clsZ(c.pnlPct, 1) + "' title='The cup&#39;s own measure'>" + pct(c.pnlPct, 1) + "</span> <span class='src'>cup</span></span>" +
       "<span>Beam " + (b ? b.wins + "W–" + b.losses + "L" + (b.open ? " · " + b.open + " open" : "") : "—") + "</span></div>" +
       "<div class='src' style='margin-top:6px'><a href='#/calls'>Beam's calls →</a></div></div>";
@@ -4135,7 +4196,33 @@ function renderNotes(d) {
   $("notes-more").onclick = function () { notesExpanded = !notesExpanded; renderNotes(d); };
 }
 var archExpanded = false, archActor = "all", archOutcome = "all", archSortKey = "date", archSortDir = -1;
+// [7 Nov] earlier seasons: the live feed carries only the current season, so each closed season's archive is kept as a static
+// file exactly as that season's last feed published it (data/seasons/season<N>-archive.json, from botexchange-data history).
+// The switch re-renders this same table; a closed season stays on screen across the live feed's refreshes.
+var PAST_SEASONS = [5, 4], archSeason = null, _archPast = {};
+function archSeasonBar() {
+  var el = $("arch-seasons"); if (!el) return;
+  var cur = archSeason == null ? SEASON : archSeason;
+  el.innerHTML = "<span class='src' style='margin-right:6px;align-self:center'>Season</span>" + [SEASON].concat(PAST_SEASONS).map(function (n) {
+    return "<button data-season='" + n + "'" + (n === cur ? " class='on'" : "") + ">" + n + (n === SEASON ? " · live" : "") + "</button>";
+  }).join("");
+  Array.prototype.forEach.call(el.querySelectorAll("button"), function (b) {
+    b.onclick = function () {
+      var n = parseInt(b.getAttribute("data-season"), 10);
+      archSeason = n === SEASON ? null : n; archActor = "all"; archExpanded = false;
+      if (archSeason == null) { renderArchive(_feedLast || {}); return; }
+      if (_archPast[n]) { renderArchive(_archPast[n]); return; }
+      $("archive-sub").textContent = "Loading Season " + n + "…";
+      fetch("/data/seasons/season" + n + "-archive.json").then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (j) {
+        _archPast[n] = { archive: j.archive || [], since: j.since, _past: j };
+        if (archSeason === n) renderArchive(_archPast[n]);
+      }).catch(function () { $("archive-sub").textContent = "Season " + n + " could not be loaded just now — try again."; });
+    };
+  });
+}
 function renderArchive(d) {
+  if (!d._past && archSeason != null && _archPast[archSeason]) d = _archPast[archSeason];
+  try { archSeasonBar(); } catch (e) {}
   var all = d.archive || [];
   if (!all.length) {   // [S5 D8] day 1: say so instead of leaving the loading copy
     $("archive-sub").textContent = "No Season " + SEASON + " trades closed yet — every close lands here with its AI post-mortem against its own thesis. Nothing is deleted.";
@@ -4153,8 +4240,9 @@ function renderArchive(d) {
     var vb = archSortKey === "pnl" ? (b.pnlUsd != null ? b.pnlUsd : (b.pct || 0)) : new Date(b.closedAt).getTime();
     return (va - vb) * archSortDir;
   });
-  $("archive-sub").textContent = all.length + " closed trades since " + (d.since || "season start") +
-    " — click a trade for its AI post-mortem against its own thesis. Nothing is deleted.";
+  $("archive-sub").textContent = d._past
+    ? "Season " + d._past.season + ", final: " + all.length + " closed trades, " + (d._past.range || d.since) + " — exactly as the season's last feed published them. Click a trade for its AI post-mortem against its own thesis."
+    : all.length + " closed trades since " + (d.since || "season start") + " — click a trade for its AI post-mortem against its own thesis. Nothing is deleted.";
   var chips = "<button data-a='all'" + (archActor === "all" ? " class='on'" : "") + ">All agents</button>";
   Object.keys(ACTORS).forEach(function (k) {
     if (!all.some(function (r) { return r.actor === k; })) return;
@@ -4184,7 +4272,7 @@ function renderArchive(d) {
     var pnl = r.pnlUsd == null ? "<span class='src'>—</span>"
       : "<span class='" + cls(r.pnlUsd) + " num'>" + (r.pnlUsd >= 0 ? "+" : "−") + "$" + Math.abs(r.pnlUsd).toFixed(2) + "</span>";
     h += "<tr class='arch-row' data-i='" + i + "'" + (r.id != null ? " id='t" + r.id + "'" : "") + "><td>" + when +
-      tradeLink(r.id) +   // [#359] the trade's own room (the old #t<id> permalink still lands on this row)
+      (d._past ? " <span class='src'>#" + esc(r.id) + "</span>" : tradeLink(r.id)) +   // [#359] the trade's own room (the old #t<id> permalink still lands on this row); a closed season's rows are not in the live feed, so no room link
       "</td><td>" + actorTag(r.actor) + "</td><td><b>" + esc(r.asset) + "</b> " + esc(r.direction) + "</td>" +
       "<td>" + esc(r.venue) + "</td><td class='rt'>" + res + "</td><td class='rt'>" + pnl + "</td></tr>";
     if (r.exitReason) {
@@ -4514,6 +4602,13 @@ function renderPredictions(d) {
   $("pred-body").innerHTML = h;
 }
 // next scheduled desk cycle — reports run 00/06/12/18 SAST (UTC+2, no DST) = 22/04/10/16 UTC
+// [7 Nov] the desks also run at the four intraday scans (03/09/15/21 SAST) — the header names the next scan and report
+function nextScan() {
+  var now = Date.now(), best = null;
+  [1, 7, 13, 19].forEach(function (h) { var d = new Date(); d.setUTCHours(h, 0, 0, 0); var t = d.getTime(); if (t <= now) t += 86400000; if (best === null || t < best) best = t; });
+  var mins = Math.max(1, Math.round((best - now) / 60000)), sastH = (new Date(best).getUTCHours() + 2) % 24;
+  return { label: (sastH < 10 ? "0" : "") + sastH + ":00", inStr: mins >= 60 ? Math.floor(mins / 60) + "h " + (mins % 60) + "m" : mins + "m" };
+}
 function nextReport() {
   var now = Date.now(), best = null;
   [22, 4, 10, 16].forEach(function (h) {
@@ -4531,8 +4626,8 @@ function nextReport() {
 function renderStamps(d) {
   var gen = new Date(d.generatedAt);
   var TZ = { timeZone: "Africa/Johannesburg" };
-  var nr = nextReport();
-  $("datestamp").textContent = gen.toLocaleString("en-GB", Object.assign({ weekday: "long", day: "numeric", month: "long", year: "numeric" }, TZ)) + " · updated " + gen.toLocaleTimeString("en-GB", Object.assign({ hour: "2-digit", minute: "2-digit" }, TZ)) + " SAST · next desk cycle " + nr.label + " (in " + nr.inStr + ")";
+  var nr = nextReport(), ns = nextScan();
+  $("datestamp").textContent = gen.toLocaleString("en-GB", Object.assign({ weekday: "long", day: "numeric", month: "long", year: "numeric" }, TZ)) + " · updated " + gen.toLocaleTimeString("en-GB", Object.assign({ hour: "2-digit", minute: "2-digit" }, TZ)) + " SAST · next scan " + ns.label + " (in " + ns.inStr + ") · next report " + nr.label;
   // [#483] input coverage of the last desk report: how many of the data feeds the desks read actually answered.
   var fc = d.feedCoverage, fcTxt = "";
   if (fc && fc.total > 0 && fc.at) {
