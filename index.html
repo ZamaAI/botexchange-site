@@ -4796,8 +4796,9 @@ function renderBeamCalls(d) {
     h += "<details class='ml-sec' open><summary>Beam on Coinbase — every decision, newest first</summary><div class='ml-wrap'><table class='data'><tr><th>When</th><th>Decision</th><th>Beam's read of the tape</th></tr>";
     k.decisions.forEach(function (x) {
       var what = x.picks && x.picks.length ? x.picks.map(function (p) { return "<b>" + esc(p.a) + " " + esc(p.d) + "</b>" + (p.why ? " — " + esc(p.why) : ""); }).join("<br>")
-        : x.passed ? "Passed — " + esc(x.passed) : x.skipped ? "<span class='src'>" + esc(x.skipped) + "</span>" : "<span class='src'>no pick</span>";
-      h += "<tr><td class='num'>" + esc(t2(x.at)) + (x.mode && x.mode !== "live" ? " <span class='pill paper'>" + esc(String(x.mode).toUpperCase()) + "</span>" : "") + "</td><td>" + what + "</td><td class='src'>" + esc(x.view || "") + "</td></tr>";
+        : x.passed ? "Passed — " + esc(x.passed) : x.skipped ? "<span class='src'>" + (x.n > 1 ? "<b>" + x.n + " decisions in a row:</b> " : "") + esc(x.skipped) + "</span>" : "<span class='src'>no pick</span>";
+      // [#776] repeated identical passes arrive folded (x.n, x.firstAt = the oldest): show the span, newest first
+      h += "<tr><td class='num'>" + (x.n > 1 && x.firstAt ? esc(t2(x.firstAt)) + " →<br>" : "") + esc(t2(x.at)) + (x.mode && x.mode !== "live" ? " <span class='pill paper'>" + esc(String(x.mode).toUpperCase()) + "</span>" : "") + "</td><td>" + what + "</td><td class='src'>" + esc(x.view || "") + "</td></tr>";
     });
     h += "</table></div></details>";
   }
