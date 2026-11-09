@@ -1527,6 +1527,8 @@
       <p>If the target and the stop both fall inside one 15-minute bar, the call is scored as stopped. A model may also make no call at all. These are machine-generated candidates published for the record — <b>not financial advice</b>, and the operator may or may not trade any of them.</p>
     </div></div>
   </div>
+  <!-- [S6] operator 9 Nov: Beam's decision log moved to the bottom of the page -->
+  <div id="cb-decisions" style="margin-top:34px"></div>
 </div>
 
 <div class="page" data-page="about">
@@ -4787,8 +4789,11 @@ function renderBeamCalls(d) {
     });
     h += "</table></div>";
   } else h += "<p class='src'>No trades yet — Beam has passed on every shortlist so far.</p>";
+  host.innerHTML = h;
+  var dh = $("cb-decisions"); if (!dh) return;
+  h = "";
   if ((k.decisions || []).length) {
-    h += "<details class='ml-sec' open><summary>Every decision, newest first</summary><div class='ml-wrap'><table class='data'><tr><th>When</th><th>Decision</th><th>Beam's read of the tape</th></tr>";
+    h += "<details class='ml-sec' open><summary>Beam on Coinbase — every decision, newest first</summary><div class='ml-wrap'><table class='data'><tr><th>When</th><th>Decision</th><th>Beam's read of the tape</th></tr>";
     k.decisions.forEach(function (x) {
       var what = x.picks && x.picks.length ? x.picks.map(function (p) { return "<b>" + esc(p.a) + " " + esc(p.d) + "</b>" + (p.why ? " — " + esc(p.why) : ""); }).join("<br>")
         : x.passed ? "Passed — " + esc(x.passed) : x.skipped ? "<span class='src'>" + esc(x.skipped) + "</span>" : "<span class='src'>no pick</span>";
@@ -4796,7 +4801,7 @@ function renderBeamCalls(d) {
     });
     h += "</table></div></details>";
   }
-  host.innerHTML = h;
+  dh.innerHTML = h;
 }
 function renderCalls(d) {
   try { renderBeamCalls(d); } catch (e) { console.warn("beam calls", e); }
