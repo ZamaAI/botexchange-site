@@ -1281,6 +1281,8 @@
   <div id="dc-now"></div>
   <div id="dc-board"></div>
   <div id="dc-recent"></div>
+  <!-- [#787] the many-small-positions paper book (bot #783): fade_seat.json from the data repo; hidden until the file loads -->
+  <div id="fs-box"></div>
   <div class="boxcol" style="max-width:900px">
     <details class="box"><summary class="box-h">How to read this page</summary><div class="box-b">
       <p><b>Models lean</b> is one number from −100 to +100. Every model that is long adds its own confidence (1 to 10), every model that is short subtracts it, and a model standing aside counts zero; the total is divided by the most it could be. So two confident longs beside three models standing aside is a modest lean, and a split panel is no lean. It measures agreement, not accuracy — the scoreboard is where accuracy shows.</p>
@@ -5943,10 +5945,54 @@ function rsRender(slug) {
   }).join("") + "</div>";
 }
 
+// ── [#787] MANY SMALL POSITIONS — a paper book test (bot #783), shown under Paper Trade. fade_seat.json from the data repo. ──
+var _fs = { data: null, at: 0 };
+function fsFetch() {
+  if (_fs.data && Date.now() - _fs.at < 240000) { fsRender(); return; }
+  fetch("https://raw.githubusercontent.com/ZamaAI/botexchange-data/main/fade_seat.json?cb=" + Math.floor(Date.now() / 300000), { cache: "no-store" })
+    .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+    .then(function (j) { _fs.data = j; _fs.at = Date.now(); fsRender(); })
+    .catch(function () { /* no file yet: the section stays hidden */ });
+}
+function fsAgo(ms) { var m = Math.max(0, Math.round((Date.now() - ms) / 60000)); return m < 90 ? m + " min" : m < 2880 ? (m / 60).toFixed(1) + " h" : (m / 1440).toFixed(1) + " d"; }
+function fsRender() {
+  var el = $("fs-box"), d = _fs.data; if (!el || !d || !d.book) return;
+  var f = function (v) { return v == null ? "—" : dcPct(100 * v); }, R = d.rules || {}, B = d.book, V = d.verdict || {}, E = d.edge;
+  var stale = d.lastTick && Date.now() - Date.parse(d.lastTick) > 30 * 60000;
+  var usd = function (v) { return v == null ? "—" : (v < 0 ? "−$" : "+$") + Math.abs(v).toFixed(0); };
+  var edgeTxt = E && E.n >= 10 && E.mean != null
+    ? "<b class='" + dcCls(E.mean) + "'>" + esc(f(E.mean)) + "</b> per position over " + E.n + " closed" + (E.lo != null ? " <span class='src'>(90% range " + esc(f(E.lo)) + " to " + esc(f(E.hi)) + ")</span>" : "")
+    : "<span class='src'>not yet — it needs a week of prices after each entry to compare against" + (E && E.n ? " (" + E.n + " compared so far)" : "") + "</span>";
+  var s = "<div class='ec-h' id='fade'><b>Many small positions · a paper test</b><span class='src'>bot test #783 · started " + esc(ecWhen(d.start)) + " · paper only, no real money</span></div>";
+  s += "<p class='sub' style='margin:0 0 10px'>A different way to run a book: one AI model looks at " + esc(String(R.coins)) + " coins once an hour and may open up to " + esc(String(R.maxOpen)) + " small paper positions, long or short. It only picks entries. Every exit is arithmetic — a stop, a target, or a trailing stop — and one hard rule applies: no entry in the direction of a move that has already run. The question is whether its entries beat random entries on the same coins.</p>";
+  s += "<div class='dc-status'><span>Open <b>" + B.open + "</b> of " + esc(String(R.maxOpen)) + "</span><span>Closed <b>" + B.closed + "</b> (" + B.up + " up)</span><span>Average per closed position <b class='" + dcCls(B.mean) + "'>" + esc(f(B.mean)) + "</b></span><span>Paper result <b class='" + dcCls(B.usd) + "'>" + esc(usd(B.usd)) + "</b> at $" + esc(String(R.notional)) + " a position</span><span>Model cost <b>$" + esc(Number(d.calls && d.calls.usd || 0).toFixed(3)) + "</b></span>"
+    + (stale ? "<span class='down'>last update " + esc(fsAgo(Date.parse(d.lastTick))) + " ago</span>" : "<span>updated " + esc(dcClock(Date.parse(d.generatedAt))) + " SAST</span>") + "</div>";
+  s += "<p class='src' style='margin:0 0 10px'><b>Against random entries:</b> " + edgeTxt + ". <b>Verdict</b> at " + esc(String(V.stopAt)) + " closed positions or " + esc(ecWhen(V.due)) + ", whichever comes first (" + esc(String(V.closed)) + " closed so far). A pass needs the entries to beat random ones by at least " + esc((100 * (V.pass && V.pass.edge || 0)).toFixed(1)) + "% of position, clearly above zero, and the book to be in profit. The rule was written down before the first position.</p>";
+  if (d.open && d.open.length) {
+    s += "<div style='overflow-x:auto'><table class='data'><tr><th>Open position</th><th class='rt'>Entry</th><th class='rt'>Now</th><th class='rt'>Result so far</th><th class='rt'>Stop</th><th class='rt'>Target</th><th>Open for</th><th>The model’s reason</th></tr>";
+    d.open.forEach(function (p) {
+      s += "<tr><td>" + esc(p.asset) + " " + dcDir(p.dir) + "</td><td class='rt'>" + esc(ecPx(p.entry)) + "</td><td class='rt'>" + esc(ecPx(p.last)) + "</td><td class='rt " + dcCls(p.pnl) + "'><b>" + esc(f(p.pnl)) + "</b></td><td class='rt'>" + esc(ecPx(p.stop)) + (p.trailing ? " <span class='src'>trailing</span>" : "") + "</td><td class='rt'>" + esc(ecPx(p.target)) + "</td><td>" + esc(fsAgo(p.opened)) + "</td><td class='src'>" + esc(p.reason || "") + "</td></tr>";
+    });
+    s += "</table></div>";
+  } else s += "<p class='src'>No position is open right now.</p>";
+  if (d.recent && d.recent.length) {
+    var WHY = { stop: "stop hit", target: "target hit", trail: "trailing stop", time: "7 days up" };
+    s += "<details class='box' style='margin-top:14px'><summary class='box-h'>Closed positions · the last " + d.recent.length + ", newest first</summary><div style='overflow-x:auto;padding:0 10px'><table class='data'><tr><th>Position</th><th class='rt'>Entry</th><th class='rt'>Exit</th><th>Held</th><th>Ended because</th><th class='rt'>Result after fees</th></tr>";
+    d.recent.forEach(function (p) {
+      var mins = Math.round((p.closed - p.opened) / 60000), held = mins >= 120 ? (mins / 60).toFixed(1) + " h" : mins + " min";
+      s += "<tr><td>" + esc(p.asset) + " " + dcDir(p.dir) + "</td><td class='rt'>" + esc(ecPx(p.entry)) + "</td><td class='rt'>" + esc(ecPx(p.exit)) + "</td><td>" + esc(held) + " <span class='src'>to " + esc(ecWhen(new Date(p.closed).toISOString())) + "</span></td><td>" + esc(WHY[p.why] || p.why || "") + "</td><td class='rt " + dcCls(p.ret) + "'><b>" + esc(f(p.ret)) + "</b></td></tr>";
+    });
+    s += "</table></div></details>";
+  }
+  var sh = (d.shadow || []).filter(function (x) { return x.closed + x.open > 0; });
+  if (sh.length) s += "<p class='src' style='margin-top:8px'>Ideas the rules refused are still followed on paper as a control: " + sh.map(function (x) { return esc(x.why) + " — " + (x.closed + x.open) + " (" + x.closed + " closed, average " + esc(f(x.mean)) + ")"; }).join(" · ") + ".</p>";
+  el.innerHTML = s;
+}
 // ── [#597] PAPER TRADE (BTC / ETH) (#/direction) — direction_calls.json from the data repo: paper BTC/ETH direction calls every 30 minutes ──
 var _dc = { data: null, timer: null, at: 0, coin: "BTC", ch: {} };
 function dcLoad() {
   if (!_dc.timer) _dc.timer = setInterval(function () { var pg = document.querySelector('div.page[data-page="direction"]'); if (pg && pg.classList.contains("active")) dcFetch(); }, 300000);
+  fsFetch();
   if (_dc.data && Date.now() - _dc.at < 120000) { dcRender(); return; }
   dcFetch();
 }
