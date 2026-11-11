@@ -817,6 +817,143 @@
 .rs-h { font-size: 1.5em; margin: 4px 0; }
 .rs-dl { display: flex; gap: 8px; flex-wrap: wrap; }
 .rs-frame { width: 100%; max-width: 830px; border: 1px solid var(--line); background: #fff; min-height: 600px; display: block; }
+
+  /* [#801] PHONE LAYOUT (11 Nov 2026 audit, measured at 390 px): the standings table was 705 px wide in a 350 px box — only
+     Competitor and Venue showed, Account and Net return were off-screen with no hint — and 356 of 758 text elements on the
+     home page were under 12 px. Phones now get rank, competitor, account and net return on one screen (the button under the
+     table shows every column), no HTML type under 12 px, and the scoreboard before the paragraphs that explain it (see the
+     [#801] script). Desktop is untouched: everything here sits inside the media query. */
+  @media (max-width: 600px) {
+    table.std.compact#standings th:nth-child(3), table.std.compact#standings td:nth-child(3),
+    table.std.compact#standings th:nth-child(6), table.std.compact#standings td:nth-child(6),
+    table.std.compact#standings th:nth-child(9), table.std.compact#standings td:nth-child(9) { display: none; }
+    table.std#standings tr.std-group td { display: table-cell; }
+    table.std.compact#standings td:nth-child(2) { min-width: 0; }
+    table.std.compact#standings .who-style, table.std.compact#standings .std-sub { display: none; }
+    table.std.compact#standings .who-model { display: block; }
+    table.std.compact#standings th { white-space: normal; letter-spacing: .03em; vertical-align: bottom; }
+    table.std#standings th, table.std#standings td { padding-left: 4px; padding-right: 4px; }
+    #std-more[aria-expanded="true"]::after { content: " · swipe the table sideways"; font-weight: 400; }
+    .mast h1 { font-size: 27px; }
+    .hero-sub { display: none; }
+    nav.pagesnav a { padding-top: 13px; padding-bottom: 13px; }
+    /* the type floor: generated from every rule above that sets a size under 12 px (font-size or the font shorthand) */
+    .ec-card > .ec-who small,
+    .ec-tag,
+    .dc-card .why,
+    .dc-liq,
+    .pt-strip .t,
+    table.dc-sb .dc-liq,
+    .dc-v .c,
+    .dc-v .n,
+    .dc-verdict .cap,
+    .dc-status,
+    .dc-row .k,
+    .dc-row .d,
+    .dc-pill,
+    .dc-rk .l,
+    .dc-ch .cs,
+    .dc-ch .ph,
+    .dc-tip,
+    .dc-addr,
+    .dc-conf,
+    .fleetpnl-note,
+    .kicker,
+    .nav-score,
+    table.std tr.std-group td,
+    .mv,
+    .hw h3,
+    .pm-delta,
+    .st-n,
+    .st-c,
+    .cs-vs,
+    .cs-chip,
+    .tw-h,
+    .tw-dh,
+    .tw-meta,
+    .tw-est,
+    .tw-res,
+    .tw-mac,
+    .tw-mac .cc,
+    .calplan .cp-head div,
+    .cal-add,
+    .calplan .cp-d,
+    .calplan .cp-ev,
+    details.box > summary.box-h::after,
+    table.std th,
+    table.std .std-sub,
+    .who-style,
+    .tt .t-date,
+    .dirpill,
+    .wlchip,
+    .actor-tag,
+    .erpill,
+    .smpill,
+    table.data th,
+    .ch-lab,
+    .ch-dir,
+    .ch-meta,
+    .ch-prog,
+    .ch-foot,
+    .cal-act,
+    .imp,
+    .src,
+    .vol-chip,
+    .vol-more,
+    .fng-lab,
+    .bxr-d,
+    .bxr-scale,
+    .wire-h,
+    .morelink,
+    .tlink,
+    .arch-row td:first-child::before,
+    .ctog button,
+    .sponsor-box .slot,
+    .sponsor-box .slot small,
+    .sponsor-box .s-stats,
+    .pill,
+    .copybtn,
+    .copynote,
+    .tr-levels .k,
+    .sharebox h3,
+    .sharebox button, .sharebox a.xshare,
+    .pcard .p-model,
+    .posbar .pb-lab,
+    .tile .t-k,
+    .tile .t-s,
+    .chips button,
+    table.std th .sa,
+    table.ml-table th .sa,
+    .ml-ci,
+    .ml-fl,
+    .ml-leg,
+    .ml-cs,
+    .ml-bn span,
+    .ml-bd,
+    .ml-bv span,
+    .ml-stk i,
+    .ml-bv.two,
+    .ml-bv.two span,
+    .ml-svg text,
+    .ml-svg text.goodl,
+    .ml-ss,
+    .ml-mn,
+    .ml-tile .t-k,
+    .ml-tile .t-s,
+    .ml-heat .ml-n,
+    .ml-ans-c .k,
+    .ml-ans-c .t,
+    .ml-snm span,
+    .ml-sx,
+    .ml-st,
+    .ml-svg text.q-lab,
+    .ml-svg text.q-sub,
+    .ml-svg text.q-ax,
+    .ml-svg text.q-bl,
+    details.ml-sec > summary::after,
+    #ml-tip { font-size: 12px; }
+    [style*="font-size:9px"], [style*="font-size: 9px"], [style*="font-size:9.5px"], [style*="font-size: 9.5px"], [style*="font-size:10px"], [style*="font-size: 10px"], [style*="font-size:10.5px"], [style*="font-size: 10.5px"], [style*="font-size:11px"], [style*="font-size: 11px"], [style*="font-size:11.5px"], [style*="font-size: 11.5px"] { font-size: 12px !important; }
+  }
 </style>
 </head>
 <body>
@@ -837,7 +974,7 @@
 
 <header class="mast"><div class="wrap">
   <h1>The Bot Exchange</h1>
-  <span class="tag" id="mast-tag">One human. Six machines on real money, three on paper — every trade tracked live, in public.</span>
+  <span class="tag" id="mast-tag">One human + AI team. Six machines on real money, six on paper — every trade tracked live, in public.</span>
   <span class="datestamp" id="datestamp"></span>
 </div></header>
 <nav class="sections pagesnav"><div class="wrap">
@@ -870,7 +1007,7 @@
   <div class="hero-row">
   <div class="hero">
     <div class="kicker" id="hero-kicker">Season 6 · 30 days</div>
-    <h1 class="hero-h" id="hero-h">6 AIs on real money. 3 on paper. 1 human.</h1>
+    <h1 class="hero-h" id="hero-h">6 AIs on real money. 6 on paper. 1 human + AI team.</h1>
     <p class="hero-sub" id="hero-sub">Six AI desks trade real money from $500 each, three more trade on paper under the same rules, and every position, stop and post-mortem goes public the moment it exists.</p>
     <div class="hero-cta"><a class="btn-primary" href="#floor">Watch the live floor</a><a class="btn-ghost" href="#/archive">See every trade →</a></div>
     <div class="src hero-ind" id="hero-ind">Standings and positions load with the feed.</div>
@@ -1335,6 +1472,8 @@
 <div class="page" data-page="rules">
   <!-- [#503] Season 5 pre-registration, published before the first Season-5 order (specs/season5_preregistration.md, approved 25 Sep 2026). Never edited after the start — changes become dated amendments below it. -->
   <div class="kicker">Published before the first trade</div>
+  <!-- [#801] a note ABOVE the pre-registered text, which stays exactly as published -->
+  <p class="season-banner"><b>Season 6 (6 Nov – 6 Dec 2026) runs on these rules.</b> They were written for Season 5 and are kept as published. Everything that has changed since — the human seat is now Human + AI on Coinbase, the paper desks, the prompts — is in the dated amendments at the bottom of this page.</p>
   <h2 class="sec">Season 5 — the rules, fixed in advance</h2>
   <p class="sub">Six autonomous AI trading desks and one human, trading real money on disclosed venues and rules, published trade by trade. Everything on this page was decided before the season started, and it will not be edited once it does — any change becomes a dated amendment at the bottom.</p>
   <div class="boxcol">
@@ -2101,7 +2240,7 @@ function renderFleetPnl(d) {
   $("fp-season").textContent = signedMoney(aiVal);
   $("fp-season").className = "t-v " + pnlCls(aiVal);
   $("fp-season").title = aiMove == null ? "Closed trades this season" : "Accounts at market (open positions included), less each desk's Season start and its model bill — the ranking's own measure";
-  $("fp-season-s").textContent = "closed trades " + signedMoney(aiPnl);
+  $("fp-season-s").textContent = aiMove == null ? "closed trades only" : "open trades included · closed only " + signedMoney(aiPnl);   // [#801] two numbers, each named
   if (man.length) {
     var manPnl = sumPnl(man), manMove = sumMove(man), manVal = manMove == null ? manPnl : manMove;
     // [15 Oct, operator] money the human ADDED mid-season is a loan to the account, owed back — never return. Read off the
@@ -2114,7 +2253,7 @@ function renderFleetPnl(d) {
     $("fp-human").textContent = signedMoney(manVal) + star;
     $("fp-human").className = "t-v " + pnlCls(manVal);
     $("fp-human").title = manMove == null ? "Closed trades this season" : "The account at market (open positions included), less its Season start and any money added — the ranking's own measure";
-    $("fp-human-s").textContent = "closed trades " + signedMoney(manPnl);
+    $("fp-human-s").textContent = manMove == null ? "closed trades only" : "open trades included · closed only " + signedMoney(manPnl);   // [#801]
     var debt = $("fp-debt");
     if (debt) debt.textContent = added > 0.005
       ? "* " + money(added) + " added this season (" + tr.filter(function (r) { return isFinite(r.net) && r.net > 0; }).map(function (r) { return fd(r.ts); }).join(", ") + ") — a loan the human will pay back, not counted as return"
@@ -2481,6 +2620,18 @@ function renderTransferLine(d) {
     wide = !wide; try { localStorage.setItem("stdWide", wide ? "1" : "0"); } catch (x) {} apply();
   });
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", apply); else apply();
+})();
+(function () {   // [#801] phones: the scoreboard comes straight after its headline; the paragraphs that explain it follow the table
+  function move() {
+    try {
+      if (!window.matchMedia || !window.matchMedia("(max-width: 600px)").matches) return;
+      var more = document.getElementById("std-more"); if (!more || more.getAttribute("data-moved")) return;
+      more.setAttribute("data-moved", "1");
+      var after = more;
+      ["race-sub", "s5-banner", "hook", "book-line", "bench-line"].forEach(function (id) { var el = document.getElementById(id); if (el) { after.parentNode.insertBefore(el, after.nextSibling); after = el; } });
+    } catch (e) {}
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", move); else move();
 })();
 var CUP_URL = "https://www.coinbase.com/trading-competition/0fba5b34-1297-4eb1-b603-dba830ad6fc2";   // [#746] the Coinbase Champions Cup leaderboard (operator 4 Nov)
 // [#745] the AI + Human seat: one real Coinbase account the human and Beam (the model) both trade, in the Coinbase
@@ -6133,7 +6284,7 @@ function dcRender() {
     // [#616] the headline call is SCORED: following these boxes, round by round, is a row of its own in the scoreboard
     var pr = d.board.filter(function (x) { return x.panel; })[0], v = pr && pr.tiers && pr.tiers[1] ? 100 * pr.tiers[1].sumR : null;
     var rec = pr && pr.positions ? "<b>This headline's own record:</b> " + (pr.hit30 && pr.hit30.n ? "right <b>" + Math.round(100 * pr.hit30.right / pr.hit30.n) + "%</b> of " + pr.hit30.n + " rounds " + esc(String(d.everyMin)) + " min later · " : "") +
-      "following it at 1x: <b class='" + dcCls(v) + "'>" + esc(dcPct(v, 2)) + "</b> since " + esc(ecWhen(d.since)) + " (" + pr.closed + " call" + (pr.closed === 1 ? "" : "s") + " closed, " + pr.wins + " in profit)" : "";
+      "following it at 1x: <b class='" + dcCls(v) + "'>" + esc(dcPct(v, 2)) + "</b> before fees" + (isFinite(pr.net1xPct) ? ", <b class='" + dcCls(pr.net1xPct) + "'>" + esc(dcPct(pr.net1xPct, 2)) + "</b> after a normal trading fee on each call" : "") + ", since " + esc(ecWhen(d.since)) + " (" + pr.closed + " call" + (pr.closed === 1 ? "" : "s") + " closed, " + pr.wins + " in profit)" : "";
     return "<div class='cap'>What the AI panel would do right now · not advice" + (rec ? "<br>" + rec : " · their record is below") + "</div>";
   })();
 
