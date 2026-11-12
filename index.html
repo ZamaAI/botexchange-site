@@ -6092,14 +6092,20 @@ function rsRender(slug) {
     return;
   }
   N.innerHTML = "";
-  if (!notes.length) { L.innerHTML = "<div class='box'><div class='box-b'><p><b>The first research note is on its way.</b> Each note is a dated, sourced read on one token with a single decision — and it is scored here at 7 and 30 days, right or wrong.</p></div></div>"; return; }
+  if (!notes.length) { L.innerHTML = "<div class='box'><div class='box-b'><p><b>The first research note is on its way.</b> Each note is a dated, sourced read on one token with a single decision — and it is scored here at 7 and 30 days, right or wrong.</p></div></div>" + rsWithdrawn(); return; }
   L.innerHTML = "<div class='rs-grid'>" + notes.map(function (n) {
     var v = rsVer(n), vn = rsVersionsOf(all, n.coin).length;
     return "<a class='rs-card' href='#/research/" + esc(n.slug) + "'><div class='rs-top'><span class='rs-coin'>" + esc(n.coin) + (v > 1 ? " <span class='rs-v'>v" + v + "</span>" : "") + "</span><span class='src'>" + esc(rsDate(n.publishedAt)) + "</span></div>" +
       (vn > 1 ? "<div class='src rs-rep'>replaces " + rsVersionsOf(all, n.coin).filter(function (x) { return x !== n; }).map(function (x) { return "v" + rsVer(x); }).join(", ") + " · earlier versions on the note page</div>" : "") +
       "<div class='rs-name'>" + esc(n.name) + "</div><div>" + rsVerdict(n.verdict) + " · <b>" + esc(n.decision) + "</b> · <span class='src'>" + (n.kind === "stock" ? "stock" : esc(n.bucket)) + "</span></div>" +
       "<p class='rs-th'>" + esc(n.thesis) + "</p><div class='rs-sc'><span>7d " + rsD7(n) + "</span><span>30d " + rsD30(n) + "</span></div></a>";
-  }).join("") + "</div>";
+  }).join("") + "</div>" + rsWithdrawn();
+}
+// [#841] a withdrawn note stays on the record: what it was, when it was up, and why it came down (bot #836 writes index.withdrawn)
+function rsWithdrawn() {
+  var w = (_rs.index && _rs.index.withdrawn) || []; if (!w.length) return "";
+  return "<div class='src' style='margin-top:22px'><b>Withdrawn (" + w.length + ")</b> — a note taken down is kept on this record with the reason. A note that already carries a score is never withdrawn.<ul>" +
+    w.map(function (x) { return "<li><b>" + esc(x.id) + "</b> · " + esc(x.name) + " · published " + esc(rsDate(x.publishedAt)) + ", withdrawn " + esc(rsDate(x.withdrawnAt)) + ". " + esc(x.reason) + "</li>"; }).join("") + "</ul></div>";
 }
 
 // ── [#787] MANY SMALL POSITIONS — a paper book test (bot #783), shown under Paper Trade. fade_seat.json from the data repo. ──
