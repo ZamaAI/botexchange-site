@@ -989,7 +989,7 @@
   <a href="#/models" data-page="models">Model Lab</a>
   <a href="#/calls" data-page="calls" title="Trading calls — Beam on Coinbase (live) and the Extended brief (scored)">Calls</a>
   <a href="#/direction" data-page="direction" title="Paper Trade — BTC / ETH direction calls">Paper Trade</a>
-  <a href="#/research" data-page="research" title="Research reports — dated token notes, scored in public">Research</a>
+  <a href="#/research" data-page="research" title="Research reports — dated token and stock notes, scored in public">Research</a>
   <a href="#/archive" data-page="archive">Archive</a>
   <span class="nav-score" id="nav-score"></span>
 </div></nav>
@@ -1394,9 +1394,9 @@
   <!-- [#709] RESEARCH REPORTS: dated token research notes the operator publishes from the bot (/dive publish <COIN> confirm).
        Data: research/index.json + one PDF / HTML / cover / JSON per note in the data repo. Every note is scored in public at
        7 days (direction) and 30 days (the trade). `access` is "free" on every note today — room for a paid tier later. -->
-  <div class="kicker">Research reports · token notes · scored in public</div>
+  <div class="kicker">Research reports · token and stock notes · scored in public</div>
   <h2 class="sec" id="research">Research reports</h2>
-  <p class="sub">Dated research notes on single tokens: what it is, real usage, supply, valuation against its peers, positioning, and one decision — trade now, wait, or no trade. Every number is read by the bot from a named source; every note is scored here 7 and 30 days after it is published, right or wrong.</p>
+  <p class="sub">Dated research notes on single tokens and listed companies: what it is, real usage or results, supply, valuation against its peers, positioning, and one decision — trade now, wait, or no trade. Every number is read by the bot from a named source; every note is scored here 7 and 30 days after it is published, right or wrong.</p>
   <div id="rs-summary" class="src"></div>
   <div id="rs-list"></div>
   <div id="rs-note"></div>
@@ -1529,6 +1529,8 @@
         <li><b>9 Nov — Beam's cup risk #778.</b> Beam now sizes on its own $250 share of the Human + AI account, not on the whole account, so the human's trades and deposits no longer change its size. A losing trade costs about $12.50 (it was about $25); a winning trade still pays its full target. Its daily stop and open-risk limit are the same percentages of the $250. Beside it, the screen's own top three setups are now scored on paper at every decision, with no model, so the end-of-week call can show whether Beam adds anything over the rulebook alone.</li>
         <li><b>10 Nov — the screen trades the cup lane #789.</b> On the Human + AI seat's Coinbase account, the AI half's live trades are now the rules-only screen's own top picks, with no model choosing. Beam 1.0 keeps answering every decision, but on paper. Why: on the Extended brief the screen's top picks have made +0.25R a call over 145 scored calls since 9 October, while every model with enough calls to judge is below zero; Beam's own live cup trades stood at 1 win in 9 and −$128. Two cautions: almost all of the screen's profit came from shorts in a falling month, and on Coinbase itself its paper record is only 10 closed trades, slightly negative. Size, stops and the daily limits are unchanged; the lane's overall loss limit moves from $150 to $200, still counting the losses so far. Beam's two open trades run to their stop or target. Reviewed on 17 Nov.</li>
         <li><b>11 Nov — Sid Seed's model #810.</b> OpenRouter stopped serving Seed 1.6 Flash on 11 Nov at about 15:15 SAST, so Sid's paper desk could no longer answer and lost its 18:00 report. From 19:06 SAST the same day the desk runs Seed 2.0 Mini. Before seating it we ran it through 117 past desk prompts from the two frozen benchmark sets: it answered every one, 96–97% of its picks passed our risk rules (Seed 1.6 Flash: 25–29%), and its trade ideas averaged about −0.1R, which shows no edge either way. Sid's standing up to that point was earned by Seed 1.6 Flash; the two models' trades are kept apart in the record. On Paper Trade, Seed 2.0 Mini starts as a new seat with its own record and the Seed 1.6 Flash row stays on the board as retired.</li>
+        <li><b>12 Nov — how a research note decides its verdict #831.</b> Until now three independent reads of a note's research each gave one conviction label, and the note kept its direction when two of them said medium or high. Measured on six notes, the same research drew a different label from one read to the next, and two runs of one note agreed on only two of the six. From 12 Nov nine reads answer fixed questions instead — do valuation, usage and supply (for a stock: valuation, results and analysts' estimate revisions) each point to a lower or a higher price eight weeks out — and the bot counts the answers. A note makes a call only when two of the three items support it, at least seven of the nine reads agreeing on each, and none points the other way; otherwise it is NEUTRAL and says which way it tilts and why. The price trend is asked but not counted. Re-measured on the same six notes, five gave the same verdict twice. Three other AI models reviewed the method before it went live, and the rule was tightened on their points. The thresholds are provisional: the next 20 notes are read twice and scored at 7 and 30 days before any of them is changed. Notes already published keep the verdict they were published with.</li>
+        <li><b>12 Nov — stock research notes #833.</b> Research reports now cover listed companies as well as tokens: the same four pages, with numbers read from Yahoo, the options exchange and the company's own SEC filings, the same verdict rule, and the same public scores at 7 and 30 days. A stock note's score is shown beside the S&amp;P 500's move over the same days, as a token note's is shown beside Bitcoin's. A call is still marked right or wrong on the share's own direction, not on beating the index. Before a stock note is published, two AI models from other companies than the one that wrote it read the draft against the data, and their findings go back for one correction.</li>
       </ul>
     </div></div>
   </div>
@@ -6044,7 +6046,7 @@ function rsVerdict(v) { return v === "BULLISH" ? "<b class='up'>BULLISH</b>" : v
 function rsD7(n) {
   var s = n.score && n.score.d7; if (!s) return "<span class='src'>due " + esc(rsDate(n.publishedAt + 7 * 864e5)) + "</span>";
   var w = s.right === true ? "<b class='up'>RIGHT</b>" : s.right === false ? "<b class='down'>WRONG</b>" : "—";
-  return w + " <span class='src'>" + (s.changePct > 0 ? "+" : "") + esc(s.changePct) + "%</span>";
+  return w + " <span class='src'>" + (s.changePct > 0 ? "+" : "") + esc(s.changePct) + "%" + (s.benchPct != null ? " · " + esc(n.benchmark || "benchmark") + " " + (s.benchPct > 0 ? "+" : "") + esc(s.benchPct) + "%" : "") + "</span>";
 }
 function rsD30(n) {
   var s = n.score && n.score.d30; if (!s) return "<span class='src'>due " + esc(rsDate(n.publishedAt + 30 * 864e5)) + "</span>";
@@ -6065,7 +6067,7 @@ function rsLatestPerCoin(notes) {
 function rsRender(slug) {
   var all = (_rs.index && _rs.index.notes) || [], notes = rsLatestPerCoin(all), L = $("rs-list"), N = $("rs-note"), S = $("rs-summary");
   var d7 = notes.filter(function (n) { return n.score && n.score.d7 && n.score.d7.right != null; }), right = d7.filter(function (n) { return n.score.d7.right; }).length;
-  S.innerHTML = notes.length ? notes.length + " coin" + (notes.length > 1 ? "s" : "") + " covered" + (all.length > notes.length ? " (" + all.length + " notes incl. earlier versions)" : "") + " · 7-day direction " + (d7.length ? right + " of " + d7.length + " right" : "not scored yet") + " (latest version per coin) · scored on hourly closes, so a wick between two closes is not counted." : "";
+  S.innerHTML = notes.length ? notes.length + " name" + (notes.length > 1 ? "s" : "") + " covered" + (all.length > notes.length ? " (" + all.length + " notes incl. earlier versions)" : "") + " · 7-day direction " + (d7.length ? right + " of " + d7.length + " right" : "not scored yet") + " (latest version per coin) · scored on hourly closes, so a wick between two closes is not counted." : "";
   var one = slug ? all.filter(function (n) { return n.slug === slug; })[0] : null;
   if (slug && !one) { L.innerHTML = ""; N.innerHTML = "<p class='src'>No note " + esc(slug) + " — <a href='#/research'>all research reports</a>.</p>"; return; }
   if (one) {
@@ -6074,7 +6076,7 @@ function rsRender(slug) {
       (newest !== one ? "<div class='rs-super'>Superseded by <a href='#/research/" + esc(newest.slug) + "'>v" + rsVer(newest) + " (" + esc(rsDate(newest.publishedAt)) + ") →</a> This version stays on the record and keeps its own score.</div>" : "") +
       (vers.length > 1 ? "<p class='src rs-vers'>Versions: " + vers.map(function (v) { return v === one ? "<b>v" + rsVer(v) + "</b>" : "<a href='#/research/" + esc(v.slug) + "'>v" + rsVer(v) + "</a>"; }).join(" · ") + "</p>" : "");
     N.innerHTML = "<div class='rs-head'><div><div class='kicker'>" + esc(one.id) + " · published " + esc(rsDate(one.publishedAt)) + "</div><h3 class='rs-h'>" + esc(one.name) + " <span class='src'>" + esc(one.coin) + "</span></h3>" +
-      "<p>" + rsVerdict(one.verdict) + " · " + esc(one.decision) + " · risk class " + esc(one.bucket) + "</p>" +
+      "<p>" + rsVerdict(one.verdict) + " · " + esc(one.decision) + (one.kind === "stock" ? " · stock" : " · risk class " + esc(one.bucket)) + "</p>" +
       "<p class='src'>7 days: " + rsD7(one) + " · 30 days: " + rsD30(one) + "</p>" +
       (one.limitations && one.limitations.length ? "<details class='src'><summary>Limitations (" + one.limitations.length + ")</summary><ul>" + one.limitations.map(function (m) { return "<li>" + esc(m) + "</li>"; }).join("") + "</ul></details>" : "") +
       "</div><div class='rs-dl'><a class='btn-primary' href='" + RS_BASE + esc(one.files.pdf) + "' target='_blank' rel='noopener'>Download PDF</a> <a class='btn-ghost' href='" + RS_BASE + esc(one.files.cover) + "' target='_blank' rel='noopener'>Cover card</a></div></div>" +
@@ -6093,7 +6095,7 @@ function rsRender(slug) {
     var v = rsVer(n), vn = rsVersionsOf(all, n.coin).length;
     return "<a class='rs-card' href='#/research/" + esc(n.slug) + "'><div class='rs-top'><span class='rs-coin'>" + esc(n.coin) + (v > 1 ? " <span class='rs-v'>v" + v + "</span>" : "") + "</span><span class='src'>" + esc(rsDate(n.publishedAt)) + "</span></div>" +
       (vn > 1 ? "<div class='src rs-rep'>replaces " + rsVersionsOf(all, n.coin).filter(function (x) { return x !== n; }).map(function (x) { return "v" + rsVer(x); }).join(", ") + " · earlier versions on the note page</div>" : "") +
-      "<div class='rs-name'>" + esc(n.name) + "</div><div>" + rsVerdict(n.verdict) + " · <b>" + esc(n.decision) + "</b> · <span class='src'>" + esc(n.bucket) + "</span></div>" +
+      "<div class='rs-name'>" + esc(n.name) + "</div><div>" + rsVerdict(n.verdict) + " · <b>" + esc(n.decision) + "</b> · <span class='src'>" + (n.kind === "stock" ? "stock" : esc(n.bucket)) + "</span></div>" +
       "<p class='rs-th'>" + esc(n.thesis) + "</p><div class='rs-sc'><span>7d " + rsD7(n) + "</span><span>30d " + rsD30(n) + "</span></div></a>";
   }).join("") + "</div>";
 }
@@ -7253,7 +7255,7 @@ function mlMethod(d) {
     calendar: { t: "Calendar — The Bot Exchange",
                 d: "The week ahead in market-moving events: FOMC, CPI, jobs data and megacap earnings — with each result, how the stock took it, and one-tap add to your own calendar." },
     research: { t: "Research reports — The Bot Exchange",
-                d: "Dated research notes on single tokens — usage, supply, valuation against peers, positioning and one decision — every number sourced, every note scored in public at 7 and 30 days." },
+                d: "Dated research notes on single tokens and stocks — usage or results, supply, valuation against peers, positioning and one decision — every number sourced, every note scored in public at 7 and 30 days." },
     direction: { t: "Paper Trade (BTC / ETH) — The Bot Exchange",
                 d: "BTC and ETH on Hyperliquid, refreshed every 15 minutes: where the biggest accounts are long or short, funding, open interest, and which way a panel of AI models leans — each scored on a public paper record." },
     archive:  { t: "Archive — The Bot Exchange",
