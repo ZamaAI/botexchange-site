@@ -987,7 +987,7 @@
   <a href="#/calendar" data-page="calendar">Calendar</a>
   <a href="#/bots" data-page="bots">The Bots</a>
   <a href="#/models" data-page="models">Model Lab</a>
-  <a href="#/calls" data-page="calls" title="Trading calls — Beam on Coinbase (live) and the Extended brief (scored)">Calls</a>
+  <a href="#/calls" data-page="calls" title="Trading calls — Beam on Coinbase (live), Particle on OpenSea (live) and the Extended brief (scored)">Calls</a>
   <a href="#/direction" data-page="direction" title="Paper Trade — BTC / ETH direction calls">Paper Trade</a>
   <a href="#/research" data-page="research" title="Research reports — dated token and stock notes, scored in public">Research</a>
   <a href="#/archive" data-page="archive">Archive</a>
@@ -1657,10 +1657,17 @@
   <!-- [#565] EXTENDED CALLS: the bot's twice-daily Extended brief in public. Data: feed.extendedCalls (built from the bot's own
        pick log; the page never triggers a model call). A rules-only screen and five models (#740: two guests from 4 Nov; #748 Seed 1.6 Flash) each make up to three calls on
        Extended's liquid perps; every call is checked 12 hours later against real 15-minute bars. Candidates, not advice. -->
-  <div class="kicker">Trading calls · Coinbase cup (live) · Extended brief (scored)</div>
+  <div class="kicker">Trading calls · Coinbase cup (live) · OpenSea spot (live) · Extended brief (scored)</div>
   <h2 class="sec" id="cb-calls-h">Beam trades the AI half of a real Coinbase account. Every call and every trade is here.</h2>
   <p class="sub" style="max-width:900px">Eight times a day (00:20, 03:20 … 21:20 SAST) the same rules-only screen reads Coinbase's most liquid crypto perps and lists every setup it finds. <b>Since 16 Nov Beam 1.0 picks the trades again</b>, from the shortlist or its own setups; from 10 to 16 Nov the screen's own top picks were traded directly with no model choosing, and they are still booked on paper beside Beam at every decision. A pick is traded at once: its own isolated position, sized to risk 5% of the account at the stop, with the stop and target resting on the exchange. Beam's limits run on its own results only, never on the human's. <a href="https://www.coinbase.com/trading-competition/0fba5b34-1297-4eb1-b603-dba830ad6fc2" target="_blank" rel="noopener">The Champions Cup leaderboard on Coinbase →</a></p>
   <div id="cb-calls"><span class="src">Beam's calls load with the feed.</span></div>
+  <!-- [#910] OPENSEA SPOT: one model trades a small real-money spot account on OpenSea; four others answer the same prompt on
+       paper. Data: feed.openseaSpot (the bot reads the lane's own book read-only). No wallet address and no transaction hash
+       is in the feed. -->
+  <div class="kicker" style="margin-top:34px">OpenSea spot · one model, real money · four more on paper · since 16 Nov</div>
+  <h2 class="sec" id="os-calls-h">Particle trades a small spot account on OpenSea. Four other models answer the same question on paper.</h2>
+  <p class="sub" style="max-width:900px">A spot account can only buy and later sell: no shorting, no leverage. So this is a test of whether a model can pick <i>longs</i> — over the 45 days before it began, the long trades of every one of our desks lost on average. Every 30 minutes in US market hours and every two hours otherwise, each model is shown the same table of seven tokenized stocks and eight crypto tokens (price, recent change, place in its range) and answers buy, sell, hold or nothing, with its own stop, target and time limit. <b>Particle-1's answers are traded with real money</b>, and its confidence sets the size. The bot sells at the stop at any time, and at the target, the time limit or the model's word once a position is an hour old. Qwen 3.7 Max, Beam 1.0, Mercury 3 and Seed 2.0 Mini answer the same prompt at the same moment on paper and pay the same costs: a buy and its sell cost about 1% of the position. Not advice.</p>
+  <div id="os-calls"><span class="src">The OpenSea lane loads with the feed.</span></div>
   <div class="kicker" style="margin-top:34px">Extended brief · twice a day · every call scored at 12 h</div>
   <h2 class="sec" id="calls">A rulebook and five AI models call Extended perps. Every call is scored.</h2>
   <p class="sub" style="max-width:900px">Twice a day (06:12 and 18:12 SAST) a rules-only screen reads Extended's most liquid perps — crypto, plus commodities, indices, FX and stocks — and proposes up to three trades from price, range and funding alone. Five AI models (Gemini and DeepSeek since 8 Oct; Beam 1.0 and Mercury 3 from 4 Nov; Seed 1.6 Flash from 4 Nov evening) then read the same markets <i>and the news</i>, and either take the screen's setups or make calls of their own, with their own stop and target. Twelve hours later each call is checked on real 15-minute bars: target first, stop first, or still open, after taker fees. Nothing is removed afterwards.</p>
@@ -4969,8 +4976,58 @@ function renderBeamCalls(d) {
   }
   dh.innerHTML = h;
 }
+// [#910] The OpenSea spot lane (feed.openseaSpot): one model's live spot trades, and the other models' paper answers to the same prompt.
+function renderOpenSeaSpot(d) {
+  var host = $("os-calls"); if (!host) return;
+  var o = d.openseaSpot;
+  if (!o) { host.innerHTML = "<span class='src'>The OpenSea lane is not in this feed yet.</span>"; return; }
+  var t2 = function (iso) { return iso ? new Date(iso).toLocaleString("en-GB", { timeZone: "Africa/Johannesburg", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"; };
+  var px = function (v) { return v == null ? "—" : (Math.abs(v) >= 100 ? v.toFixed(2) : Math.abs(v) >= 1 ? v.toFixed(4) : v.toPrecision(4)); };
+  var signed = function (v) { return v == null ? "—" : (v >= 0 ? "+" : "−") + money(Math.abs(v), 2); };
+  var L = o.live || {}, name = esc((o.seat && o.seat.label) || "The model"), isLive = o.mode === "live", R = o.rules;
+  var h = "<p style='max-width:900px'><b>" + name + " on OpenSea</b> " + (isLive ? "<span class='pill live'>LIVE</span>" : "<span class='pill paper'>" + esc(String(o.mode || "paper").toUpperCase()) + "</span>") +
+    " " + (L.closed || 0) + " closed · " + (L.won || 0) + " won · result <span class='" + cls(L.pnl || 0) + "'>" + signed(L.pnl || 0) + "</span> · " + (L.open || []).length + " open · volume " + money(L.volumeUsd || 0, 0) +
+    " · model spend " + money(o.costUsd || 0, 2) + " for all the models" + (R ? " · a buy is " + money(R.minUsd, 0) + " at confidence " + R.minConf + ", up to " + money(R.maxUsd, 0) + " at 10" : "") + "</p>";
+  if ((L.open || []).length) {
+    h += "<div class='ml-wrap'><table class='data'><caption>Open now" + (L.pricesAt ? " · prices as of " + esc(t2(L.pricesAt)) : "") + "</caption><tr><th>Bought</th><th>Asset</th><th class='rt'>Size</th><th class='rt'>Entry</th><th class='rt'>Now</th><th class='rt'>Move</th><th class='rt'>Stop</th><th class='rt'>Target</th><th>Time limit</th><th>" + name + "'s reason</th></tr>";
+    L.open.forEach(function (p) {
+      h += "<tr><td class='num'>" + esc(t2(p.at)) + "</td><td><b>" + esc(p.asset) + "</b> <span class='src'>" + esc(p.kind || "") + "</span></td><td class='rt num'>" + money(p.usd || 0, 0) + "</td>" +
+        "<td class='rt num'>" + px(p.entry) + "</td><td class='rt num'>" + px(p.now) + "</td><td class='rt num " + (p.move == null ? "" : cls(p.move)) + "'>" + (p.move == null ? "—" : (p.move >= 0 ? "+" : "−") + Math.abs(p.move).toFixed(2) + "%") + "</td>" +
+        "<td class='rt num'>" + px(p.stop) + "</td><td class='rt num'>" + px(p.target) + "</td><td class='num'>" + esc(t2(p.until)) + "</td><td class='src'>" + esc(p.why || "") + "</td></tr>";
+    });
+    h += "</table></div>";
+  } else h += "<p class='src'>No position is open.</p>";
+  if ((L.trades || []).length) {
+    var EX = { stop: "its stop", target: "its target", time: "its time limit", model: "the model's word" };
+    h += "<div class='ml-wrap'><table class='data'><caption>Closed trades, newest first</caption><tr><th>Bought</th><th>Sold</th><th>Asset</th><th class='rt'>Paid</th><th class='rt'>Came back</th><th class='rt'>Result</th><th>Sold on</th><th>" + name + "'s reason for the buy</th></tr>";
+    L.trades.forEach(function (t) {
+      h += "<tr><td class='num'>" + esc(t2(t.at)) + "</td><td class='num'>" + esc(t2(t.closedAt)) + "</td><td><b>" + esc(t.asset) + "</b> <span class='src'>" + esc(t.kind || "") + "</span></td><td class='rt num'>" + money(t.usd || 0, 2) + "</td>" +
+        "<td class='rt num'>" + (t.got == null ? "—" : money(t.got, 2)) + "</td><td class='rt num " + (t.pnl == null ? "" : cls(t.pnl)) + "'>" + signed(t.pnl) + "</td><td>" + esc(EX[t.exit] || t.exit || "—") + "</td><td class='src'>" + esc(t.why || "") + "</td></tr>";
+    });
+    h += "</table></div>";
+  } else h += "<p class='src'>No trade has been closed yet.</p>";
+  if ((o.board || []).length) {
+    h += "<div class='ml-wrap'><table class='data'><caption>The same prompt, answered on paper (same costs)</caption><tr><th>Model</th><th class='rt'>Closed</th><th class='rt'>Won</th><th class='rt'>Result</th><th class='rt'>Open</th><th class='rt'>Answers</th><th class='rt'>Model spend</th></tr>";
+    o.board.forEach(function (b) {
+      h += "<tr><td><b>" + esc(b.label) + "</b>" + (b.live ? " <span class='src'>— its paper answers from before it went live</span>" : "") + "</td><td class='rt num'>" + b.closed + "</td><td class='rt num'>" + b.won + "</td>" +
+        "<td class='rt num " + cls(b.pnl || 0) + "'>" + signed(b.pnl || 0) + "</td><td class='rt num'>" + b.open + "</td><td class='rt num'>" + b.calls + (b.failed ? " <span class='src'>(" + b.failed + " unreadable)</span>" : "") + "</td><td class='rt num'>" + money(b.costUsd || 0, 2) + "</td></tr>";
+    });
+    h += "</table></div>";
+  }
+  if ((o.decisions || []).length) {
+    h += "<details class='ml-sec'><summary>" + name + " — its latest answers, newest first</summary><div class='ml-wrap'><table class='data'><tr><th>When</th><th>Its answer</th><th>Its read of the market</th></tr>";
+    o.decisions.forEach(function (x) {
+      var what = x.error ? "<span class='src'>no answer (" + esc(x.error) + ")</span>" : (x.acts && x.acts.length ? x.acts.map(function (a) { return "<b>" + esc(a.act) + " " + esc(a.asset) + "</b>" + (a.conf != null ? " <span class='src'>confidence " + a.conf + "</span>" : "") + (a.why ? " — " + esc(a.why) : ""); }).join("<br>") : "<span class='src'>nothing</span>");
+      h += "<tr><td class='num'>" + esc(t2(x.at)) + "</td><td>" + what + "</td><td class='src'>" + esc(x.view || "") + "</td></tr>";
+    });
+    h += "</table></div></details>";
+  }
+  h += "<p class='src'>The lane's last pass: " + esc(t2(o.lastPass)) + " SAST. An answer is what the model said; a buy the bot's rules refused (not enough cash, a position already open) is not in the trades.</p>";
+  host.innerHTML = h;
+}
 function renderCalls(d) {
   try { renderBeamCalls(d); } catch (e) { console.warn("beam calls", e); }
+  try { renderOpenSeaSpot(d); } catch (e) { console.warn("opensea spot", e); }
   var bEl = $("ec-board"), lEl = $("ec-latest"), hEl = $("ec-history"); if (!bEl || !lEl || !hEl) return;
   var cta = $("ec-cta"), url = (window.VENUE_LINKS || {}).EXTENDED;
   if (cta && url) { cta.href = url; cta.classList.remove("hidden"); var cn = $("ec-cta-note"); if (cn) cn.textContent = /[?&](ref|referral|invite|code)=|\/(join|ref|invite|r)\//i.test(url) ? "Our referral link — it opens the venue and places nothing." : "Opens the venue; it places nothing."; }
