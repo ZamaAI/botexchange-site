@@ -1185,10 +1185,10 @@
   <div id="lighter-whales"></div>
 
   <div class="kicker" style="margin-top:26px">Lens 3 — wallet flow</div>
-  <h2 class="sec">What the tracked wallets are doing</h2>
-  <p class="sub"><b>Switched off on 18 Nov.</b> This panel showed a third-party feed (Cielo) of wallets the desk followed. For at least a week every trade in it came from a single wallet, and that wallet is down $34.9M over its lifetime on Hyperliquid, so the feed was turned off. The desks now follow eleven Hyperliquid wallets directly, chosen by a written rule (<a href="#/rules">Rules</a>, 18 Nov). What those wallets newly opened is a line in each report; it is not published here yet.</p>
+  <h2 class="sec">What the followed wallets are doing</h2>
+  <p class="sub">A short list of Hyperliquid wallets the desks follow, chosen by a written rule (<a href="#/rules">Rules</a>, 18 Nov): up over their lifetime and over the last 30 days, a profit in both the last month Bitcoin rose and the last month it fell, and trading now. <b>New risk</b> is what they opened or added to in the last 48 hours, longs minus shorts; closing a position is left out. Coins are listed apart from Hyperliquid&rsquo;s stock, index and commodity markets. These are totals: no wallet and no single trade is shown. This is a test, not advice. Whether following these wallets helps is read on 16 Dec against a test fixed in advance. The third-party feed (Cielo) this panel showed before was switched off on 18 Nov: for at least a week every trade in it came from a single wallet that is down $34.9M over its lifetime.</p>
   <div id="whale-flow"></div>
-  <div class="lm-wrap"><table class="data" id="whale-rows"><tr><td><span class="src">No longer published: the feed behind this panel was switched off on 18 Nov (see the note above).</span></td></tr></table></div>
+  <div class="lm-wrap"><table class="data" id="whale-rows"><tr><td><span class="src">Published with each report cycle (00:00 / 06:00 / 12:00 / 18:00 SAST). No reading has been published yet.</span></td></tr></table></div>
 </div>
 <div class="page" data-page="charts">
 
@@ -4712,6 +4712,42 @@ function renderWhaleFeed(d) {
   if (wf.at) h += "<tr><td colspan='6'><span class='src'>Via Cielo · updated " + new Date(wf.at).toLocaleString("en-GB", Object.assign({ day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }, TZ)) + " SAST · refreshed each report cycle</span></td></tr>";
   $("whale-rows").innerHTML = h;
 }
+// ── [#937] the follow list's flow: the bot's own reading of the followed Hyperliquid wallets, totals per coin ──
+// The feed block is { at, followed, active, windowH, crypto: [{sym, usd, wallets}], other: [...], closesExcluded, failed, cut }.
+// No wallet address and no single trade is in it. Absent or null = no reading: the placeholder row stays. It writes into the
+// same two elements as the old Cielo panel and is called after it, so if both were ever present this one is what shows.
+function renderFollowFlow(d) {
+  var ff = d.followFlow;
+  if (!ff || !ff.at) return;
+  var TZ = { timeZone: "Africa/Johannesburg" };
+  function usd(n) {
+    var a = Math.abs(n), s = a >= 1e6 ? "$" + (a / 1e6).toFixed(1) + "M" : a >= 1e3 ? "$" + (a / 1e3).toFixed(0) + "k" : "$" + a.toFixed(0);
+    return (n < 0 ? "−" : "") + s;
+  }
+  var wN = function (n) { return n + " wallet" + (n === 1 ? "" : "s"); };
+  var wh = ff.windowH || 48, ageH = (Date.now() - new Date(ff.at).getTime()) / 36e5;
+  var f = "<div class='src' style='margin:0 0 10px'><b>" + Number(ff.active || 0) + " of " + Number(ff.followed || 0) + "</b> followed wallets opened or added to a position in the last " + wh + "h." +
+    (ff.closesExcluded ? " " + ff.closesExcluded + " closing trade" + (ff.closesExcluded === 1 ? "" : "s") + " left out of the totals — closing a position is not a new bet." : "") +
+    (ff.failed ? " <b>" + ff.failed + " wallet read" + (ff.failed === 1 ? "" : "s") + " failed</b>, so these totals are incomplete." : "") +
+    (ff.cut ? " " + ff.cut + " wallet read" + (ff.cut === 1 ? " was" : "s were") + " cut short: the newest trades of " + (ff.cut === 1 ? "that wallet" : "those wallets") + " are missing." : "") + "</div>";
+  [["crypto", "new risk · coins · last " + wh + "h · longs added − shorts added"],
+   ["other", "new risk · stock, index and commodity markets on Hyperliquid · last " + wh + "h"]].forEach(function (g) {
+    var list = ff[g[0]] || [];
+    if (!list.length) return;
+    f += "<div class='wire-h'>" + g[1] + "</div><div style='margin:6px 0 14px'>";
+    list.forEach(function (e) {
+      var v = Number(e.usd) || 0;
+      f += "<span class='" + (v >= 0 ? "up" : "down") + "' style='font-family:var(--mono);font-size:12.5px;margin-right:14px;white-space:nowrap'>" + esc(e.sym) + " " + (v >= 0 ? "+" : "") + usd(v) +
+        (e.wallets != null ? " <span class='src'>· " + wN(Number(e.wallets)) + "</span>" : "") + "</span>";
+    });
+    f += "</div>";
+  });
+  if (!(ff.crypto || []).length && !(ff.other || []).length) f += "<div class='src' style='margin:0 0 12px'>None of the followed wallets opened or added to a position in this window.</div>";
+  $("whale-flow").innerHTML = f;
+  $("whale-rows").innerHTML = "<tr><td><span class='src'>Read from Hyperliquid by the bot · " +
+    new Date(ff.at).toLocaleString("en-GB", Object.assign({ day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }, TZ)) + " SAST" +
+    (ageH > 8 ? " · <b>this reading is " + Math.round(ageH) + " hours old</b>" : "") + " · refreshed each report cycle</span></td></tr>";
+}
 // ── the research column (2×/day; the writing model is in the feed, #672) ──
 function renderColumn(d) {
   if (!d.column || !d.column.text) return;
@@ -6049,7 +6085,7 @@ function renderAll(d) {
       "Losing streaks bench the trader: " + RL.consecAgent + " straight losses halts that agent, " + RL.consecFleet + " across the fleet halts everyone.";
   } catch (e) {}
   renderNotes(d); renderTape(d); renderArchive(d); renderRisk(d);
-  renderWire(d); renderWhaleFeed(d); renderColumn(d); renderPredictions(d); try { renderHome(d); } catch (e) {} try { renderConsensus(d); } catch (e) {}
+  renderWire(d); renderWhaleFeed(d); try { renderFollowFlow(d); } catch (e) {} renderColumn(d); renderPredictions(d); try { renderHome(d); } catch (e) {} try { renderConsensus(d); } catch (e) {}
   liveStripRefresh(d.market); startLiveLayers();
   try { renderTradeCharts(d); } catch (e) {}   // no-ops unless the Charts page is on screen
   if (_pendingTrade != null) { var pt = _pendingTrade; _pendingTrade = null; try { revealTrade(pt); } catch (e) {} }
