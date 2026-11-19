@@ -1412,6 +1412,7 @@
   <div class="dc-status" id="dc-status"></div>
   </div><div class="dc-verdict" id="dc-verdict"></div></div>
   <div id="dc-real"></div>
+  <div id="dc-weekly"></div>
   <div id="dc-pulse"></div>
   <div id="dc-charts"></div>
   <div id="dc-whales"></div>
@@ -6375,9 +6376,38 @@ function dcReal(d) {
   el.innerHTML = h + "</div>";
   var cb = $("dc-real-ch"); if (cb) ["pointermove", "pointerdown"].forEach(function (ev) { cb.addEventListener(ev, dcHover); });
 }
+// [#970] Weekly Trend (rule): a fixed rule's weekly side on BTC and ETH, on paper, from the feed's `weekly` block (the seat's own
+// ledger). Not a model and not on the scoreboard below: a week-long hold cannot be replayed at 10x to 1000x. Hidden when the block is absent.
+function dcWeekly(d) {
+  var el = $("dc-weekly"), K = d && d.weekly; if (!el) return;
+  if (!K || !K.coins) { el.innerHTML = ""; return; }
+  var R = K.rule || {}, B = K.backtest || {}, coins = ["BTC", "ETH"].filter(function (c) { return K.coins[c]; });
+  if (!coins.length) { el.innerHTML = ""; return; }
+  var kpi = function (l, v, c) { return "<div><div class='l'>" + esc(l) + "</div><div class='v " + (c || "") + "'>" + v + "</div></div>"; };
+  var usd0 = function (v) { return v == null || !isFinite(v) ? "—" : (v < 0 ? "−" : "+") + "$" + Math.abs(v).toLocaleString("en-US"); };
+  var h = "<div class='dc-real'><h3>Weekly Trend (rule)</h3><div class='rs'>A fixed rule, not a model. At the close that ends each Sunday: if the price is above where it was " + esc(R.lookbackDays) +
+    " days earlier, the seat is long for the week; if below, short. On paper only — no order is sent. Scored at the daily close, after Hyperliquid’s trading fees." +
+    (K.nextDecisionAt ? " Next decision: <b>" + esc(dcT(K.nextDecisionAt)) + " SAST</b>." : "") + "</div>";
+  h += "<div class='dc-rw'><table class='dc-rt'><tr><th>This week</th><th>Side</th><th>Entry (Sunday close)</th><th>" + esc(R.lookbackDays) + " days earlier</th><th>Now</th><th>Since</th><th></th></tr>" + coins.map(function (c) {
+    var o = K.coins[c];
+    return "<tr><td>" + esc(c) + "</td><td>" + dcDir(o.side) + "</td><td>$" + esc(ecPx(o.entry)) + "</td><td>$" + esc(ecPx(o.refClose)) + "</td><td class='" + dcCls(o.openPct) + "'>" + dcPct(o.openPct) + "</td><td>" + esc(dcT(o.decidedAt, true)) +
+      "</td><td>" + (o.counted ? (o.changed ? "side changed" : "side kept") : "under way when the seat was listed — shown, not counted") + "</td></tr>"; }).join("") + "</table></div>";
+  var rec = K.record || {}, n = K.both ? K.both.weeks : 0;
+  if (n) {
+    h += "<div class='dc-rk' style='margin-top:10px'>" + coins.map(function (c) { var r = rec[c] || {}; return kpi(c + " since listing", dcPct(r.totalPct), dcCls(r.totalPct)) + kpi(c + " weeks right", (r.right || 0) + " of " + (r.weeks || 0)); }).join("") + "</div>";
+    var rows = []; coins.forEach(function (c) { ((rec[c] || {}).last || []).forEach(function (w) { rows.push({ c: c, w: w }); }); }); rows.sort(function (x, y) { return y.w.decidedAt - x.w.decidedAt; });
+    if (rows.length) h += "<div class='dc-rw'><table class='dc-rt'><tr><th>Finished weeks</th><th>Side</th><th>Entry</th><th>Exit</th><th>Result</th><th>Week from</th></tr>" + rows.slice(0, 12).map(function (x) {
+      return "<tr><td>" + esc(x.c) + "</td><td>" + dcDir(x.w.side) + "</td><td>$" + esc(ecPx(x.w.entry)) + "</td><td>$" + esc(ecPx(x.w.exit)) + "</td><td class='" + dcCls(x.w.netPct) + "'>" + dcPct(x.w.netPct) + "</td><td>" + esc(dcT(x.w.decidedAt, true)) + "</td></tr>"; }).join("") + "</table></div>";
+  } else h += "<div class='rs' style='margin-top:8px'>The record starts with the week decided on " + esc(K.nextDecisionAt ? dcT(K.nextDecisionAt, true) : "the next Sunday close") + ". Nothing from before the seat was listed (" + esc(dcT(K.listedAt, true)) + ") is counted.</div>";
+  if (B.BTC && B.ETH) h += "<div class='rs' style='margin-top:8px'><b>The test it passed.</b> The rule was written down first, then run on " + esc(B.weeks) + " weeks from " + esc(String(B.from).slice(0, 4)) + ". Per $1,000 of position, after fees: BTC " + esc(usd0(B.BTC.total)) +
+    " (buy and hold " + esc(usd0(B.BTC.hold)) + "), ETH " + esc(usd0(B.ETH.total)) + " (buy and hold " + esc(usd0(B.ETH.hold)) + "). It was right " + esc(B.BTC.right) + "% and " + esc(B.ETH.right) + "% of weeks, and at its worst it was down " +
+    esc(usd0(B.BTC.deepestFall).replace("−", "")) + " and " + esc(usd0(B.ETH.deepestFall).replace("−", "")) + " from a high. A test of the past, not a promise.</div>";
+  el.innerHTML = h + "</div>";
+}
 var dcFirstJoin = null;
 function dcRender() {
   try { dcReal(_dc.data); } catch (e) { var re = $("dc-real"); if (re) re.innerHTML = ""; }
+  try { dcWeekly(_dc.data); } catch (e) { var we = $("dc-weekly"); if (we) we.innerHTML = ""; }   // [#970]
   var d = _dc.data, nEl = $("dc-now"), bEl = $("dc-board"), rEl = $("dc-recent"), mEl = $("dc-method"); if (!d || !nEl || !bEl || !rEl) return;
   var jn = {}; d.board.forEach(function (x) { if (x.joined) jn[x.joined] = (jn[x.joined] || 0) + 1; });   /* [#738] the founding seats' date = the most common one; a later seat is flagged */
   dcFirstJoin = Object.keys(jn).sort(function (a, b) { return jn[b] - jn[a]; })[0] || null;
