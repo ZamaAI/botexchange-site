@@ -67,14 +67,18 @@
   .pt-strip .t { font: 700 11px var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
   .pt-strip .c { white-space: nowrap; } .pt-strip .c b { font-family: var(--mono); } .pt-strip .go { margin-left: auto; color: var(--accent); font-weight: 600; white-space: nowrap; }
   /* scoreboard: fixed, even columns so the leverage figures line up; one line per row */
-  table.dc-sb { table-layout: fixed; min-width: 1160px; }
-  table.dc-sb th { white-space: normal; line-height: 1.25; vertical-align: bottom; padding: 6px 8px; }
-  table.dc-sb td { padding: 8px 8px; white-space: nowrap; }
-  table.dc-sb td:first-child { overflow: hidden; text-overflow: ellipsis; }
-  table.dc-sb th:first-child, table.dc-sb td:first-child { width: 235px; padding-left: 4px; }
-  table.dc-sb th:nth-child(2), table.dc-sb th:nth-child(3) { width: 58px; } table.dc-sb th:nth-child(5) { width: 104px; } table.dc-sb th:nth-child(12), table.dc-sb th:nth-child(13) { width: 112px; }
+  /* [24 Nov 2026] every column is as wide as its widest cell. The table had a FIXED layout: six columns were given a width and the
+     other nine shared what was left of 1160px, about 53px each — once the numbers grew ("146 / 208", "+23590% 390 liq") 68 of 195
+     cells were wider than their column and painted over the next one. The selectors carry table.data so these rules win over the
+     base table.data rules further down (the 8px cell padding written here had never applied). The wrapper scrolls sideways. */
+  table.data.dc-sb { table-layout: auto; width: 100%; }   /* 100%, not max-content: the headers must be free to wrap, the cells are not */
+  table.data.dc-sb th { white-space: normal; line-height: 1.25; vertical-align: bottom; padding: 6px 5px; }
+  table.data.dc-sb td { padding: 7px 5px; white-space: nowrap; }
+  table.data.dc-sb td:first-child { overflow: hidden; text-overflow: ellipsis; max-width: 232px; }
+  table.data.dc-sb td:first-child .src { display: block; overflow: hidden; text-overflow: ellipsis; }   /* the name in full on its own line; the note under it, cut if long */
+  table.data.dc-sb th:first-child, table.data.dc-sb td:first-child { padding-left: 4px; }
   table.dc-sb .g { border-left: 1px solid var(--line); }
-  table.dc-sb .dc-liq { display: inline; margin-left: 5px; font-size: 10px; }
+  table.dc-sb .dc-liq { display: block; margin-left: 0; font-size: 10px; line-height: 1.25; }   /* [24 Nov] the wipe-out count sits UNDER its figure: beside it, three columns were 90–115px wide */
   .dc-head { display: flex; flex-wrap: wrap; gap: 14px 28px; align-items: stretch; margin-bottom: 12px; }
   .dc-hl { flex: 1 1 460px; min-width: 0; } .dc-hl .dc-status { margin-bottom: 0; }
   .dc-verdict { flex: 0 1 380px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-content: start; min-width: 260px; }
