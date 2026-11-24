@@ -6468,12 +6468,18 @@ function dcReal(d) {
   var kpi = function (l, v, c) { return "<div><div class='l'>" + esc(l) + "</div><div class='v " + (c || "") + "'>" + v + "</div></div>"; };
   var how = { target: "target", "wrong-at": "stop", "board-closed": "flip", "close-resend": "closed", liquidated: "liquidated", gone: "closed outside the bot" };
   var S = L.stake || {}, small = L.trades < 30;
-  var h = "<div class='dc-real'><h3>Real money</h3><div class='rs'>" + esc((S.seats || []).join(", ") || "One model") + "’s calls on papertrade.xyz since " + esc(L.since ? dcT(L.since, true) : "—") +
-    " · $" + esc(Number(S.margin).toFixed(2)) + " × " + esc(S.leverage) + " per trade" + (Number(S.margin) === 25 ? " since 2 Nov ($12.50 before)" : "") + " · stops at −$" + esc(S.dailyStop) + " a day and −$" + esc(S.hardStop) + " in total. A small test, not advice." + (small ? " Too few trades to judge yet." : "") + "</div>";
+  // [#1037] more than one bot can trade the wallet: name them all, say whose stop is whose, and give each its own line below
+  var bots = S.seats || [], many = bots.length > 1;
+  var h = "<div class='dc-real'><h3>Real money</h3><div class='rs'>" + (many ? esc(bots.length === 2 ? "Two" : String(bots.length)) + " bots on papertrade.xyz — " + esc(bots.slice(0, -1).join(", ") + " and " + bots[bots.length - 1]) + " — since " : esc(bots.join(", ") || "One model") + "’s calls on papertrade.xyz since ") + esc(L.since ? dcT(L.since, true) : "—") +
+    " · $" + esc(Number(S.margin).toFixed(2)) + " × " + esc(S.leverage) + " per trade" + (many ? " each" : "") + (Number(S.margin) === 25 ? " since 2 Nov ($12.50 before)" : "") + " · " + (many && S.perSeatStop ? "each bot stops at −$" + esc(S.dailyStop) + " a day, both at −$" + esc(S.hardStop) + " in total" : "stops at −$" + esc(S.dailyStop) + " a day and −$" + esc(S.hardStop) + " in total") + ". A small test, not advice." + (small ? " Too few trades to judge yet." : "") + "</div>";
   h += "<div class='dc-rk'>" + kpi("Result", usd(L.total), dcCls(L.total)) + kpi("Today", usd(L.today), dcCls(L.today)) + kpi("Won / lost", L.wins + " / " + L.losses) + kpi("Average win", usd(L.avgWin), "up") + kpi("Average loss", usd(L.avgLoss), "down") +
     (L.compared ? kpi("Model said", usd(L.model), dcCls(L.model)) : "") +
     // [#944] PAPER: the venue's own token, minted on losing trades. Shown as a count; it is not valued and not in the result.
     (L.paper != null && isFinite(L.paper) ? kpi("PAPER minted", Number(L.paper).toLocaleString("en-US")) : "") + "</div>";
+  // [#1037] each bot's own result, when more than one has traded real money (the figures above are all of them together)
+  if (L.bySeat && L.bySeat.length > 1) h += "<div class='src' style='margin:2px 0 10px'>" + L.bySeat.map(function (b) {
+    return "<b>" + esc(b.label) + "</b>: " + (b.trades ? "<span class='" + dcCls(b.total) + "'>" + usd(b.total) + "</span> on " + b.trades + " trade" + (b.trades === 1 ? "" : "s") + " (" + b.wins + " won)" + (b.since ? " since " + esc(dcT(b.since, true)) : "") + " · today <span class='" + dcCls(b.today) + "'>" + usd(b.today) + "</span>" : "no closed trade yet") + (b.open ? " · " + b.open + " open" : "");
+  }).join(" &nbsp;·&nbsp; ") + "</div>";
   if (L.paper != null && isFinite(L.paper)) h += "<div class='rs'>PAPER is the venue’s own token, minted when a trade loses (about 10 for each dollar lost). It is not valued here and is not part of the result.</div>";
   if (L.pending) h += "<div class='rs'>" + L.pending + " closed trade" + (L.pending > 1 ? "s" : "") + " waiting for the venue’s payout figure, not counted yet.</div>";
   h += "<div id='dc-real-ch'>" + dcChart("real", "Real result, cumulative", "What the venue actually paid, after every close.", L.curve, { min: 2, ref: 0, fmt: function (v) { return usd(v); }, empty: "The graph starts after the first closed trade." }) + "</div>";
