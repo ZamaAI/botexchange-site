@@ -2270,7 +2270,14 @@ function renderFleetPnl(d) {
     return acct - seat - (s.key === "manual" ? 0 : (parseFloat(s.costUsd) || 0));
   };
   var sumMove = function (arr) { var have = false, t = arr.reduce(function (sum, s) { var m = moveOf(s); if (m == null) return sum; have = true; return sum + m; }, 0); return have ? t : null; };
-  var aiPnl = sumPnl(ai), aiMove = sumMove(ai), aiVal = aiMove == null ? aiPnl : aiMove;
+  var aiPnl = sumPnl(ai), aiMove = sumMove(ai);
+  // [#1033b] a seat that changed model restarts its row, but the earlier model's run was real money the fleet made or lost
+  // this season: its closed P&L, and its account move net of its model bill, stay in the fleet figure.
+  ai.forEach(function (s0) { (s0.prevRuns || []).forEach(function (r) {
+    if (isFinite(r.pnl)) aiPnl += r.pnl;
+    if (aiMove != null && r.endBalance != null && r.startBalance != null) aiMove += r.endBalance - r.startBalance - (parseFloat(r.costUsd) || 0);
+  }); });
+  var aiVal = aiMove == null ? aiPnl : aiMove;
   $("fp-season").textContent = signedMoney(aiVal);
   $("fp-season").className = "t-v " + pnlCls(aiVal);
   $("fp-season").title = aiMove == null ? "Closed trades this season" : "Accounts at market (open positions included), less each desk's Season start and its model bill — the ranking's own measure";
@@ -2377,6 +2384,7 @@ function renderSeasonHistory(d) {
   var trades = machines.reduce(function (sum, s) { return sum + (s.trades || 0); }, 0);
   var wins = machines.reduce(function (sum, s) { return sum + (s.wins || 0); }, 0);
   var pnl = machines.reduce(function (sum, s) { return sum + (isFinite(s.pnl) ? s.pnl : 0); }, 0);
+  machines.forEach(function (s0) { (s0.prevRuns || []).forEach(function (r) { trades += (r.w || 0) + (r.l || 0); wins += (r.w || 0); if (isFinite(r.pnl)) pnl += r.pnl; }); });   // [#1033b] closed runs are part of the season
   var elT = $("sh-trades"), elW = $("sh-wins"), elR = $("sh-wr"), elP = $("sh-pnl");
   if (elT) elT.textContent = trades;
   if (elW) elW.textContent = wins;
