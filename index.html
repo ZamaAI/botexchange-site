@@ -1552,6 +1552,7 @@
         <li><b>23 Nov — a power cut, and three trade records corrected #1015 / #1017 / #1018.</b> The PC that runs the bot was without power from 06:42 to 17:06 SAST. The 09:00 scan, the 12:00 report and the 15:00 scan did not run. Every live position kept its stop and target on the exchange: at 15:55 one five-minute move (BTC +4.4%, ETH +5.2%, SOL +5.8%) stopped five live shorts and took one live long to its target, net −$48.48, and those six closes were booked when the bot came back. Checking them against the exchange's own fills found three things, all corrected the same evening. One short was filled so far inside that move that its reason said the coin had been "flat" in the hour before the exit; the move is now measured to the fill itself. One winning long's reason said Bitcoin had fallen while its coin rose; Bitcoin beside another coin is now read to the minute of the exit. And one close was stamped with the time the bot booked it, 71 minutes after the exchange filled it, which made the fleet's losing-streak count read two market moves where there was one; a close the exchange makes is now always stamped with the fill's time. The two reasons were re-written and the one time corrected; no result changed.</li>
         <li><b>23 Nov — a live seat changes model: Henry Haiku takes the seat Luna GPT held, and Luna GPT moves to paper #1016.</b> The season's rule is that the best paper desk may replace the worst money desk when the season ends; the operator made this one swap thirteen days early, from the 21:00 scan on 23 Nov. On that day the seat run by GPT-6 Luna ("Luna GPT") was last of the twelve desks: 12 closed trades, 1 win, 7 losses, 4 breakeven, −$38.51. Claude Haiku 5.5, on paper as "Hana Haiku", was the best paper desk: 21 closed, 12 wins, 9 losses. Haiku 5.5 had also been sent the very same prompts as Luna's seat all season, as a shadow that places no trade: 81 of its ideas reached a stop or a target at +1.31R each, against 26 of Luna's at +0.11R (ideas only: no fees, no entry rules, no trailing stop). Two cautions go with those numbers: the paper record is 21 shorts in a falling market, and paper trades fill with no slippage. What does not change: the Lighter account, its stop setting and its risk tier. The operator topped the account up by $30 at 20:57, to $499.85, so the new model starts level with a $500 seat. The BTC short Luna GPT had opened at 18:07 was closed by the operator by hand at 20:56 for +$8.28, before the new model's first cycle, so Henry Haiku started with no open position; his first answer, at 21:00, was a watch on ETH and no trade. A line on the board belongs to a model, so the seat's line starts again with Henry: from $499.85 at 21:00 on 23 Nov, with no trades, and only money moved after that moment is netted out of his return. Luna GPT's real-money run on this seat is closed and stays shown under it: 6 to 23 November, 13 closed trades (2 wins, 7 losses, 4 breakeven), −$30.24, a return of −6.1% on its $500.56 start (−6.2% after its model bill). For the first hours after the swap the row still showed that whole record under Henry's name — that was wrong, and was corrected the same evening #1033. The rule that sends a model to paper at −20% counts from the same start. GPT-6 Luna trades on from a new $500 paper account of its own. For its first three hours it was shown on Hana Haiku's old paper account, at $660.60 — that was wrong, and was corrected the same evening: Hana Haiku's account is retired exactly as it stood ($660.60 after 21 closed trades) and Luna GPT starts at $500 with no trades. GPT-6 Luna also answers Henry's prompts as the shadow, so the swap can be judged like for like at the season's end.</li>
         <li><b>23 Nov — five smaller changes the same day #1020 / #1022 / #1024 / #1025 / #1029.</b> (1) The operator retired one standing rule in Gina's weekly lessons — no conviction above 6 on chase entries unless the stop is wider than 2%. It asked for a wider stop and capped conviction with no losing record behind it; on a side-by-side test of the lessons writer, four of four other models had retired it. (2) The dashboard line the desks read now gives the change in open interest with the price move taken out; it had shown the dollar figure (+3.4% on a day when the number of contracts fell 3%). (3) A desk halted by its day's loss limit is now told so in its prompt, in the halt's own words; until now a desk was told only about losing streaks. (4) Sunday's lessons writer is told when a seat changed model during the week: the previous model's trades are marked, and no new rule may be written from them alone. (5) The card's headline and short read are written by Claude Haiku 5.5 (Haiku 4.5 until today). None of these changes a trade already made or a booked result.</li>
+        <li><b>24 Nov — a line belongs to a model, on every desk; lines that end stay on the board #1034.</b> Until today a line that ended could fall off the board, and a total went with it. Three cases, all found in a check of the site against the database on 24 Nov: (1) Hana Haiku's paper seat, retired on 23 Nov, had left the board, so the season-history row was short by her 21 trades and +$160.60 from 21:55 on 23 Nov; (2) when Henry Haiku's line was restarted this morning, the "AI desks" tile no longer counted Luna GPT's real-money run and read about $31 too high from 06:27 to 06:52; (3) Sid Seed's row had been titled "Seed 1.6 Flash" since 11 Nov, thirteen days after that model was withdrawn, beside the note "no closed trades yet" while Seed 2.0 Mini had closed seven. From today: when a seat changes model its line restarts — on paper from $500, with real money from the seat's balance at that moment — and the line that ended is listed under <b>Closed this season</b> with its final record, counted in every total; a retired seat is listed the same way; each trade in the archive carries the name of the line that opened it. For Sid Seed this changes the paper table: the row is Seed 2.0 Mini alone, 2 wins and 5 losses from $500 on 11 Nov (it had read 2W–10L, −4.4%, both models together), and Seed 1.6 Flash's 0 wins and 5 losses are a closed line. The bot now checks at every update that the lines and the closed lines add up to the season's record, real money and paper apart, and alerts the operator if they do not.</li>
       </ul>
     </div></div>
   </div>
@@ -1898,9 +1899,9 @@ var ACTORS = {
     style: "Capped reasoning — thinks a little, then commits",
     blurb: "Alibaba's Qwen 3.8 Flash on the live desks' own prompt and rules, every report and every scan — a $500 paper account from 14 October 2026. Left to think freely it never finished an answer, so its reasoning is capped. A separate desk from Quinn Qwen, the scanner. Paper trades close only at their stop or their target (no trailing stop on paper)." },
   // [#765] Season 6 paper desks (operator 6 Nov: "if they perform they can replace an existing seat for cheap")
-  seed16:   { paperOnly: true, label: "Sid Seed", model: "Seed 1.6 Flash", short: "Sid", color: "#20c997",
+  seed16:   { paperOnly: true, label: "Sid Seed", model: "Seed 2.0 Mini", short: "Sid", color: "#20c997",
     style: "Quick to commit — picks often",
-    blurb: "ByteDance's Seed 1.6 Flash on the live desks' own prompt and rules, every report and every scan — a $500 paper account from 6 November 2026. On the Model Lab's first board it was the strongest cheap model over a large sample; this season is its real test. Paper trades close only at their stop or their target." },
+    blurb: "ByteDance's Seed 2.0 Mini on the live desks' own prompt and rules, every report and every scan — a $500 paper line from 11 November 2026. The desk began the season on Seed 1.6 Flash; OpenRouter stopped serving that model on 11 November, and its five trades (0 wins, 5 losses) are a closed line under the board. Paper trades close only at their stop or their target." },
   particle1: { paperOnly: true, label: "Percy Particle", model: "Particle-1", short: "Percy", color: "#7950f2",
     style: "Auditioning on paper since 6 November",
     blurb: "Particle AI's Particle-1 on the live desks' own prompt and rules, every report and every scan — a $500 paper account from 6 November 2026. In the replay test of the Season 6 prompt it was the only new model whose edge turned positive. Paper trades close only at their stop or their target." },
@@ -2273,10 +2274,10 @@ function renderFleetPnl(d) {
   var aiPnl = sumPnl(ai), aiMove = sumMove(ai);
   // [#1033b] a seat that changed model restarts its row, but the earlier model's run was real money the fleet made or lost
   // this season: its closed P&L, and its account move net of its model bill, stay in the fleet figure.
-  ai.forEach(function (s0) { (s0.prevRuns || []).forEach(function (r) {
-    if (isFinite(r.pnl)) aiPnl += r.pnl;
-    if (aiMove != null && r.endBalance != null && r.startBalance != null) aiMove += r.endBalance - r.startBalance - (parseFloat(r.costUsd) || 0);
-  }); });
+  closedLinesOf(d).filter(function (c) { return c.paper !== true; }).forEach(function (c) {   // [#1034]
+    if (isFinite(c.pnl)) aiPnl += c.pnl;
+    if (aiMove != null && c.endBalance != null && c.startBalance != null) aiMove += c.endBalance - c.startBalance - (parseFloat(c.costUsd) || 0);
+  });
   var aiVal = aiMove == null ? aiPnl : aiMove;
   $("fp-season").textContent = signedMoney(aiVal);
   $("fp-season").className = "t-v " + pnlCls(aiVal);
@@ -2384,7 +2385,7 @@ function renderSeasonHistory(d) {
   var trades = machines.reduce(function (sum, s) { return sum + (s.trades || 0); }, 0);
   var wins = machines.reduce(function (sum, s) { return sum + (s.wins || 0); }, 0);
   var pnl = machines.reduce(function (sum, s) { return sum + (isFinite(s.pnl) ? s.pnl : 0); }, 0);
-  machines.forEach(function (s0) { (s0.prevRuns || []).forEach(function (r) { trades += (r.w || 0) + (r.l || 0); wins += (r.w || 0); if (isFinite(r.pnl)) pnl += r.pnl; }); });   // [#1033b] closed runs are part of the season
+  closedLinesOf(d).forEach(function (c) { trades += (c.w || 0) + (c.l || 0); wins += (c.w || 0); if (isFinite(c.pnl)) pnl += c.pnl; });   // [#1034] every line that ended is part of the season, live and paper
   var elT = $("sh-trades"), elW = $("sh-wins"), elR = $("sh-wr"), elP = $("sh-pnl");
   if (elT) elT.textContent = trades;
   if (elW) elW.textContent = wins;
@@ -2521,19 +2522,64 @@ function seasonMoveHtml(a) {
     "Moved to paper " + esc(when) + " — two daily closes" + (closes ? " (" + esc(closes) + ")" : "") + " at or below " + money(m.floor, 0) + ", 20% under its " + money(m.startBalance, 0) + " start on " + esc(m.modelLabel || m.model) + ". Real-money record frozen; it keeps trading on paper.</span>";
 }
 // [#1033] a seat that changed model during the season: a line belongs to a MODEL, so the row is the current model's run —
-// the trades it opened, measured from the seat's balance at its start. The earlier model's run on the seat is closed and
-// stays shown here, as that model's. Feeds before #1033 carry neither field and render as before.
+// the trades it opened, measured from the seat's balance (paper: the start capital) at its start.
 function prevRunsHtml(a) {
-  var rs = a && a.prevRuns; if (!rs || !rs.length) return "";
-  var dd = function (iso) { return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "Africa/Johannesburg" }); };
-  var out = "";
-  if (a.run && a.run.since) out += "<span class='who-style' title='A line on this board belongs to a model. This seat changed model during the season, so its line starts again: the trades the current model opened, measured from the seat&#39;s balance at that moment.'>Line starts " + esc(dd(a.run.since)) + " at " + money(a.run.startBalance, 2) + "</span>";
-  rs.forEach(function (r) {
-    var rec = r.closed ? (r.w + "W–" + r.l + "L" + (r.be ? " · " + r.be + " BE" : (r.be == null ? " · BE ?" : "")) + " · " + (r.pnl >= 0 ? "+" : "−") + "$" + Math.abs(r.pnl).toFixed(2)) : "no closed trades";
-    var ret = r.retPct == null ? "" : " · " + (r.retPct > 0 ? "+" : (r.retPct < 0 ? "−" : "")) + Math.abs(r.retPct).toFixed(1) + "%";
-    out += "<span class='who-style' title='The earlier model&#39;s real-money run on this seat. It is closed: its trades, its return on its own start balance and its model bill are not in the row above.'>Before that " + esc(r.persona ? r.persona + " (" + r.label + ")" : r.label) + " held this seat, " + esc(dd(r.from)) + " – " + esc(dd(r.to)) + ": " + rec + ret + " — closed</span>";
-  });
+  if (!a || !a.run || !a.run.since) return "";
+  var since = new Date(a.run.since).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "Africa/Johannesburg" });
+  return "<span class='who-style' title='A line on this board belongs to a model. This seat changed model during the season, so its line starts again: the trades the current model opened, measured from that moment. The earlier model&#39;s run is under Closed this season.'>Line starts " + esc(since) + " at " + money(a.run.startBalance, 2) + " — the earlier run is under Closed this season</span>";
+}
+// [#1034] LINES THAT ENDED THIS SEASON — a seat's earlier model, a seat retired mid-season. They stay on the board, closed, and
+// every total counts them. Three times a line that ended fell off the board and a total went with it (Hana Haiku's seat on
+// 23 Nov, GPT-6 Luna's run on 24 Nov, Sid Seed's first model since 11 Nov). A feed from before #1034 carries the earlier run
+// of a restarted seat on its row (prevRuns): read from there, so nothing depends on which side deploys first.
+function closedLinesOf(d) {
+  if (d && Array.isArray(d.closedLines)) return d.closedLines;
+  var out = [];
+  ((d && d.standings) || []).forEach(function (a) { (a.prevRuns || []).forEach(function (r, i) {
+    out.push({ key: a.key + "_c" + (i + 1), seatKey: a.key, reason: "model", why: null, label: r.persona || r.label, modelLabel: r.label, venue: a.venue, paper: a.paper === true, from: r.from, to: r.to,
+      startBalance: r.startBalance, endBalance: r.endBalance, w: r.w, l: r.l, be: r.be, closed: r.closed, trades: (r.w || 0) + (r.l || 0), wr: ((r.w || 0) + (r.l || 0)) ? Math.round(r.w / (r.w + r.l) * 100) : null,
+      pnl: r.pnl, costUsd: r.costUsd, netPnl: (isFinite(r.pnl) && r.costUsd != null) ? r.pnl - r.costUsd : null, retPct: r.retPct, retNetPct: r.retNetPct });
+  }); });
   return out;
+}
+// every trade list resolves a name through ACTORS[t.actor]: a closed line gets a profile, so its trades carry ITS name
+function registerClosedLines(d) {
+  closedLinesOf(d).forEach(function (c) {
+    var seat = ACTORS[c.seatKey] || {};
+    if (c.key === c.seatKey) { if (ACTORS[c.key]) ACTORS[c.key].closedLine = c; return; }   // a retired seat keeps its own profile
+    var same = seat.label && seat.label === c.label;   // same desk, earlier model → say which model
+    ACTORS[c.key] = { label: same ? c.label + " (" + c.modelLabel + ")" : c.label, model: c.modelLabel, short: String(c.label || c.key).split(" ")[0], color: seat.color || c.color || "#888",
+      paperOnly: c.paper === true, closedLine: c, seatKey: c.seatKey };
+  });
+}
+function closedLineWhy(c) {
+  var seat = ACTORS[c.seatKey] || {};
+  if (c.reason === "retired") return "retired" + (c.why ? " — " + c.why : "");
+  return "closed — the seat changed model" + (seat.label && seat.label !== c.label ? " (now " + seat.label + ")" : (seat.model ? " (now " + seat.model + ")" : ""));
+}
+function closedLineRowHtml(c) {
+  var dd = function (iso) { return iso ? new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "Africa/Johannesburg" }) : "?"; };
+  var seat = ACTORS[c.seatKey] || {}, hasVenue = c.venue && String(c.venue).toUpperCase() !== "PAPER", dash = "<td class='rt num'><span class='src'>—</span></td>";
+  var venue = (hasVenue ? venueHtml(esc(c.venue), c.venue) + " " : "") + (c.paper ? "<span class='pill paper'" + (hasVenue ? "" : " style='margin-left:0'") + ">PAPER</span>" : "") +
+    "<span class='pill' style='color:var(--ink3);border:1px solid var(--line);background:transparent'>CLOSED</span>";
+  return "<tr class='std-closed' style='opacity:.8'><td class='num'></td>" +
+    "<td><span class='swatch' style='background:" + (seat.color || c.color || "#888") + "'></span><span class='who-name'>" + esc(c.modelLabel || "") + "</span> <span class='who-model'>· " + esc(c.label || "") + "</span>" +
+    "<span class='who-style'>" + esc(dd(c.from)) + " – " + esc(dd(c.to)) + " · " + esc(closedLineWhy(c)) + "</span></td>" +
+    "<td class='std-venue'>" + venue + "</td>" +
+    "<td class='rt num' style='font-weight:700'>" + money(c.endBalance) + "</td>" +
+    (S5_RANK
+      ? "<td class='rt num " + clsZ(c.retNetPct, 1) + "' title='This line&#39;s return on its own start, net of its model bill — final'>" + (c.retNetPct == null ? "<span class='src'>—</span>" : pct(c.retNetPct, 1)) + "<span class='std-sub'>" + pct(c.retPct, 1) + " before spend</span></td>"
+      : "<td class='rt num " + clsZ(c.retPct, 1) + "'>" + pct(c.retPct, 1) + "</td>") +
+    "<td class='rt num'>" + (c.w || 0) + "W–" + (c.l || 0) + "L" + (c.be != null ? "<span class='std-sub'>" + esc(String(c.be)) + " BE</span>" : "") + "</td>" +
+    "<td class='rt num'>" + (c.wr == null ? "<span class='src'>—</span>" : esc(String(c.wr)) + "%") + "</td>" +
+    "<td class='rt num'>" + money(c.costUsd, 2) + "</td>" +
+    "<td class='rt num " + (c.netPnl == null ? "" : cls(c.netPnl)) + "'>" + (c.netPnl == null ? "—" : (c.netPnl >= 0 ? "+" : "−") + money(Math.abs(c.netPnl), 2)) + "</td>" + dash + dash + dash + "</tr>";
+}
+// paper: true / false = that group's closed lines; null = all (a custom sort has no groups)
+function closedBlockHtml(d, paper) {
+  var cl = closedLinesOf(d).filter(function (c) { return paper == null || (c.paper === true) === paper; });
+  if (!cl.length) return "";
+  return "<tr class='std-group'><td colspan='12' style='font-weight:400'>Closed this season — lines that ended; counted in every total</td></tr>" + cl.map(closedLineRowHtml).join("");
 }
 function modelRunHtml(a) {
   var r = a && a.modelRun; if (!r || !r.since) return "";
@@ -2661,7 +2707,8 @@ function renderTransferLine(d) {
   var name = function (k) { return (ACTORS[k] || {}).label || k; };
   el.innerHTML = "<b>Transfers this season</b> (netted out of every return): " + rows.map(function (r) {
     var when = String(r.ts || "").slice(0, 10), amt = r.net == null ? money(r.amount, 2) + " (direction unconfirmed — that return shows a dash)" : (r.net >= 0 ? "+" : "−") + money(Math.abs(r.net), 2);
-    return esc(when) + " " + esc(name(r.seat)) + " " + amt;
+    var cl = closedLinesOf(d).filter(function (c) { return c.seatKey === r.seat && c.paper !== true && c.to && Date.parse(r.ts) <= Date.parse(c.to) && Date.parse(r.ts) > Date.parse(c.from); })[0];   // [#1034]
+    return esc(when) + " " + esc(name(r.seat)) + (cl ? "’s seat" : "") + " " + amt + (cl ? " (before its line started — netted out of " + esc(cl.label) + "’s closed line)" : "");
   }).join(" · ") + ".";
   el.classList.remove("hidden");
 }
@@ -2758,7 +2805,9 @@ function renderStandings(d) {
     var meta = ACTORS[a.key] || { label: a.label, model: "", color: "#888" };
     if (defaultSort) {
       var g = isPaperRow(a) ? "paper" : "live";
-      if (!groupShown[g]) { if (g === "paper" && !groupShown.cup) { groupShown.cup = true; h += cupStdRow(d, rows.filter(function (a) { return !isPaperRow(a); }).length + 1); } groupShown[g] = true; h += "<tr class='std-group'><td colspan='12'>" + (g === "live" ? "Live championship — real money" : "Lab — paper account, same rules, no capital") + "</td></tr>"; }
+      if (!groupShown[g]) { if (g === "paper" && !groupShown.cup) { groupShown.cup = true; h += cupStdRow(d, rows.filter(function (a) { return !isPaperRow(a); }).length + 1); }
+        if (g === "paper" && !groupShown.closedLive) { groupShown.closedLive = true; h += closedBlockHtml(d, false); }   // [#1034] the real-money lines that ended, under the live group
+        groupShown[g] = true; h += "<tr class='std-group'><td colspan='12'>" + (g === "live" ? "Live championship — real money" : "Lab — paper account, same rules, no capital") + "</td></tr>"; }
     }
     var mv = "", rk = i + 1 + (defaultSort && _cupOn && isPaperRow(a) ? 1 : 0);   // [#749]
     if (defaultSort && prevRank[a.key] && isFinite(_stdVal(a, sk))) { var dlt = prevRank[a.key] - rk; mv = dlt > 0 ? " <span class='mv up' title='up " + dlt + " since yesterday'>▲" + dlt + "</span>" : dlt < 0 ? " <span class='mv down' title='down " + (-dlt) + " since yesterday'>▼" + (-dlt) + "</span>" : " <span class='mv' title='unchanged since yesterday'>·</span>"; }
@@ -2796,6 +2845,8 @@ function renderStandings(d) {
       "<td class='rt num' title='Share of closed trades entered while the crypto regime read RISK_ON'>" + (a.riskOnPct == null ? "<span class='src'>—</span>" : esc(String(a.riskOnPct)) + "%") + "</td></tr>";
   });
   if (!groupShown.cup) h += cupStdRow(d, defaultSort ? rows.length + 1 : null);   // [#745] no paper group (or a non-default sort): the seat goes last
+  // [#1034] closed lines: under their group on the default sort, one block at the end on a custom sort
+  if (defaultSort) { if (!groupShown.closedLive) h += closedBlockHtml(d, false); h += closedBlockHtml(d, true); } else h += closedBlockHtml(d, null);
   // [T2] retired desks: one grey line, record kept in About — never ranked, never hidden
   var retired = Object.keys(ACTORS).filter(function (k) { return !(d.standings || []).some(function (a) { return a.key === k; }) && ACTORS[k].retired; });
   if (retired.length) h += "<tr class='std-group'><td colspan='12' style='font-weight:400'>Retired in Season 4: " + retired.map(function (k) { return esc(ACTORS[k].label) + " (" + esc(ACTORS[k].model) + ")" + (ACTORS[k].retiredRecord ? " " + esc(ACTORS[k].retiredRecord) : ""); }).join(", ") + " — record kept in <a href='#/about'>About</a>.</td></tr>";
@@ -3103,7 +3154,13 @@ function renderDeskPage(d, key) {
     $("desk-sub").innerHTML = meta.blurb ? esc(meta.blurb) : "";
     body.innerHTML = key === "manual"
       ? "<span class='src'>The human has no desk page — no prompt, no model, no code gates to analyse. Every closed trade is in <a href='#/archive'>the archive</a>, each with its post-mortem.</span>"
-      : "<span class='src'>No desk page for '" + esc(key || "") + "' yet — the feed publishes one per active desk.</span>";
+      : (meta.closedLine
+        ? (function (c) { var dd = function (iso) { return iso ? deskDate(iso) : "?"; };
+            return "<div class='src'><b>" + esc(c.label) + "</b> (" + esc(c.modelLabel || "") + ") — " + esc(dd(c.from)) + " to " + esc(dd(c.to)) + " · " + esc(closedLineWhy(c)) + ". This line is closed: " +
+              (c.w || 0) + "W–" + (c.l || 0) + "L" + (c.be == null ? "" : "–" + c.be + "BE") + ", " + money(c.pnl, 2) + ", " + money(c.startBalance, 2) + " → " + money(c.endBalance, 2) +
+              (c.retPct == null ? "" : " (" + pct(c.retPct, 1) + (c.retNetPct == null ? "" : ", " + pct(c.retNetPct, 1) + " after its " + money(c.costUsd, 2) + " model bill") + ")") +
+              ". Its trades are in <a href='#/archive'>the archive</a> under this name" + (c.seatKey !== c.key ? "; the seat's page is <a href='#/desk/" + esc(c.seatKey) + "'>here</a>" : "") + ".</div>"; })(meta.closedLine)
+        : "<span class='src'>No desk page for '" + esc(key || "") + "' yet — the feed publishes one per active desk.</span>");
     return;
   }
   var color = meta.color || "var(--ink)";
@@ -3150,7 +3207,7 @@ function renderDeskPage(d, key) {
       h += "<tr><td>" + esc(deskDate(seg.from)) + "</td><td>" + (seg.to ? esc(deskDate(seg.to)) : "<b>now</b>") + "</td><td>" + esc(seg.arm || "—") + "</td><td>" + esc(seg.tier || "—") + "</td><td>" + esc(seg.model || "—") + "</td><td class='rt'>" + esc(seg.cycles) + "</td></tr>";
     });
     h += "</table>";
-    if (x.prevRuns && x.prevRuns.length) {   // [#1033] the earlier model's closed run on this seat
+    if (x.prevRuns && x.prevRuns.length) {   // [#1033] the earlier model's closed run on this seat ([#1034] also listed on the board under Closed this season)
       x.prevRuns.forEach(function (r) {
         h += "<div class='src'>" + esc(r.persona ? r.persona + " (" + r.label + ")" : r.label) + " held this seat with real money from " + esc(deskDate(r.from)) + " to " + esc(deskDate(r.to)) + ": " +
           (r.w || 0) + "W–" + (r.l || 0) + "L" + (r.be == null ? "" : "–" + r.be + "BE") + ", " + money(r.pnl, 2) + (r.startBalance != null && r.endBalance != null ? ", " + money(r.startBalance, 2) + " → " + money(r.endBalance, 2) : "") +
@@ -3694,6 +3751,7 @@ function renderTape(d) {
   // visitor test 6 Sep: this table blended a live desk's PAPER rows (fleet-cap blocks, demoted fills) into its
   // record — DeepSeek read 9W–13L here vs 8W–10L in the standings. Live desks: real-money rows only; paper desks keep theirs.
   var paperDesks = {}; (d.standings || []).forEach(function (sd) { if (sd && sd.paper) paperDesks[sd.key] = true; }); paperDesks.qwen = true;
+  closedLinesOf(d).forEach(function (c) { if (c.paper === true) paperDesks[c.key] = true; });   // [#1034] a closed paper line keeps its paper trades in this table
   Object.keys(ACTORS).forEach(function (k) {
     var mine = scored.filter(function (r) { return r.actor === k && (paperDesks[k] || r.venue !== "PAPER"); });
     if (!mine.length) return;
@@ -6095,6 +6153,7 @@ function wrapWideTables(root) {
 var _liveFeed = null;   // [15 Oct] the Model Lab answer card reads the live standings
 function renderAll(d) {
   try { tidyFeedStrings(d, 0); } catch (e) {}
+  try { registerClosedLines(d); } catch (e) {}   // [#1034] before any list resolves a trade's name
   _liveFeed = d; setTimeout(function () { try { mlAnswer(); } catch (e) {} }, 0);   // after renderAll has computed retNetPct on the same object
   // [#248 S3] Return = (account − the seat's ACTUAL season start) / that start — the basis the #460 headline already uses.
   // The feed's retPct divides by a nominal $500, so the same desk showed two returns on one page (Luna −2.3% in the
