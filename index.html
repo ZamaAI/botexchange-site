@@ -5125,7 +5125,7 @@ function renderBeamCalls(d) {
     var _cbHead = "<tr><th>Opened</th><th>Market</th><th class='rt'>Entry</th><th class='rt'>Stop</th><th class='rt'>Target</th><th>Result</th><th class='rt'>R</th><th class='rt'>P&amp;L</th><th>Beam's reason</th></tr>", CB_SHOWN = 10;   // [#307] the cup ended: newest 10, the rest one tap away
     h += "<div class='ml-wrap'><table class='data'>" + _cbHead;
     k.trades.forEach(function (t, ti) {
-      if (ti === CB_SHOWN) h += "</table></div><details class='more-list'><summary>Show all " + k.trades.length + " of Beam's cup trades</summary><div class='ml-wrap'><table class='data'>" + _cbHead;
+      if (ti === CB_SHOWN) h += "</table></div><details class='more-list'><summary>Show the other " + (k.trades.length - CB_SHOWN) + " trade" + (k.trades.length - CB_SHOWN === 1 ? "" : "s") + "</summary><div class='ml-wrap'><table class='data'>" + _cbHead;
       var res = t.state === "open" ? "<span class='pill live'>OPEN</span>" : esc(t.closeReason || "closed");
       h += "<tr><td class='num'>" + esc(t2(t.at)) + "</td><td><b>" + esc(t.asset) + "</b> <span class='dirpill " + (t.dir === "SHORT" ? "s" : "l") + "'>" + esc(t.dir) + "</span></td>" +
         "<td class='rt num'>" + px(t.entry) + "</td><td class='rt num'>" + px(t.stop) + "</td><td class='rt num'>" + px(t.target) + "</td><td>" + res + "</td>" +
@@ -5230,7 +5230,7 @@ function renderCalls(d) {
   var _ecHead = "<tr><th>Brief</th><th>Picker</th><th>Calls and how they ended</th></tr>", _ecCut = Date.now() - 7 * 864e5, _ecFolded = false, _ecOlder = 0;   // [#307] last 7 days shown, older briefs one tap away
   c.history.forEach(function (hb) { if (!(Date.parse(hb.at) >= _ecCut)) _ecOlder++; });
   c.history.forEach(function (hb) {
-    if (!_ecFolded && !(Date.parse(hb.at) >= _ecCut) && _ecOlder < c.history.length) { _ecFolded = true; t += "</table></div></div><details class='more-list'><summary>Show the " + _ecOlder + " earlier briefs (since 8 Oct)</summary><div style='overflow-x:auto'><table class='data'>" + _ecHead; }
+    if (!_ecFolded && !(Date.parse(hb.at) >= _ecCut) && _ecOlder < c.history.length) { _ecFolded = true; t += "</table></div></div><details class='more-list'><summary>Show " + (_ecOlder === 1 ? "1 older brief" : "the " + _ecOlder + " older briefs") + "</summary><div style='overflow-x:auto'><table class='data'>" + _ecHead; }
     hb.pickers.forEach(function (k, i) {
       var calls = k.error ? "<span class='src'>no answer</span>" : !k.picks.length ? "<span class='src'>no call</span>" : k.picks.map(function (p) { return "<span class='" + (p.dir === "LONG" ? "up" : "down") + "'>" + esc(p.asset) + " " + esc(p.dir) + "</span>" + (p.origin === "own" ? "<span class='ec-tag own'>own</span>" : "") + ecResult(p, c.horizonH, hb.at); }).join(" &nbsp; ");
       t += "<tr><td class='src' style='white-space:nowrap'>" + (i === 0 ? esc(ecWhen(hb.at)) : "") + "</td><td><span class='swatch' style='background:" + ((ACTORS[k.key] || {}).color || "#555") + "'></span>" + esc(k.label) + "</td><td>" + calls + "</td></tr>";
