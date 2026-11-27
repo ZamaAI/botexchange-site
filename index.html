@@ -991,7 +991,7 @@
   <a href="#/calendar" data-page="calendar">Calendar</a>
   <a href="#/bots" data-page="bots">The Bots</a>
   <a href="#/models" data-page="models">Model Lab</a>
-  <a href="#/calls" data-page="calls" title="Trading calls — Beam on Coinbase (live), Particle on OpenSea (live) and the Extended brief (scored)">Calls</a>
+  <a href="#/calls" data-page="calls" title="Trading calls — the Extended brief (live, scored); Beam on Coinbase and Particle on OpenSea (both ended)">Calls</a>
   <a href="#/direction" data-page="direction" title="Paper Trade — BTC / ETH direction calls">Paper Trade</a>
   <a href="#/research" data-page="research" title="Research reports — dated token and stock notes, scored in public">Research</a>
   <a href="#/archive" data-page="archive">Archive</a>
@@ -1682,18 +1682,7 @@
   <!-- [#565] EXTENDED CALLS: the bot's twice-daily Extended brief in public. Data: feed.extendedCalls (built from the bot's own
        pick log; the page never triggers a model call). A rules-only screen and five models (#740: two guests from 4 Nov; #748 Seed 1.6 Flash) each make up to three calls on
        Extended's liquid perps; every call is checked 12 hours later against real 15-minute bars. Candidates, not advice. -->
-  <div class="kicker">Trading calls · Coinbase cup (live) · OpenSea spot (live) · Extended brief (scored)</div>
-  <h2 class="sec" id="cb-calls-h">Beam trades the AI half of a real Coinbase account. Every call and every trade is here.</h2>
-  <p class="sub" style="max-width:900px">Eight times a day (00:20, 03:20 … 21:20 SAST) the same rules-only screen reads Coinbase's most liquid crypto perps and lists every setup it finds. <b>Since 16 Nov Beam 1.0 picks the trades again</b>, from the shortlist or its own setups; from 10 to 16 Nov the screen's own top picks were traded directly with no model choosing, and they are still booked on paper beside Beam at every decision. A pick is traded at once: its own isolated position, sized to risk 5% of the account at the stop, with the stop and target resting on the exchange. Beam's limits run on its own results only, never on the human's. <a href="https://www.coinbase.com/trading-competition/0fba5b34-1297-4eb1-b603-dba830ad6fc2" target="_blank" rel="noopener">The Champions Cup leaderboard on Coinbase →</a></p>
-  <div id="cb-calls"><span class="src">Beam's calls load with the feed.</span></div>
-  <!-- [#910] OPENSEA SPOT: one model trades a small real-money spot account on OpenSea; four others answer the same prompt on
-       paper. Data: feed.openseaSpot (the bot reads the lane's own book read-only). No wallet address and no transaction hash
-       is in the feed. -->
-  <div class="kicker" style="margin-top:34px">OpenSea spot · one model, real money · four more on paper · since 16 Nov</div>
-  <h2 class="sec" id="os-calls-h">Particle trades a small spot account on OpenSea. Four other models answer the same question on paper.</h2>
-  <p class="sub" style="max-width:900px">A spot account can only buy and later sell: no shorting, no leverage. So this is a test of whether a model can pick <i>longs</i> — over the 45 days before it began, the long trades of every one of our desks lost on average. Every 30 minutes in US market hours and every two hours otherwise, each model is shown the same table of seven tokenized stocks and eight crypto tokens (price, recent change, place in its range) and answers buy, sell, hold or nothing, with its own stop, target and time limit. <b>Particle-1's answers are traded with real money</b>, and its confidence sets the size. The bot sells at the stop at any time, and at the target, the time limit or the model's word once a position is an hour old. Qwen 3.7 Max, Beam 1.0, Mercury 3 and Seed 2.0 Mini answer the same prompt at the same moment on paper and pay the same costs: a buy and its sell cost about 1% of the position. Not advice.</p>
-  <div id="os-calls"><span class="src">The OpenSea lane loads with the feed.</span></div>
-  <div class="kicker" style="margin-top:34px">Extended brief · twice a day · every call scored at 12 h</div>
+  <div class="kicker">Trading calls · Extended brief (live) · twice a day · every call scored at 12 h</div>
   <h2 class="sec" id="calls">A rulebook and five AI models call Extended perps. Every call is scored.</h2>
   <p class="sub" style="max-width:900px">Twice a day (06:12 and 18:12 SAST) a rules-only screen reads Extended's most liquid perps — crypto, plus commodities, indices, FX and stocks — and proposes up to three trades from price, range and funding alone. Five AI models (Gemini and DeepSeek since 8 Oct; Beam 1.0 and Mercury 3 from 4 Nov; Seed 1.6 Flash from 4 Nov evening) then read the same markets <i>and the news</i>, and either take the screen's setups or make calls of their own, with their own stop and target. Twelve hours later each call is checked on real 15-minute bars: target first, stop first, or still open, after taker fees. Nothing is removed afterwards.</p>
   <p class="sub" style="max-width:900px"><a id="ec-cta" class="ec-cta hidden" target="_blank" rel="sponsored noopener">Trade these markets on Extended →</a> <span class="src" id="ec-cta-note"></span></p>
@@ -1712,6 +1701,18 @@
       <p>If the target and the stop both fall inside one 15-minute bar, the call is scored as stopped. A model may also make no call at all. These are machine-generated candidates published for the record — <b>not financial advice</b>, and the operator may or may not trade any of them.</p>
     </div></div>
   </div>
+  <!-- [#307] operator 27 Nov: "the coinbase cup is done move extended to the top of the page" — both challenge lanes ended; the record stays -->
+  <div class="kicker" style="margin-top:44px">Coinbase Champions Cup · 4–25 Nov · ended</div>
+  <h2 class="sec" id="cb-calls-h">Beam traded the AI half of a real Coinbase account in the Champions Cup. Every call and every trade is here.</h2>
+  <p class="sub" style="max-width:900px">Eight times a day (00:20, 03:20 … 21:20 SAST) the same rules-only screen read Coinbase's most liquid crypto perps and listed every setup it found. <b>From 16 Nov Beam 1.0 picked the trades</b>, from the shortlist or its own setups; from 10 to 16 Nov the screen's own top picks were traded directly with no model choosing, and they were booked on paper beside Beam at every decision. A pick was traded at once: its own isolated position, sized to risk 5% of the account at the stop, with the stop and target resting on the exchange. Beam's limits ran on its own results only, never on the human's. <b>The cup ended on 25 Nov.</b> Beam did not pass the test set for it on 4 Nov and has opened no new trade since 06:50 SAST on 26 Nov (the verdict is on the <a href="#/rules">Rules</a> page); the human keeps trading the account by hand to the end of Season 6. <a href="https://www.coinbase.com/trading-competition/0fba5b34-1297-4eb1-b603-dba830ad6fc2" target="_blank" rel="noopener">The Champions Cup leaderboard on Coinbase →</a></p>
+  <div id="cb-calls"><span class="src">Beam's calls load with the feed.</span></div>
+  <!-- [#910] OPENSEA SPOT: one model trades a small real-money spot account on OpenSea; four others answer the same prompt on
+       paper. Data: feed.openseaSpot (the bot reads the lane's own book read-only). No wallet address and no transaction hash
+       is in the feed. -->
+  <div class="kicker" style="margin-top:34px">OpenSea spot · one model, real money · four more on paper · 16–23 Nov · stopped</div>
+  <h2 class="sec" id="os-calls-h">Particle traded a small spot account on OpenSea. Four other models answered the same question on paper.</h2>
+  <p class="sub" style="max-width:900px">A spot account can only buy and later sell: no shorting, no leverage. So this was a test of whether a model can pick <i>longs</i> — over the 45 days before it began, the long trades of every one of our desks lost on average. Every 30 minutes in US market hours and every two hours otherwise, each model was shown the same table of seven tokenized stocks and eight crypto tokens (price, recent change, place in its range) and answered buy, sell, hold or nothing, with its own stop, target and time limit. <b>Particle-1's answers were traded with real money</b>, and its confidence set the size. The bot sold at the stop at any time, and at the target, the time limit or the model's word once a position was an hour old. Qwen 3.7 Max, Beam 1.0, Mercury 3 and Seed 2.0 Mini answered the same prompt at the same moment on paper and paid the same costs: a buy and its sell cost about 1% of the position. <b>Real-money trading stopped on 23 Nov</b> (the operator's call); the record stays here. Not advice.</p>
+  <div id="os-calls"><span class="src">The OpenSea lane loads with the feed.</span></div>
   <!-- [S6] operator 9 Nov: Beam's decision log moved to the bottom of the page -->
   <div id="cb-decisions" style="margin-top:34px"></div>
 </div>
