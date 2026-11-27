@@ -465,8 +465,13 @@
   /* [#502] on a phone the race chart scaled down to ~4px text — hold a readable width and scroll it sideways instead */
   @media (max-width: 700px) { .chart-box { overflow-x: auto; } #race-chart { min-width: 620px; } }
   @media (max-width: 700px) { .ch-plot { height: 240px; } .ch-meta { margin-left: 0; text-align: left; width: 100%; }
-    .ch-live { margin-left: 0; width: 100%; } }
+    .ch-live { margin-left: 0; width: 100%; white-space: normal; } .ch-prog { margin-left: 0; display: block; } }   /* [#307] the 'behind entry — N% of the way' note wrapped off a 390px screen */
   .box { border: 1px solid var(--line); margin-bottom: 20px; }
+  /* [#307] long lists fold behind one tap; bios clamp to four lines on a phone (tap to read the rest) */
+  details.more-list > summary { cursor: pointer; font: 600 12.5px var(--sans); color: var(--accent); padding: 10px 0; list-style: none; }
+  details.more-list > summary::before { content: "▸ "; } details.more-list[open] > summary::before { content: "▾ "; }
+  @media (max-width: 700px) { .p-blurb { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; cursor: pointer; }
+    .p-blurb.open { display: block; -webkit-line-clamp: unset; } }
   .box-h { background: var(--bg2); border-bottom: 1px solid var(--line); padding: 8px 12px; font-size: 12px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
   .box-b { padding: 10px 12px; }
   .cal-act { display: block; color: var(--ink2); font-size: 11.5px; margin-top: 2px; }
@@ -1079,7 +1084,7 @@
     <svg id="race-chart" viewBox="0 0 820 300" role="img" aria-label="Account value of the competitors"></svg>
     <div class="src" style="margin-top:4px">Equity curves — account value including open positions, sampled every 5 minutes. <b>Change</b> (the default) starts every line at 0 so accounts of different sizes share one scale; <b>%</b> and <b>$</b> show the level. Dashed lines and * = paper accounts, no real money.</div>
     <!-- SEASON-FLIP: was "Season 3 is closed…". Rewrite at the next season boundary. -->
-    <div class="src" style="margin-top:2px"><b>Season 6</b> — 30 days from 6 Nov. Six AI desks trade real money (Benny Beam on Hyperliquid; Kenny, Danny, Gina, Henry and Garry on their own Lighter accounts), Quinn, Luna and Quentin trade paper under the same rules, and the human seat is Human + AI: one Coinbase account where the human trades by hand beside Beam's own cup trades, ranked as one. Every AI seat started at $500; everyone is ranked on return net of model spend. <a href="#/rules">The rules, fixed before the first trade →</a></div>
+    <div class="src" style="margin-top:2px"><b>Season 6</b> — 30 days from 6 Nov. Six AI desks trade real money (Benny Beam on Hyperliquid; Kenny, Danny, Gina, Henry and Garry on their own Lighter accounts), seven more trade paper under the same rules, and the human seat is Human + AI: one Coinbase account the human trades by hand (Beam traded its own cup positions on it until 26 Nov), ranked as one. Every AI seat started at $500; everyone is ranked on return net of model spend. <a href="#/rules">The rules, fixed before the first trade →</a></div>
   </div>
   <!-- [S6] operator 6 Nov: the Coinbase Champions Cup card sits BELOW the equity curves of all the desks (it was above the live
        trades). Since Season 6 its account is the Human + AI seat, so its book stays on the home page, after the race. -->
@@ -1571,7 +1576,7 @@
        Data: static data/model_board.json (committed with the page, never the live feed). Prompts/answers are NEVER rendered. -->
   <div class="kicker">Model Lab · benchmark</div>
   <h2 class="sec" id="models">Which AI model trades best on the same inputs?</h2>
-  <p class="sub" style="max-width:980px;border-left:3px solid #0052ff;padding-left:10px"><b>From the Lab to real money:</b> Beam 1.0 (Reflection), the Lab's leader, now trades two real accounts — the Hyperliquid desk as <b>Benny Beam</b> (Season 6, since 6 Nov) and the AI half of the <b>Human + AI</b> seat in the <a href="https://www.coinbase.com/trading-competition/0fba5b34-1297-4eb1-b603-dba830ad6fc2" target="_blank" rel="noopener">Coinbase Champions Cup</a> (since 4 Nov). <a href="#/calls">Every Beam call and trade →</a></p>
+  <p class="sub" style="max-width:980px;border-left:3px solid #0052ff;padding-left:10px"><b>From the Lab to real money:</b> Beam 1.0 (Reflection), the Lab's leader, trades the Hyperliquid desk as <b>Benny Beam</b> (Season 6, since 6 Nov). It also traded the AI half of the <b>Human + AI</b> seat in the <a href="https://www.coinbase.com/trading-competition/0fba5b34-1297-4eb1-b603-dba830ad6fc2" target="_blank" rel="noopener">Coinbase Champions Cup</a> from 4 Nov; the cup ended on 25 Nov and Beam stopped trading that account on 26 Nov. <a href="#/calls">Every Beam call and trade →</a></p>
   <div class="ml-ans" id="ml-answer"><h3>Who's best?</h3><p class="src">Loading the three tests…</p></div>
   <!-- [7 Nov] the prompt grid (#759 → #772): the same models on different versions of the desks' own prompt -->
   <div class="box" id="ml-prompts" style="margin-top:18px">
@@ -1616,10 +1621,10 @@
         <div style="min-width:0;overflow-x:auto">
           <table class="data" style="margin:0">
             <tr><th>Test</th><th>Question</th><th>Result</th><th>Now live</th></tr>
-            <tr><td style="white-space:nowrap">#759 · 5 Nov</td><td>Full prompt (A) against the lean one (C): 205 past moments, three models</td><td><b class="up">C +0.31R</b> per idea, on all three models and both halves</td><td>C on every desk</td></tr>
-            <tr><td style="white-space:nowrap">#768 · 6 Nov</td><td>Drop three opinion lines (E) · add four fact blocks back (F): 241 moments, two models</td><td>E <b>+0.02R</b>: not worse · F <b>−0.08R</b>: not better</td><td>E on every desk</td></tr>
+            <tr><td style="white-space:nowrap">#759 · 5 Nov</td><td>Full prompt (A) against the lean one (C): 205 past moments, three models</td><td><b class="up">C +0.31R</b> per idea, on all three models and both halves</td><td class="src">C on every desk, 5–6 Nov</td></tr>
+            <tr><td style="white-space:nowrap">#768 · 6 Nov</td><td>Drop three opinion lines (E) · add four fact blocks back (F): 241 moments, two models</td><td>E <b>+0.02R</b>: not worse · F <b>−0.08R</b>: not better</td><td class="src">E on every desk, 6–19 Nov</td></tr>
             <tr><td style="white-space:nowrap">#770 · 6 Nov</td><td>Garry's model only: E, F and G (E + facts), three runs each</td><td><b class="up">F ahead in 3 of 3 runs</b>, +0.33R; G 2 of 3</td><td>F for Garry</td></tr>
-            <tr><td style="white-space:nowrap">#772 · ~20 Nov</td><td>The check: 1–15 Nov moments that chose nothing, E, C and A (and Garry's F)</td><td class="src">pending — the pass marks were written down on 7 Nov</td><td>—</td></tr>
+            <tr><td style="white-space:nowrap">#772 · ~20 Nov</td><td>The check: 1–15 Nov moments that chose nothing, E, C and A (and Garry's F)</td><td>Read 19 Nov on moments none of the earlier tests saw: E <b class="down">−0.25R</b> against A, C −0.05R against A — neither cut held up. Garry's F +0.14R against E. The pass marks were written down on 7 Nov and applied as written.</td><td><b>A on ten desks · F for Garry</b> (since 19 Nov)</td></tr>
           </table>
           <p class="src" style="margin:8px 0 0">R is a result in units of the risk taken: a stop is −1R, a target at reward-to-risk 2.2 is +2.2R. The opinion lines are the regime's "how to trade it" instruction, a one-line market thesis and mentions of what X and newsletters discuss; the fact blocks are prediction-market odds, exchange flows, stablecoin supply and DeFi metrics. Every change is also a dated amendment on <a href="#/rules">the rules page</a>.</p>
         </div>
@@ -1763,15 +1768,17 @@
         <tr><td><b>Kenny Kimi</b></td><td>Kimi K3.1 Pro (Moonshot AI) <span class="src">— K3 until 5 Nov</span></td><td>Lighter</td><td>$500 live</td><td>Season 3 · 15 Jul</td></tr>
         <tr><td><b>Danny DeepSeek</b></td><td>DeepSeek V4.1 Flash <span class="src">— V4 Pro until 28 Sep</span></td><td>Lighter</td><td>$500 live</td><td>Season 3 · 15 Jul</td></tr>
         <tr><td><b>Gina Gemini</b></td><td>Gemini 3.8 Flash (Google)</td><td>Lighter</td><td>$500 live</td><td>Season 3 · 15 Jul</td></tr>
-        <tr><td><b>Luna GPT</b></td><td>GPT-6 Luna (OpenAI) <span class="src">— GPT-5.6 until 28 Sep</span></td><td>Lighter</td><td>$500 live</td><td>Season 4</td></tr>
+        <tr><td><b>Henry Haiku</b></td><td>Claude Haiku 5.5 (Anthropic, via OpenRouter)</td><td>Lighter</td><td>$500 live</td><td>Season 6 · 23 Nov (the seat Luna GPT held; the same model was Hana Haiku on paper from 14 Oct)</td></tr>
+        <tr><td><b>Luna GPT</b></td><td>GPT-6 Luna (OpenAI) <span class="src">— GPT-5.6 until 28 Sep</span></td><td>Paper</td><td>$500 paper</td><td>Season 4 · live on Lighter until 23 Nov, on paper since</td></tr>
         <tr><td><b>Garry GLM</b></td><td>GLM 5.3 Flash (Zhipu)</td><td>Lighter</td><td>$500 live</td><td>Season 4 (as Milo; renamed at Season 5)</td></tr>
         <tr><td><b>Quinn Qwen</b></td><td>Qwen 3.7 Max (Alibaba, via OpenRouter)</td><td>Paper</td><td>$500 paper</td><td>Season 2</td></tr>
-        <tr><td><b>Hana Haiku</b></td><td>Claude Haiku 5.5 (Anthropic, via OpenRouter)</td><td>Paper</td><td>$500 paper</td><td>Season 5 · 14 Oct</td></tr>
+        <tr><td><b>Hana Haiku</b></td><td>Claude Haiku 5.5 (Anthropic, via OpenRouter)</td><td>Paper</td><td>—</td><td>Season 5 · 14 Oct · retired S6 (23 Nov; the model now trades as Henry Haiku)</td></tr>
         <tr><td><b>Quentin Qwen</b></td><td>Qwen 3.8 Flash (Alibaba, via OpenRouter)</td><td>Paper</td><td>$500 paper</td><td>Season 5 · 14 Oct</td></tr>
-        <tr><td><b>Sid Seed</b></td><td>Seed 1.6 Flash (ByteDance, via OpenRouter)</td><td>Paper</td><td>$500 paper</td><td>Season 6 · 6 Nov</td></tr>
+        <tr><td><b>Sid Seed</b></td><td>Seed 2.0 Mini (ByteDance, via OpenRouter) <span class="src">— Seed 1.6 Flash until 11 Nov</span></td><td>Paper</td><td>$500 paper</td><td>Season 6 · 6 Nov</td></tr>
         <tr><td><b>Percy Particle</b></td><td>Particle-1 (Particle AI, via OpenRouter)</td><td>Paper</td><td>$500 paper</td><td>Season 6 · 6 Nov</td></tr>
         <tr><td><b>Max Mercury</b></td><td>Mercury 3 (Inception)</td><td>Paper</td><td>$500 paper</td><td>Season 6 · 6 Nov</td></tr>
-        <tr><td><b>Human + AI</b></td><td>The human + Beam's cup trades, one account</td><td>Coinbase</td><td>live</td><td>Season 1 · on Coinbase from Season 6</td></tr>
+        <tr><td><b>Ivy Inkling</b></td><td>Inkling 2 Small (Thinking Machines, via OpenRouter)</td><td>Paper</td><td>$500 paper</td><td>Season 6 · 26 Nov</td></tr>
+        <tr><td><b>Human + AI</b></td><td>The human, one account <span class="src">— with Beam 1.0's cup trades until 26 Nov</span></td><td>Coinbase</td><td>live</td><td>Season 1 · on Coinbase from Season 6</td></tr>
       </table>
       <div class="src" style="margin-top:6px">Desk names are codenames; the model column is what actually makes the calls. If any copy on this site
       disagrees with this table, the table wins.</div>
@@ -1883,7 +1890,7 @@ var DATA_URL = window.SITE_DATA_URL || "data/latest.json";
 var SEASON = 6; // SEASON-FLIP: bump at each season ritual (static HTML copy carries its own markers)
 // [#501] Season-5 pre-registration (approved 25 Sep): rank on return from each seat's own start NET OF its model spend,
 // marked to market, human ranked in the same table; 30 days. Everything below keys off SEASON so it switches on at the flip.
-var SEASON_DAYS = { 5: 30 };
+var SEASON_DAYS = { 5: 30, 6: 30 };   // [#307] Season 6 is 30 days too (6 Nov → 6 Dec)
 var S5_RANK = SEASON >= 5;
 function s5Verdict(d) {   // the headline on the table's own measure — one number everywhere
   var live = (d.standings || []).filter(function (a) { return a.retNetPct != null && a.key !== "qwen" && a.paper !== true && a.venue && String(a.venue).toUpperCase() !== "PAPER"; });
@@ -1930,7 +1937,7 @@ var ACTORS = {
     blurb: "The newcomer. Trades Hyperliquid on Beam 1.0, the model that led our Model Lab on the desks' real prompts, longs and shorts alike. Took the seat from Greta Grok at the start of Season 6." },
   manual:   { label: "Human + AI", model: "The human + Beam", short: "Human + AI", color: "#1e7a3a",
     style: "Discretionary swing — pure experience, no code gates",
-    blurb: "The human seat, Season 6: one Coinbase account where the human trades by hand and Beam runs its own cup trades beside them, ranked as one seat. Beam's own record is shown apart on the Coinbase cup card." },
+    blurb: "The human seat, Season 6: one Coinbase account the human trades by hand, ranked as one seat. Beam ran its own cup trades beside them from 4 to 26 Nov; that record is shown apart on the Coinbase cup card." },
   // Paper brains (bot-side #123b) — render automatically once the feed's standings include them.
   kimi:     { label: "Kenny Kimi", model: "Kimi K3.1 Pro", short: "Kenny", color: "#b3541e",
     style: "Tight, structure-anchored stops",
@@ -2157,12 +2164,17 @@ function renderHero(d) {
   var chip = function (st, dir) { var m = ACTORS[st.actor] || { short: st.actor }; return "<span class='cs-chip " + (dir === "LONG" ? "l" : "s") + (st.kind === "watching" ? " w" : "") + "' title='" + esc(m.label || st.actor) + " " + dir + (st.kind === "watching" ? " (trigger watch)" : "") + "'>" + esc(m.short || st.actor) + " " + (dir === "LONG" ? "↑" : "↓") + "</span>"; };
   if (!splits.length) {
     var held = ((c && c.assets) || []).filter(function (a) { return a.long.length || a.short.length; }).slice(0, 4).map(function (a) { return esc(a.asset); });
+    var sh = $("split"); if (sh) sh.textContent = held.length ? "Today the machines agree" : "No desk holds a stance right now";   // [#307] the headline follows the data
     sb.innerHTML = "<p class='sub' style='margin:0'>Every desk with a stance is on the same side today" + (held.length ? " (" + held.join(", ") + ")" : "") + ". <a href='#consensus'>See all positions →</a></p>"; return;
   }
+  var sh2 = $("split"); if (sh2) sh2.textContent = "The machines don't agree";
   sb.innerHTML = splits.map(function (a) {
     return "<div class='cs-row hot'><span class='cs-asset'>" + esc(a.asset) + "</span><span class='cs-chips'>" + a.long.map(function (st) { return chip(st, "LONG"); }).join("") + a.short.map(function (st) { return chip(st, "SHORT"); }).join("") + "</span></div>";
   }).join("") + "<div class='src' style='margin-top:6px'>Green long · red short · dashed = trigger watch, not yet filled. Independence is the design: no desk sees another's call. <a href='#consensus'>See every stance →</a></div>";
 }
+
+// [#307] a bio clamped to four lines on a phone opens on a tap (one listener for every card, cards are re-rendered with the feed)
+document.addEventListener("click", function (e) { var bl = e.target && e.target.closest ? e.target.closest(".p-blurb") : null; if (bl) bl.classList.toggle("open"); });
 
 // ── headline ──
 function renderHeadline(d) {
@@ -2170,7 +2182,7 @@ function renderHeadline(d) {
   // [T2c] the race kicker is the question now (static); the season facts live in the hero kicker once
   // [20 Oct] the day count runs from the season's exact start instant (seasonStart) — the daily card's clock, and the one that ends a 30-day
   // season on day 30; d.since is a bare date (00:00 UTC), which read a day ahead of the card and would have printed "day 31" on the last day
-  try { var t0 = Date.parse(d.seasonStart || d.since); if (isFinite(t0)) { var dayN = Math.max(1, Math.ceil((Date.now() - t0) / 864e5)); $("hero-kicker").textContent = "Season " + SEASON + " · day " + dayN + (SEASON_DAYS[SEASON] ? (dayN > SEASON_DAYS[SEASON] ? " — season complete (" + SEASON_DAYS[SEASON] + " days)" : " of " + SEASON_DAYS[SEASON]) : "") + " · since " + new Date(t0).toLocaleDateString("en-GB", { day: "numeric", month: "long" }); } } catch (e) {}
+  try { var t0 = Date.parse(d.seasonStart || d.since); if (isFinite(t0)) { var dayN = Math.max(1, Math.ceil((Date.now() - t0) / 864e5)); $("hero-kicker").textContent = "Season " + SEASON + " · day " + dayN + (SEASON_DAYS[SEASON] ? (dayN > SEASON_DAYS[SEASON] ? " — season complete (" + SEASON_DAYS[SEASON] + " days)" : " of " + SEASON_DAYS[SEASON]) : "") + (SEASON_DAYS[SEASON] && dayN <= SEASON_DAYS[SEASON] ? " · ends " + new Date(t0 + SEASON_DAYS[SEASON] * 864e5).toLocaleDateString("en-GB", { day: "numeric", month: "long", timeZone: "Africa/Johannesburg" }) : " · since " + new Date(t0).toLocaleDateString("en-GB", { day: "numeric", month: "long" })); } } catch (e) {}   // [#307] the countdown names the end date
   // [#460] THE NORMALISED VERDICT. The old headline compared absolute end balances and called
   // "the machine" whichever desk was highest at that moment. Three things were wrong with it:
   // the seats did not start equal (the human's began at $518.25 against a machine mean of
@@ -2257,8 +2269,8 @@ function renderHeroCounts(d) {
   var team = humanOnCup(d);   // [S6] the human seat is the Human + AI team (one Coinbase account)
   var cup = !!(d.coinbaseCup && d.coinbaseCup.equity != null) && !team;   // [#746] the AI + Human team (Coinbase cup) is counted wherever the roster is
   $("hero-h").textContent = live + " AIs on real money. " + (paper ? paper + " on paper. " : "") + (team ? "1 human + AI team." : "1 human.") + (cup ? " 1 AI + human team." : "");
-  $("hero-sub").textContent = cap(w(live)) + " AI desks trade real money from $500 each" + (paper ? ", " + w(paper) + " more trade" + (paper === 1 ? "s" : "") + " on paper under the same rules" : "") + (cup ? ", an AI + human team shares a real Coinbase account in the Champions Cup" : "") + (team ? ", the human trades beside Beam on one Coinbase account, ranked as one seat" : "") + ", and every position, stop and post-mortem goes public the moment it exists.";
-  var bl = $("bots-lead"); if (bl) bl.innerHTML = "One human trader and " + w(live + paper + (cup ? 1 : 0)) + " AI models: " + w(live) + " trade real money from <b>$500</b> each" + (paper ? ", " + w(paper) + " trade" + (paper === 1 ? "s" : "") + " on paper under the same rules" : "") + (cup ? ", and Beam 1.0 trades beside the human on a shared Coinbase account (the AI + Human seat)" : "") + (team ? ", and Beam 1.0 also trades beside the human on one Coinbase account (the Human + AI seat)" : "") + ".";   // [15 Oct] was "Eight $500 accounts … Seven autonomous AI models"
+  $("hero-sub").textContent = cap(w(live)) + " AI desks trade real money from $500 each" + (paper ? ", " + w(paper) + " more trade" + (paper === 1 ? "s" : "") + " on paper under the same rules" : "") + (cup ? ", an AI + human team shares a real Coinbase account in the Champions Cup" : "") + (team ? ", the human trades one Coinbase account by hand (Beam's cup trades on it stopped on 26 Nov), ranked as one seat" : "") + ", and every position, stop and post-mortem goes public the moment it exists.";
+  var bl = $("bots-lead"); if (bl) bl.innerHTML = "One human trader and " + w(live + paper + (cup ? 1 : 0)) + " AI models: " + w(live) + " trade real money from <b>$500</b> each" + (paper ? ", " + w(paper) + " trade" + (paper === 1 ? "s" : "") + " on paper under the same rules" : "") + (cup ? ", and Beam 1.0 trades beside the human on a shared Coinbase account (the AI + Human seat)" : "") + (team ? ", and Beam 1.0 traded beside the human on one Coinbase account (the Human + AI seat) until 26 Nov" : "") + ".";   // [15 Oct] was "Eight $500 accounts … Seven autonomous AI models"
   var tag = $("mast-tag"); if (tag) tag.textContent = (team ? "One human + AI team. " : "One human. ") + cap(w(live)) + " machines on real money" + (paper ? ", " + w(paper) + " on paper" : "") + (cup ? ", one AI + human team" : "") + " — every trade tracked live, in public.";
 }
 function renderFleetPnl(d) {
@@ -3102,8 +3114,8 @@ function renderPlayers(d) {
   if (c && c.equity != null) {
     var b = c.beam && !c.beam.error ? c.beam : null;
     var cupCard = "<div class='pcard' style='border-top-color:#0052ff'><div class='p-name' style='color:#0052ff'>Beam's cup record</div>" +
-      "<div class='p-model'>Beam 1.0 · on the Human + AI account · <a class='venue-link' href='" + CUP_URL + "' target='_blank' rel='noopener'>Coinbase · live</a></div>" +
-      "<div class='p-blurb'>Beam's own trades on the Human + AI seat's Coinbase account in the Champions Cup (4–25 Nov), kept apart so its record stays readable. Beam 1.0 — the Model Lab's leader — picks from the rules-only screen 8× a day and trades its own isolated positions, stops on the exchange. The account as a whole is ranked as the Human + AI seat.</div>" +
+      "<div class='p-model'>Beam 1.0 · on the Human + AI account · <a class='venue-link' href='" + CUP_URL + "' target='_blank' rel='noopener'>Coinbase · ended</a></div>" +
+      "<div class='p-blurb'>Beam's own trades on the Human + AI seat's Coinbase account in the Champions Cup (4–25 Nov), kept apart so its record stays readable. Beam 1.0 — the Model Lab's leader — picked from the rules-only screen 8× a day and traded its own isolated positions, stops on the exchange. The cup ended on 25 Nov and Beam opened no trade after 06:50 SAST on 26 Nov. The account as a whole is ranked as the Human + AI seat.</div>" +
       "<div class='p-stat'><span>" + money(c.equity, 0) + " <span class='" + clsZ(c.pnlPct, 1) + "' title='The cup&#39;s own measure'>" + pct(c.pnlPct, 1) + "</span> <span class='src'>cup</span></span>" +
       "<span>Beam " + (b ? b.wins + "W–" + b.losses + "L" + (b.open ? " · " + b.open + " open" : "") : "—") + "</span></div>" +
       "<div class='src' style='margin-top:6px'><a href='#/calls'>Beam's calls →</a></div></div>";
@@ -3601,7 +3613,9 @@ function renderFloor(d) {
     if (c.status === "not") return "<div class='src'>needs " + need + " — last closed bar" + (lc ? " (" + lc + ")" : "") + " did not; a wick alone won't fill it</div>";
     return "<div class='src'>needs " + need + "</div>";
   }
-  waits.forEach(function (t) {
+  var WAITS_SHOWN = 8;   // [#307] 55+ watches made this list ~13,000px on a phone: the first 8, the rest one tap away
+  waits.forEach(function (t, wi) {
+    if (wi === WAITS_SHOWN) h += "<details class='more-list'><summary>Show the other " + (waits.length - WAITS_SHOWN) + " watches</summary>";
     h += "<div class='titem'><div class='l1'><span class='asset'>" + esc(t.asset) + "</span>" +
       "<span class='dirpill " + (t.direction === "SHORT" ? "s" : "l") + "'>" + esc(t.direction) + "</span>" +
       actorTag(actorKeyOf(t.brain)) + earnPill(d, t.asset) +
@@ -3614,6 +3628,7 @@ function renderFloor(d) {
       confirmLine(t.confirm) +
       "<div class='why'>Anticipatory entries are the fleet's #1 loss cause — agents wait for the trigger to print.</div></div>";
   });
+  if (waits.length > WAITS_SHOWN) h += "</details>";
   // The human's live book (Extended) — entry + live % only; feed omits it when flat/unreadable.
   var mb = humanOnCup(d) ? null : d.manualBook;   // [S6] the Extended book is under the Lab
   if (mb && mb.positions && mb.positions.length) {
@@ -5107,8 +5122,10 @@ function renderBeamCalls(d) {
   var b = c.beam && !c.beam.error ? c.beam : null;
   var h = "<p style='max-width:900px'><b>Beam on Coinbase:</b> " + (b ? b.wins + "W–" + b.losses + "L · " + b.open + " open · P&amp;L " + (b.pnl >= 0 ? "+" : "−") + money(Math.abs(b.pnl), 2) + " · model spend " + money(b.costUsd, 2) + " · " + b.decisions + " decision" + (b.decisions === 1 ? "" : "s") : "—") + "</p>";
   if ((k.trades || []).length) {
-    h += "<div class='ml-wrap'><table class='data'><tr><th>Opened</th><th>Market</th><th class='rt'>Entry</th><th class='rt'>Stop</th><th class='rt'>Target</th><th>Result</th><th class='rt'>R</th><th class='rt'>P&amp;L</th><th>Beam's reason</th></tr>";
-    k.trades.forEach(function (t) {
+    var _cbHead = "<tr><th>Opened</th><th>Market</th><th class='rt'>Entry</th><th class='rt'>Stop</th><th class='rt'>Target</th><th>Result</th><th class='rt'>R</th><th class='rt'>P&amp;L</th><th>Beam's reason</th></tr>", CB_SHOWN = 10;   // [#307] the cup ended: newest 10, the rest one tap away
+    h += "<div class='ml-wrap'><table class='data'>" + _cbHead;
+    k.trades.forEach(function (t, ti) {
+      if (ti === CB_SHOWN) h += "</table></div><details class='more-list'><summary>Show all " + k.trades.length + " of Beam's cup trades</summary><div class='ml-wrap'><table class='data'>" + _cbHead;
       var res = t.state === "open" ? "<span class='pill live'>OPEN</span>" : esc(t.closeReason || "closed");
       h += "<tr><td class='num'>" + esc(t2(t.at)) + "</td><td><b>" + esc(t.asset) + "</b> <span class='dirpill " + (t.dir === "SHORT" ? "s" : "l") + "'>" + esc(t.dir) + "</span></td>" +
         "<td class='rt num'>" + px(t.entry) + "</td><td class='rt num'>" + px(t.stop) + "</td><td class='rt num'>" + px(t.target) + "</td><td>" + res + "</td>" +
@@ -5116,13 +5133,13 @@ function renderBeamCalls(d) {
         "<td class='rt num " + (t.pnl == null ? "" : cls(t.pnl)) + "'>" + (t.pnl == null ? "—" : (t.pnl >= 0 ? "+" : "−") + money(Math.abs(t.pnl), 2)) + "</td>" +
         "<td class='src'>" + esc(t.why || "") + "</td></tr>";
     });
-    h += "</table></div>";
+    h += k.trades.length > CB_SHOWN ? "</table></div></details>" : "</table></div>";
   } else h += "<p class='src'>No trades yet — Beam has passed on every shortlist so far.</p>";
   host.innerHTML = h;
   var dh = $("cb-decisions"); if (!dh) return;
   h = "";
   if ((k.decisions || []).length) {
-    h += "<details class='ml-sec' open><summary>Beam on Coinbase — every decision, newest first</summary><div class='ml-wrap'><table class='data'><tr><th>When</th><th>Decision</th><th>Beam's read of the tape</th></tr>";
+    h += "<details class='ml-sec'><summary>Beam on Coinbase — every decision, newest first (" + k.decisions.length + ")</summary><div class='ml-wrap'><table class='data'><tr><th>When</th><th>Decision</th><th>Beam's read of the tape</th></tr>";
     k.decisions.forEach(function (x) {
       var what = x.picks && x.picks.length ? x.picks.map(function (p) { return "<b>" + esc(p.a) + " " + esc(p.d) + "</b>" + (p.why ? " — " + esc(p.why) : ""); }).join("<br>")
         : x.passed ? "Passed — " + esc(x.passed) : x.skipped ? "<span class='src'>" + (x.n > 1 ? "<b>" + x.n + " decisions in a row:</b> " : "") + esc(x.skipped) + "</span>" : "<span class='src'>no pick</span>";
@@ -5210,13 +5227,16 @@ function renderCalls(d) {
   // earlier briefs
   if (!c.history || !c.history.length) { hEl.innerHTML = ""; return; }
   var t = "<div class='ec-h'><b>Earlier briefs</b><span class='src'>newest first</span></div><div class='xfade'><div style='overflow-x:auto'><table class='data'><tr><th>Brief</th><th>Picker</th><th>Calls and how they ended</th></tr>";
+  var _ecHead = "<tr><th>Brief</th><th>Picker</th><th>Calls and how they ended</th></tr>", _ecCut = Date.now() - 7 * 864e5, _ecFolded = false, _ecOlder = 0;   // [#307] last 7 days shown, older briefs one tap away
+  c.history.forEach(function (hb) { if (!(Date.parse(hb.at) >= _ecCut)) _ecOlder++; });
   c.history.forEach(function (hb) {
+    if (!_ecFolded && !(Date.parse(hb.at) >= _ecCut) && _ecOlder < c.history.length) { _ecFolded = true; t += "</table></div></div><details class='more-list'><summary>Show the " + _ecOlder + " earlier briefs (since 8 Oct)</summary><div style='overflow-x:auto'><table class='data'>" + _ecHead; }
     hb.pickers.forEach(function (k, i) {
       var calls = k.error ? "<span class='src'>no answer</span>" : !k.picks.length ? "<span class='src'>no call</span>" : k.picks.map(function (p) { return "<span class='" + (p.dir === "LONG" ? "up" : "down") + "'>" + esc(p.asset) + " " + esc(p.dir) + "</span>" + (p.origin === "own" ? "<span class='ec-tag own'>own</span>" : "") + ecResult(p, c.horizonH, hb.at); }).join(" &nbsp; ");
       t += "<tr><td class='src' style='white-space:nowrap'>" + (i === 0 ? esc(ecWhen(hb.at)) : "") + "</td><td><span class='swatch' style='background:" + ((ACTORS[k.key] || {}).color || "#555") + "'></span>" + esc(k.label) + "</td><td>" + calls + "</td></tr>";
     });
   });
-  hEl.innerHTML = t + "</table></div></div>"; xfadeWire(hEl);
+  hEl.innerHTML = t + (_ecFolded ? "</table></div></details>" : "</table></div></div>"); xfadeWire(hEl);
 }
 function xfadeWire(root) {
   Array.prototype.forEach.call(root.querySelectorAll(".xfade"), function (w) {
@@ -5359,6 +5379,8 @@ function renderCup(d) {
   var c = d.coinbaseCup, box = $("hw-cup");
   if (!box) return;
   if (!c || c.equity == null) { box.classList.add("hidden"); return; }
+  // [#307] operator 27 Nov: the cup ended on 25 Nov — its panel leaves the home page (the full record is on the Calls page)
+  if (Date.now() >= Date.parse("2026-11-26T00:00:00+02:00")) { box.classList.add("hidden"); return; }
   var h = "<div class='row'><span>Account equity" + (c.stale ? " <span class='src'>· last read " + esc(dcAgo(Date.parse(c.at))) + "</span>" : "") + "</span><b>" + money(c.equity) + " USDC</b></div>";
   if (c.adjPnl != null) h += "<div class='row'><span>Cup P&amp;L <span class='src'>· since " + money(c.startEquity) + (c.startBasis === "first-sample" ? " (first read)" : "") + "</span></span><b class='num " + cls(c.adjPnl) + "'>" + money(c.adjPnl) + " · " + pct(c.pnlPct, 2) + "</b></div>";
   var sr = c.series || [];
@@ -6858,10 +6880,12 @@ function mlAnswer() {
     var flip = b.filter(function (r) { return r.model === "coin-flip"; })[0];
     var rate = function (r) { return r && r.hit30 && r.hit30.n ? r.hit30.right / r.hit30.n : null; };
     var bestRate = Math.max.apply(null, mods.map(function (r) { return rate(r) || 0; })), fr = rate(flip);
-    var beats = fr != null && bestRate > fr;
     rows.push({ k: "Paper Trade · BTC / ETH", v: esc(top.label || top.model) + " " + (top.net1xPct >= 0 ? "+" : "−") + Math.abs(top.net1xPct).toFixed(1) + "%",
-      s: "Best of " + mods.length + " models on " + (dc.ticks || "?") + " rounds. " + (fr != null ? (beats ? "Its calls beat a coin flip one round later." : "No model calls the next round more often than a coin flip (" + Math.round(100 * fr) + "%).") : ""),
-      ok: beats, t: beats ? "AHEAD OF CHANCE" : "NOT PROVEN", href: "#/direction" });
+      // [#307, 27 Nov] the best of N models against a coin flip is NOT a test: with seven models one usually leads by luck.
+      // The tile reports the pre-registered verdict (#795, 25 Nov; corrected 27 Nov: no model qualifies) and never names a leader.
+      s: "Best of " + mods.length + " models on " + (dc.ticks || "?") + " rounds. " + (fr != null ? "The best called the next round right " + Math.round(100 * bestRate) + "% of the time, the coin flip " + Math.round(100 * fr) + "% \u2014 with " + mods.length + " models one usually looks ahead by luck alone. " : "") +
+         "The test written down before the results found no model that calls it better than chance.",
+      ok: false, t: "NOT PROVEN", href: "#/direction" });
   }
   if (!rows.length) return;
   var proven = rows.filter(function (r) { return r.ok; }).length;
