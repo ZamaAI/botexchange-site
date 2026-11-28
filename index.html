@@ -60,6 +60,7 @@
   .dc-card .ln { font-size: 12.5px; margin: 5px 0 0; }
   .dc-card .why { color: var(--muted, #6b6e68); font-size: 11.5px; margin: 1px 0 0; overflow-wrap: anywhere; }
   .dc-liq { color: #a8321b; font-size: 10.5px; white-space: nowrap; }
+  .dc-lev { font: 600 11px var(--sans); padding: 2px 9px; margin-left: 6px; border: 1px solid var(--line); border-radius: 4px; background: transparent; color: var(--accent); cursor: pointer; }   /* [#308] the leverage-replay toggle */
   tr.dc-base td { color: var(--muted, #6b6e68); font-style: italic; }
   /* [#598] Paper Trade pulse: coin cards, charts, whale table */
   .pt-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 0 0 14px; padding: 9px 14px; border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0; background: var(--bg2); color: var(--ink); text-decoration: none; font-size: 13px; }
@@ -6427,7 +6428,7 @@ function fsRender() {
   el.innerHTML = s;
 }
 // ── [#597] PAPER TRADE (BTC / ETH) (#/direction) — direction_calls.json from the data repo: paper BTC/ETH direction calls every 30 minutes ──
-var _dc = { data: null, timer: null, at: 0, coin: "BTC", ch: {} };
+var _dc = { data: null, timer: null, at: 0, coin: "BTC", ch: {}, lev: false };
 function dcLoad() {
   if (!_dc.timer) _dc.timer = setInterval(function () { var pg = document.querySelector('div.page[data-page="direction"]'); if (pg && pg.classList.contains("active")) dcFetch(); }, 300000);
   fsFetch();
@@ -6476,6 +6477,9 @@ function dcChart(id, title, sub, pts, o) {
   var W = 340, H = 132, L = 2, R = 2, T = 12, B = 14 + (o.strip ? 10 : 0), pw = W - L - R, ph = H - T - B;
   var lo = o.lo != null ? o.lo : Infinity, hi = o.hi != null ? o.hi : -Infinity;
   if (o.lo == null || o.hi == null) { pts.forEach(function (p) { if (o.lo == null) lo = Math.min(lo, p[1]); if (o.hi == null) hi = Math.max(hi, p[1]); }); if (o.bars) { lo = Math.min(lo, 0); hi = Math.max(hi, 0); } var pad = (hi - lo) * 0.08 || Math.abs(hi) * 0.01 || 1; if (o.lo == null) lo -= pad; if (o.hi == null) hi += pad; }
+  // [#308] o.lines: extra series drawn on the same axes (one per bot), each {pts, label, color, dash}
+  var XL = (o.lines || []).filter(function (q) { return q.pts && q.pts.length >= 2; });
+  if (o.lo == null || o.hi == null) XL.forEach(function (q) { q.pts.forEach(function (p) { if (o.lo == null) lo = Math.min(lo, p[1]); if (o.hi == null) hi = Math.max(hi, p[1]); }); });
   var t0 = pts[0][0], t1 = pts[pts.length - 1][0], span = Math.max(1, t1 - t0);
   var X = function (t) { return L + pw * (t - t0) / span; }, Y = function (v) { return T + ph * (1 - (v - lo) / (hi - lo)); };
   var g = "", xs = [];
@@ -6488,6 +6492,7 @@ function dcChart(id, title, sub, pts, o) {
   } else {
     var d = pts.map(function (p, i) { var x = X(p[0]); xs.push(x); return (i ? "L" : "M") + x.toFixed(1) + " " + Y(p[1]).toFixed(1); }).join("");
     g += "<path d='" + d + "L" + X(t1).toFixed(1) + " " + (T + ph) + "L" + X(t0).toFixed(1) + " " + (T + ph) + "Z' fill='var(--accent)' opacity='.07'/><path d='" + d + "' fill='none' stroke='var(--accent)' stroke-width='1.6' stroke-linejoin='round'/>";
+    XL.forEach(function (q) { g += "<path d='" + q.pts.map(function (p, i) { return (i ? "L" : "M") + X(p[0]).toFixed(1) + " " + Y(p[1]).toFixed(1); }).join("") + "' fill='none' stroke='" + q.color + "' stroke-width='1.2' stroke-linejoin='round'" + (q.dash ? " stroke-dasharray='" + q.dash + "'" : "") + "/>"; });
   }
   if (o.strip && o.strip.length) {
     var mx = 1; o.strip.forEach(function (q) { mx = Math.max(mx, Math.abs(q[1])); });
@@ -6499,7 +6504,7 @@ function dcChart(id, title, sub, pts, o) {
     "<text x='" + L + "' y='" + (H - 2) + "' " + tx + ">" + esc(dcT(t0, true)) + "</text><text x='" + (W - R) + "' y='" + (H - 2) + "' text-anchor='end' " + tx + ">" + esc(dcT(t1, true)) + "</text>" +
     "<line class='hx' x1='0' x2='0' y1='" + T + "' y2='" + (T + ph) + "' stroke='var(--ink2)' stroke-width='.8' visibility='hidden'/><circle class='hd' r='3' fill='var(--ink)' visibility='hidden'/>";
   var last = pts[pts.length - 1];
-  _dc.ch[id] = { xs: xs, ys: pts.map(function (p) { return Y(p[1]); }), lab: pts.map(function (p) { return dcT(p[0]) + " · " + o.fmt(p[1]); }), W: W, strip: o.strip || null, stripFmt: o.stripFmt || null, ts: pts.map(function (p) { return p[0]; }), rest: "now " + o.fmt(last[1]) };
+  _dc.ch[id] = { xs: xs, ys: pts.map(function (p) { return Y(p[1]); }), lab: pts.map(function (p) { return dcT(p[0]) + " · " + o.fmt(p[1]); }), W: W, strip: o.strip || null, stripFmt: o.stripFmt || null, ts: pts.map(function (p) { return p[0]; }), rest: "now " + o.fmt(last[1]), lines: XL.map(function (q) { return { label: q.label, pts: q.pts }; }), fmt: o.fmt };
   return head + "<svg viewBox='0 0 " + W + " " + H + "' role='img' aria-label='" + esc(title) + "'>" + g + "</svg><div class='dc-tip'>" + esc(_dc.ch[id].rest) + "</div></div>";
 }
 function dcHover(e) {
@@ -6514,6 +6519,8 @@ function dcHover(e) {
   hd.setAttribute("cx", c.xs[bi]); hd.setAttribute("cy", c.ys[bi]); hd.setAttribute("visibility", "visible");
   var extra = "";
   if (c.strip && c.stripFmt) { var near = null; c.strip.forEach(function (q) { if (near == null || Math.abs(q[0] - c.ts[bi]) < Math.abs(near[0] - c.ts[bi])) near = q; }); if (near && Math.abs(near[0] - c.ts[bi]) <= 3600000) extra = " · " + c.stripFmt(near[1]); }
+  // [#308] each extra line's running total at that moment (its last close at or before it)
+  if (c.lines && c.lines.length) c.lines.forEach(function (q) { var v = null; q.pts.forEach(function (p) { if (p[0] <= c.ts[bi]) v = p[1]; }); if (v != null) extra += " · " + q.label + " " + c.fmt(v); });
   tip.textContent = c.lab[bi] + extra;
 }
 // [#723] real money: the bot's own result on the venue, from the executor's ledger. Hidden when the feed has no `live` block.
@@ -6539,7 +6546,8 @@ function dcReal(d) {
       return " · " + bots.map(function (b) { return esc(b) + " $" + esc(mOf(b).toFixed(2)) + " × " + esc(S.leverage) + " a trade" + (S.perSeatStop ? ", stops at −$" + esc(dOf(b)) + " a day" : ""); }).join(" · ") + " · both stop at −$" + esc(S.hardStop) + " in total";
     })() + ". A small test, not advice." + (small ? " Too few trades to judge yet." : "") + "</div>";
   h += "<div class='dc-rk'>" + kpi("Result", usd(L.total), dcCls(L.total)) + kpi("Today", usd(L.today), dcCls(L.today)) + kpi("Won / lost", L.wins + " / " + L.losses) + kpi("Average win", usd(L.avgWin), "up") + kpi("Average loss", usd(L.avgLoss), "down") +
-    (L.compared ? kpi("Model said", usd(L.model), dcCls(L.model)) : "") +
+    // [#308] was "Model said" — read as the AI model; it is OUR estimate from the venue's published payout formula (lib/papertrade.js simPaid)
+    (L.compared ? kpi("Formula estimate", usd(L.model), dcCls(L.model)) : "") +
     // [#944] PAPER: the venue's own token, minted on losing trades. Shown as a count; it is not valued and not in the result.
     (L.paper != null && isFinite(L.paper) ? kpi("PAPER minted", Number(L.paper).toLocaleString("en-US")) : "") + "</div>";
   // [#1037] each bot's own result, when more than one has traded real money (the figures above are all of them together)
@@ -6548,19 +6556,25 @@ function dcReal(d) {
   }).join(" &nbsp;·&nbsp; ") + "</div>";
   if (gone1060.length) h += "<div class='src' style='margin:-4px 0 10px'>The result above also counts " + gone1060.map(function (b) { return esc(b.label) + "’s " + b.trades + " real trade" + (b.trades === 1 ? "" : "s") + " (" + usd(b.total) + ")"; }).join(" and ") + ", from before it stopped trading real money.</div>";
   if (L.paper != null && isFinite(L.paper)) h += "<div class='rs'>PAPER is the venue’s own token, minted when a trade loses (about 10 for each dollar lost). It is not valued here and is not part of the result.</div>";
+  if (L.compared) h += "<div class='rs'><b>Formula estimate</b> is our own check on the venue: its published payout formula, run on the same entries and exits, gives " + usd(L.model) + " on " + L.compared + " closed trade" + (L.compared === 1 ? "" : "s") + "; the venue paid " + usd(L.real) + " on those same trades. It checks the payouts, not the bots’ calls — the bots’ result is what was paid." + (L.trades > L.compared ? " " + (L.trades - L.compared) + " trade" + (L.trades - L.compared === 1 ? " has" : "s have") + " no estimate (no exit price) and " + (L.trades - L.compared === 1 ? "is" : "are") + " in the result only." : "") + "</div>";
   if (L.pending) h += "<div class='rs'>" + L.pending + " closed trade" + (L.pending > 1 ? "s" : "") + " waiting for the venue’s payout figure, not counted yet.</div>";
-  // [#1038] with more than one bot: the graph of all of them together, then one graph per bot (its own closes only)
-  var chFmt = function (v) { return usd(v); }, perBot = (many && L.bySeat) ? L.bySeat.filter(function (b) { return Array.isArray(b.curve); }) : [];
-  h += "<div id='dc-real-ch'" + (perBot.length ? " class='dc-charts'" : "") + ">" + dcChart("real", perBot.length ? "All bots together, cumulative" : "Real result, cumulative", "What the venue actually paid, after every close.", L.curve, { min: 2, ref: 0, fmt: chFmt, empty: "The graph starts after the first closed trade." }) +
-    perBot.map(function (b, i) { return dcChart("real-b" + i, b.label, b.trades ? "This bot alone: " + usd(b.total) + " on " + b.trades + " trade" + (b.trades === 1 ? "" : "s") + "." : "This bot alone.", b.curve, { min: 2, ref: 0, fmt: chFmt, empty: "The graph starts after this bot’s first closed trade." }); }).join("") + "</div>";
+  // [#1038 → #308] with more than one bot: ONE graph — all of them together (filled), each bot as its own thin line on the same axes.
+  // Two near-identical graphs side by side (#308 review: GLM is most of the trades) said the same thing twice.
+  var chFmt = function (v) { return usd(v); }, perBot = (many && L.bySeat) ? L.bySeat.filter(function (b) { return Array.isArray(b.curve) && b.curve.length >= 2; }) : [];
+  var LINE = [{ color: "var(--watch)", dash: "" }, { color: "var(--ink2)", dash: "4 3" }, { color: "var(--down)", dash: "1 3" }];
+  var botLines = perBot.slice(0, LINE.length).map(function (b, i) { return { pts: b.curve, label: b.label, color: LINE[i].color, dash: LINE[i].dash }; });
+  // a CSS swatch, not an <svg>: .dc-ch svg is sized to the chart and dcHover reads the box's FIRST svg
+  var sw = function (c, st, w) { return "<span aria-hidden='true' style='display:inline-block;width:16px;margin-right:3px;vertical-align:middle;border-top:" + w + "px " + st + " " + c + "'></span>"; };
+  var key = botLines.length ? "<br><span style='white-space:nowrap'>" + sw("var(--accent)", "solid", 2) + "all together</span>" + botLines.map(function (q) { return " &nbsp;<span style='white-space:nowrap'>" + sw(q.color, q.dash === "4 3" ? "dashed" : q.dash ? "dotted" : "solid", 2) + esc(q.label) + "</span>"; }).join("") : "";
+  h += "<div id='dc-real-ch'>" + dcChart("real", botLines.length ? "Real result, cumulative — all bots and each bot" : "Real result, cumulative", "What the venue actually paid, after every close." + key, L.curve, { min: 2, ref: 0, fmt: chFmt, lines: botLines, empty: "The graph starts after the first closed trade." }) + "</div>";
   // [#308] each open row carries a "Copy on papertrade.xyz" button (through /go, which counts the click) and, on a phone, labels
   var ptCp = L.open.some(function (o) { return ptCopyBtn(o); });
   // [#308] the note BEFORE the first button (the #355 visitor test, 6 Sep: a note after the buttons is read after the click)
   if (L.open.length && ptCp) h += "<div class='copynote' style='margin-top:10px'><b>Copy on papertrade.xyz</b> opens the venue in a new tab. It has no referral code and no link to one market, so nothing is pre-filled and we earn nothing from the click: pick BTC or ETH, set the side, enter the stop and target shown, and choose your own size. The bot’s entry is its own fill, not today’s price. Not advice.</div>";
   if (L.open.length) h += "<div class='dc-rw'><table class='dc-rt'><tr><th>Open now</th>" + (many ? "<th>Bot</th>" : "") + "<th>Side</th><th>Entry</th><th>Stop</th><th>Target</th><th>Now</th><th>Since</th>" + (ptCp ? "<th></th>" : "") + "</tr>" + L.open.map(function (o) {
     return "<tr><td><b>" + esc(o.asset) + "</b></td>" + (many ? "<td>" + esc(o.bot || "—") + "</td>" : "") + "<td>" + dcDir(o.dir) + "</td><td data-l='Entry'>$" + esc(ecPx(o.entry)) + "</td><td data-l='Stop'>$" + esc(ecPx(o.stop)) + "</td><td data-l='Target'>$" + esc(ecPx(o.target)) + "</td><td data-l='Now' class='" + dcCls(o.retPct) + "'>" + dcPct(o.retPct) + "</td><td data-l='Since'>" + esc(dcT(o.from)) + "</td>" + (ptCp ? "<td class='dc-cp'>" + ptCopyBtn(o) + "</td>" : "") + "</tr>"; }).join("") + "</table></div>";
-  if (L.recent.length) h += "<div class='dc-rw'><table class='dc-rt'><tr><th>Closed</th>" + (many ? "<th>Bot</th>" : "") + "<th>Side</th><th>Entry</th><th>Exit</th><th>Why</th><th>Paid</th><th>Model said</th><th>When</th></tr>" + L.recent.map(function (t) {
-    return "<tr><td><b>" + esc(t.asset) + "</b></td>" + (many ? "<td>" + esc(t.bot || "—") + "</td>" : "") + "<td>" + dcDir(t.dir) + "</td><td data-l='Entry'>$" + esc(ecPx(t.entry)) + "</td><td data-l='Exit'>" + (t.exit ? "$" + esc(ecPx(t.exit)) : "—") + "</td><td data-l='Why'>" + esc(how[t.how] || t.how || "—") + "</td><td data-l='Paid' class='" + dcCls(t.paid) + "'>" + (t.paid == null ? "pending" : usd(t.paid)) + "</td><td data-l='Model said'>" + usd(t.model) + "</td><td data-l='When'>" + esc(dcT(t.to)) + "</td></tr>"; }).join("") + "</table></div>";
+  if (L.recent.length) h += "<div class='dc-rw'><table class='dc-rt'><tr><th>Closed</th>" + (many ? "<th>Bot</th>" : "") + "<th>Side</th><th>Entry</th><th>Exit</th><th>Why</th><th>Paid</th><th title='The venue’s published payout formula on the same entry and exit'>Estimate</th><th>When</th></tr>" + L.recent.map(function (t) {
+    return "<tr><td><b>" + esc(t.asset) + "</b></td>" + (many ? "<td>" + esc(t.bot || "—") + "</td>" : "") + "<td>" + dcDir(t.dir) + "</td><td data-l='Entry'>$" + esc(ecPx(t.entry)) + "</td><td data-l='Exit'>" + (t.exit ? "$" + esc(ecPx(t.exit)) : "—") + "</td><td data-l='Why'>" + esc(how[t.how] || t.how || "—") + "</td><td data-l='Paid' class='" + dcCls(t.paid) + "'>" + (t.paid == null ? "pending" : usd(t.paid)) + "</td><td data-l='Estimate'>" + usd(t.model) + "</td><td data-l='When'>" + esc(dcT(t.to)) + "</td></tr>"; }).join("") + "</table></div>";
   el.innerHTML = h + "</div>";
   var cb = $("dc-real-ch"); if (cb) ["pointermove", "pointerdown"].forEach(function (ev) { cb.addEventListener(ev, dcHover); });
 }
@@ -6594,6 +6608,7 @@ function dcWeekly(d) {
 }
 var dcFirstJoin = null;
 function dcRender() {
+  _dc.ch = {};   // [#308] reset FIRST: it ran after dcReal, so the real-money graph lost its hover readings on every render
   try { dcReal(_dc.data); } catch (e) { var re = $("dc-real"); if (re) re.innerHTML = ""; }
   try { dcWeekly(_dc.data); } catch (e) { var we = $("dc-weekly"); if (we) we.innerHTML = ""; }   // [#970]
   var d = _dc.data, nEl = $("dc-now"), bEl = $("dc-board"), rEl = $("dc-recent"), mEl = $("dc-method"); if (!d || !nEl || !bEl || !rEl) return;
@@ -6649,7 +6664,6 @@ function dcRender() {
   // ── charts + whale table for the chosen coin ──
   var tabs = "<span class='dc-tabs'>" + d.assets.map(function (a) { return "<button type='button' class='ml-tab" + (a === _dc.coin ? " on" : "") + "' data-coin='" + esc(a) + "' aria-pressed='" + (a === _dc.coin) + "'>" + esc(a) + "</button>"; }).join("") + "</span>";
   var cEl = $("dc-charts"), wEl = $("dc-whales"), cc = P ? P.coins[_dc.coin] : null;
-  _dc.ch = {};
   if (cEl) cEl.innerHTML = !cc ? "" : "<div class='ec-h'><b>" + esc(_dc.coin) + " this week</b><span class='src'>hover or touch a chart for the reading</span>" + tabs + "</div><div class='dc-charts'>" +
     dcChart("px", "Price, and the models under it", "The band under the line: <b class='up'>green</b> when more models were long, <b class='down'>red</b> when more were short.", cc.hist.px, { fmt: function (v) { return "$" + ecPx(v); }, strip: cc.hist.models, stripStep: d.everyMin * 60000, stripFmt: function (n) { return n > 0 ? n + " more long" : n < 0 ? (-n) + " more short" : "models even"; } }) +
     dcChart("fund", "Funding, hour by hour", "As a yearly rate. Above the line longs pay shorts; below it shorts pay.", (cc.hist.fund || []).map(function (p) { return [p[0], p[1] * 876000]; }), { bars: 1, fmt: function (v) { return dcPct(v, 1); } }) +
@@ -6678,17 +6692,22 @@ function dcRender() {
   });
   nEl.innerHTML = h + "</div>";
   // scoreboard
+  // [#308] ranked on 1x AFTER fees (the honest figure); the 10x–1000x replays sit behind a button (off by default)
+  var TV = d.tiers.filter(function (L) { return L === 1 || _dc.lev; }), byNet = !!d.feePct;
+  var BOARD = d.board.slice(); if (byNet) BOARD.sort(function (a, b) { return (b.net1xPct == null ? -1e9 : b.net1xPct) - (a.net1xPct == null ? -1e9 : a.net1xPct); });
   var t = "<div class='ec-h'><b>Scoreboard</b><span class='src'>every call since " + esc(ecWhen(d.since)) + " · " + esc(String(d.ticks)) + " round" + (d.ticks === 1 ? "" : "s") + " so far · open calls counted at the current price</span></div>" +
     "<div style='overflow-x:auto'><table class='data dc-sb'><tr><th>Model</th><th class='rt'>Calls</th><th class='rt'>Closed</th><th class='rt'>Closed in profit</th><th class='rt' title='Of every long or short call, how often price had moved its way one round later. No exits involved. A coin flip scores about 50%.'>Right " + esc(String(d.everyMin)) + " min later</th><th class='rt'>Long / short</th><th class='rt' title='Calls closed by price reaching the profit target / by price touching the wrong-at level'>Target / stop</th>" +
-    d.tiers.map(function (L) { return "<th class='rt" + (L === 1 || L === 10 ? " g" : "") + "'>" + L + "x</th>" + (L === 1 && d.feePct ? "<th class='rt' title='The 1x result after a " + d.feePct.toFixed(2) + "% trading fee for every call opened and closed'>1x after fees</th>" : ""); }).join("") + "<th class='rt g'>Answered</th><th class='rt'>Spent</th></tr>";
+    TV.map(function (L) { return "<th class='rt" + (L === 10 ? " g" : "") + "'>" + L + "x" + (L === 1 && byNet ? " before fees" : "") + "</th>" + (L === 1 && byNet ? "<th class='rt g' title='The 1x result after a " + d.feePct.toFixed(2) + "% trading fee for every call opened and closed'>1x after fees ▾</th>" : ""); }).join("") + "<th class='rt g'>Answered</th><th class='rt'>Spent</th></tr>";
   var hdr = t.slice(t.indexOf("<div style='overflow-x:auto'>")), ret = "", retN = 0;
-  d.board.forEach(function (x) {
+  BOARD.forEach(function (x) {
     var row = "<tr" + (x.baseline ? " class='dc-base'" : "") + "><td><b>" + esc(x.label) + "</b>" + (x.baseline ? " <span class='src'>no model</span>" : x.rule ? " <span class='src'>fixed rules, no model</span>" : x.panel ? " <span class='src'>the boxes at the top, followed</span>" : x.retired ? " <span class='src'>retired " + esc(x.retiredOn || "15 Oct") + " · record kept</span>" : x.joined && x.joined !== dcFirstJoin ? " <span class='src'>joined " + esc(x.joined) + " · record starts there</span>" : "") + "</td><td class='rt'>" + x.positions + "</td><td class='rt'>" + x.closed + "</td><td class='rt'>" + (x.closed ? x.wins + " of " + x.closed : "—") + "</td><td class='rt'>" + (x.hit30 && x.hit30.n ? "<b>" + Math.round(100 * x.hit30.right / x.hit30.n) + "%</b> <span class='src'>of " + x.hit30.n + "</span>" : "—") + "</td><td class='rt'>" + x.long + " / " + x.short + "</td><td class='rt'>" + (x.baseline || x.rule ? "—" : "<span class='up'>" + (x.targeted || 0) + "</span> / <span class='down'>" + (x.invalidated || 0) + "</span>") + "</td>" +
-      d.tiers.map(function (L) { var c = x.tiers[L] || {}, v = 100 * c.sumR; return "<td class='rt " + dcCls(v) + (L === 1 || L === 10 ? " g" : "") + "'" + (c.liq ? " title='" + c.liq + " call" + (c.liq === 1 ? "" : "s") + " liquidated at " + L + "x'" : "") + ">" + (L === 1 ? "<b>" : "") + esc(dcPct(v, L === 1 ? 2 : L >= 50 ? 0 : 1)) + (L === 1 ? "</b>" : "") + (c.liq ? "<span class='dc-liq'>" + c.liq + " liq</span>" : "") + "</td>" + (L === 1 && d.feePct ? "<td class='rt " + dcCls(x.net1xPct) + "'>" + (x.net1xPct == null ? "—" : esc(dcPct(x.net1xPct, 2))) + "</td>" : ""); }).join("") +
+      TV.map(function (L) { var c = x.tiers[L] || {}, v = 100 * c.sumR, b1 = L === 1 && !byNet; return "<td class='rt " + dcCls(v) + (L === 10 ? " g" : "") + "'" + (c.liq ? " title='" + c.liq + " call" + (c.liq === 1 ? "" : "s") + " liquidated at " + L + "x'" : "") + ">" + (b1 ? "<b>" : "") + esc(dcPct(v, L === 1 ? 2 : L >= 50 ? 0 : 1)) + (b1 ? "</b>" : "") + (c.liq ? "<span class='dc-liq'>" + c.liq + " liq</span>" : "") + "</td>" + (L === 1 && byNet ? "<td class='rt g " + dcCls(x.net1xPct) + "'><b>" + (x.net1xPct == null ? "—" : esc(dcPct(x.net1xPct, 2))) + "</b></td>" : ""); }).join("") +
       "<td class='rt g'>" + (x.baseline || x.rule || x.panel || x.answeredPct == null ? "—" : x.answeredPct + "%") + "</td><td class='rt'>" + (x.baseline || x.panel ? "—" : x.rule ? "free" : (x.costUsd || 0) > 0 && x.costUsd < 0.0005 ? "&lt;$0.001" : "$" + Number(x.costUsd || 0).toFixed((x.costUsd || 0) < 1 ? 3 : 2)) + "</td></tr>";
     if (x.retired) { ret += row; retN++; } else t += row;   /* [#739] retired seats go to their own small table below */
   });
-  bEl.innerHTML = t + "</table></div><p class='src' style='margin:-8px 0 0'>Ranked on the 1x column: the plain price change of every call added up. <b>Target / stop</b> counts calls closed at the profit target against calls closed at the wrong-at level. <b>Right " + esc(String(d.everyMin)) + " min later</b> is the cleanest read of direction: no exits, just whether price went the call’s way one round on (about 50% is a coin flip). <b>1x after fees</b> charges a normal trading fee per call, so a model that flips often pays for it. Leveraged columns are the same calls replayed; <span class='dc-liq' style='margin:0'>2 liq</span> means two calls were wiped out at that leverage — see the notes below.</p>";
+  var levN = d.tiers.filter(function (L) { return L !== 1; }), levBtn = levN.length ? " <button type='button' class='dc-lev'>" + (_dc.lev ? "Hide the leverage replays" : "Show the " + levN[0] + "x–" + levN[levN.length - 1] + "x replays") + "</button>" : "";
+  bEl.innerHTML = t + "</table></div><p class='src' style='margin:-8px 0 0'>" + (byNet ? "Ranked on <b>1x after fees</b>: the plain price change of every call added up, less a normal trading fee for each call opened and closed, so a model that flips often pays for it. <b>Always short</b> is a rule with no model; a model has to beat it to show more than the market’s fall." : "Ranked on the 1x column: the plain price change of every call added up.") + levBtn + "</p><p class='src' style='margin:4px 0 0'><b>Target / stop</b> counts calls closed at the profit target against calls closed at the wrong-at level. <b>Right " + esc(String(d.everyMin)) + " min later</b> is the cleanest read of direction: no exits, just whether price went the call’s way one round on (about 50% is a coin flip)." + (_dc.lev ? " Leveraged columns are the same calls replayed, before fees; <span class='dc-liq' style='margin:0'>2 liq</span> means two calls were wiped out at that leverage — see the notes below." : "") + "</p>";
+  Array.prototype.forEach.call(bEl.querySelectorAll("button.dc-lev"), function (b) { b.addEventListener("click", function () { _dc.lev = !_dc.lev; dcRender(); }); });
   if (retN) bEl.insertAdjacentHTML("beforeend", "<details class='box dc-retired' style='margin-top:14px'><summary class='box-h'>Retired models · " + retN + " · no longer asked, records kept as they stood</summary><div style='padding:0 10px;font-size:.92em;opacity:.85'>" + hdr + ret + "</table></div></div></details>");
   // recently closed
   if (!d.recent || !d.recent.length) { rEl.innerHTML = "<div class='ec-h'><b>Closed calls</b></div><p class='src'>No call has closed yet — the first ones close when a model changes its mind or price reaches its level.</p>"; }
