@@ -25,8 +25,12 @@ window.VENUE_LINKS = {
 // levels shown. Remove a venue's entry to drop its button.
 window.COPY_TRADE_URLS = {
   LIGHTER: { url: "https://app.lighter.xyz/trade/{SLUG}?referral=ZAMA", label: "Copy on Lighter" },
-  HL:      { url: "https://app.hyperliquid.xyz/trade/{SLUG}?ref=ZAMMA", label: "Copy on Hyperliquid" }
+  HL:      { url: "https://app.hyperliquid.xyz/trade/{SLUG}?ref=ZAMMA", label: "Copy on Hyperliquid" },
+  // [#308] papertrade.xyz has no referral code and no per-market URL: the button opens its home page
+  PAPERTRADE: { url: "https://papertrade.xyz/", label: "Copy on papertrade.xyz" }
 };
+// [#308] Every copy button goes through /go (functions/go/index.js), which sends the visitor on and counts the click.
+// The REDIRECT TARGETS live in that function's own allowlist (no open redirect) — keep the two in step when a link changes.
 
 // Sponsor CTA target (X profile DM / contact page / mailto).
 window.SPONSOR_CONTACT_URL = "https://x.com/zamma3";

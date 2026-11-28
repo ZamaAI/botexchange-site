@@ -124,6 +124,17 @@
   .dc-rw { overflow-x: auto; margin-top: 8px; } .dc-rt { border-collapse: collapse; width: 100%; font-size: 12px; white-space: nowrap; }
   .dc-rt th { text-align: left; font-weight: 600; color: var(--ink3); padding: 3px 10px 3px 0; border-bottom: 1px solid var(--line); }
   .dc-rt td { padding: 4px 10px 4px 0; border-bottom: 1px solid var(--line2); font-family: var(--mono); }
+  /* [#308] on a phone each real-money row is a two-line card: coin, bot, side, then the labelled levels — the table cut off Stop / Target / Paid */
+  @media (max-width: 600px) {
+    .dc-rt, .dc-rt tbody, .dc-rt tr { display: block; } .dc-rt { white-space: normal; }
+    .dc-rt tr:first-child { display: none; }
+    .dc-rt tr { padding: 7px 0; border-bottom: 1px solid var(--line2); }
+    .dc-rt td { display: inline-block; border: 0; padding: 1px 12px 1px 0; white-space: nowrap; }
+    .dc-rt td[data-l]::before { content: attr(data-l) " "; color: var(--ink3); font: 400 11px var(--sans); }
+    .dc-rt td.dc-cp { display: block; padding-top: 5px; } .dc-rt td.dc-cp .copybtn { margin-left: 0; }
+  }
+  .dc-why-row { display: none; } .dc-why-row td { padding-top: 0 !important; border-top: 0 !important; white-space: normal; }
+  @media (max-width: 760px) { .dc-why-col { display: none; } .dc-why-row { display: table-row; } }
   .dc-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; }
   .dc-ch { position: relative; border: 1px solid var(--line); border-radius: 6px; background: #fff; padding: 10px 12px 6px; min-width: 0; }
   .dc-ch h4 { margin: 0; font: 700 12.5px var(--sans); } .dc-ch .cs { font-size: 11px; color: var(--ink3); margin: 1px 0 4px; min-height: 16px; }
@@ -584,7 +595,7 @@
   .pill.live { color: #1e7a3a; border: 1px solid #9ec9ab; background: #f0f7f2; }
   .pill.paper { color: #8a6414; border: 1px solid #d9c489; background: #faf5e6; }
   /* [#355] Copy on Lighter — opens the market on Lighter in a new tab; the visitor types the levels */
-  .copybtn { display: inline-block; font-size: 9.5px; font-weight: 700; letter-spacing: .06em; padding: 2px 7px; border-radius: 3px; vertical-align: 1px; margin-left: 5px; font-family: var(--mono); color: #fff; background: #1e7a3a; border: 1px solid #176230; text-decoration: none; white-space: nowrap; }
+  .copybtn { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; padding: 3px 9px; border-radius: 3px; vertical-align: 1px; margin-left: 5px; font-family: var(--mono); color: #fff; background: #1e7a3a; border: 1px solid #176230; text-decoration: none; white-space: nowrap; }
   .copybtn:hover { background: #176230; }
   .copynote { font-size: 11px; color: var(--ink3); margin-top: 8px; line-height: 1.4; }
   /* [#359] the trade room */
@@ -1417,7 +1428,7 @@
   <div class="dc-head"><div class="dc-hl">
   <div class="kicker">Paper Trade (BTC / ETH) · Hyperliquid · refreshed every 15 minutes</div>
   <h2 class="sec" id="direction">BTC and ETH right now: who is long, who is short</h2>
-  <p class="sub">Where the biggest Hyperliquid accounts are positioned, what funding and open interest say, and which way a panel of AI models would trade it — each model on the record below, scored against a coin flip. Free, no sign-up. Paper only; nothing here is traded.</p>
+  <p class="sub">Where the biggest Hyperliquid accounts are positioned, what funding and open interest say, and which way a panel of AI models would trade it — each model on the record below, scored against a coin flip. Free, no sign-up. The calls are scored on paper; a small real-money test follows some of them on papertrade.xyz — the <b>Real money</b> panel just below.</p>
   <div class="dc-status" id="dc-status"></div>
   </div><div class="dc-verdict" id="dc-verdict"></div></div>
   <div id="dc-real"></div>
@@ -3394,10 +3405,19 @@ function copyBtn(t) {
   if (!cfg || !cfg.url || !t || !t.asset) return "";
   var asset = String(t.asset).toUpperCase();
   var slug = (String(t.venue).toUpperCase() === "HL" && t.cls === "equity") ? "xyz:" + asset : asset;
-  var url = cfg.url.replace("{SLUG}", encodeURIComponent(slug));
+  // [#308] through /go: the Pages Function sends the visitor on to the venue (its own allowlist, the same referral links) and counts the click
+  var url = "/go?v=" + encodeURIComponent(String(t.venue).toUpperCase()) + "&m=" + encodeURIComponent(slug);
   var venueName = cfg.label.replace(/^Copy on /, "");
   return "<a class='copybtn' href='" + esc(url) + "' target='_blank' rel='noopener sponsored' title='Opens " + esc(asset) +
     " on " + esc(venueName) + " in a new tab. Nothing is pre-filled: set the side (" + esc(String(t.direction || '').toUpperCase() || 'LONG/SHORT') + "), the stop and target shown here, and your own size.'>" + esc(cfg.label) + " ↗</a>";
+}
+// [#308] papertrade.xyz: no referral code and no per-market URL (/trade/ETH is a 404, read 28 Nov), so the button opens the venue's
+// home through /go (counted). The real-money rows only — the board's paper calls are not positions anyone holds.
+function ptCopyBtn(o) {
+  var cfg = (window.COPY_TRADE_URLS || {}).PAPERTRADE;
+  if (!cfg || !o || !o.asset) return "";
+  var asset = String(o.asset).toUpperCase();
+  return "<a class='copybtn' href='/go?v=PAPERTRADE&m=" + encodeURIComponent(asset) + "' target='_blank' rel='noopener' title='Opens papertrade.xyz in a new tab. Nothing is pre-filled: pick " + esc(asset) + ", set the side (" + esc(String(o.dir || '').toUpperCase() || 'LONG/SHORT') + "), the stop and target shown here, and your own size.'>" + esc(cfg.label) + " ↗</a>";
 }
 var COPY_NOTE = "<div class='copynote'><b>Copy on Lighter / Hyperliquid</b> opens that market on the venue (our referral link) — it does <b>not</b> place or pre-fill anything. The venue opens on Buy/Long by default: set the side (LONG or SHORT) yourself, enter the stop and target shown on the row, and choose your own size and leverage. The row's entry and R/R are the desk's at its own fill, not what is available to you now. None of this is advice — every desk here is a machine with a public record, including its losses.</div>";
 // [#359] a small link to a trade's own room, on every row that has an id
@@ -6385,9 +6405,11 @@ function fsRender() {
     s += "</table></div><p class='src' style='margin:-4px 0 12px'>Three models run the same rules side by side, each with its own paper book, to see whether the result depends on the model. Each is judged on its own at the same bar.</p>";
   }
   if (d.open && d.open.length) {
-    s += "<div style='overflow-x:auto'><table class='data'><tr><th>Open position</th><th class='rt'>Entry</th><th class='rt'>Now</th><th class='rt'>Result so far</th><th class='rt'>Stop</th><th class='rt'>Target</th><th>Open for</th><th>The model’s reason</th></tr>";
+    s += "<div style='overflow-x:auto'><table class='data'><tr><th>Open position</th><th class='rt'>Entry</th><th class='rt'>Now</th><th class='rt'>Result so far</th><th class='rt'>Stop</th><th class='rt'>Target</th><th>Open for</th><th class='dc-why-col'>The model’s reason</th></tr>";
     d.open.forEach(function (p) {
-      s += "<tr><td>" + esc(p.asset) + " " + dcDir(p.dir) + "</td><td class='rt'>" + esc(ecPx(p.entry)) + "</td><td class='rt'>" + esc(ecPx(p.last)) + "</td><td class='rt " + dcCls(p.pnl) + "'><b>" + esc(f(p.pnl)) + "</b></td><td class='rt'>" + esc(ecPx(p.stop)) + (p.trailing ? " <span class='src'>trailing</span>" : "") + "</td><td class='rt'>" + esc(ecPx(p.target)) + "</td><td>" + esc(fsAgo(p.opened)) + "</td><td class='src'>" + esc(p.reason || "") + "</td></tr>";
+      s += "<tr><td>" + esc(p.asset) + " " + dcDir(p.dir) + "</td><td class='rt'>" + esc(ecPx(p.entry)) + "</td><td class='rt'>" + esc(ecPx(p.last)) + "</td><td class='rt " + dcCls(p.pnl) + "'><b>" + esc(f(p.pnl)) + "</b></td><td class='rt'>" + esc(ecPx(p.stop)) + (p.trailing ? " <span class='src'>trailing</span>" : "") + "</td><td class='rt'>" + esc(ecPx(p.target)) + "</td><td>" + esc(fsAgo(p.opened)) + "</td><td class='src dc-why-col'>" + esc(p.reason || "") + "</td></tr>" +
+        // [#308] on a phone the reason column wrapped off-screen into ~250 px rows; there it gets its own line under the position
+        (p.reason ? "<tr class='dc-why-row'><td colspan='7' class='src'>" + esc(p.reason) + "</td></tr>" : "");
     });
     s += "</table></div>";
   } else s += "<p class='src'>No position is open right now.</p>";
@@ -6531,10 +6553,14 @@ function dcReal(d) {
   var chFmt = function (v) { return usd(v); }, perBot = (many && L.bySeat) ? L.bySeat.filter(function (b) { return Array.isArray(b.curve); }) : [];
   h += "<div id='dc-real-ch'" + (perBot.length ? " class='dc-charts'" : "") + ">" + dcChart("real", perBot.length ? "All bots together, cumulative" : "Real result, cumulative", "What the venue actually paid, after every close.", L.curve, { min: 2, ref: 0, fmt: chFmt, empty: "The graph starts after the first closed trade." }) +
     perBot.map(function (b, i) { return dcChart("real-b" + i, b.label, b.trades ? "This bot alone: " + usd(b.total) + " on " + b.trades + " trade" + (b.trades === 1 ? "" : "s") + "." : "This bot alone.", b.curve, { min: 2, ref: 0, fmt: chFmt, empty: "The graph starts after this bot’s first closed trade." }); }).join("") + "</div>";
-  if (L.open.length) h += "<div class='dc-rw'><table class='dc-rt'><tr><th>Open now</th>" + (many ? "<th>Bot</th>" : "") + "<th>Side</th><th>Entry</th><th>Stop</th><th>Target</th><th>Now</th><th>Since</th></tr>" + L.open.map(function (o) {
-    return "<tr><td>" + esc(o.asset) + "</td>" + (many ? "<td>" + esc(o.bot || "—") + "</td>" : "") + "<td>" + dcDir(o.dir) + "</td><td>$" + esc(ecPx(o.entry)) + "</td><td>$" + esc(ecPx(o.stop)) + "</td><td>$" + esc(ecPx(o.target)) + "</td><td class='" + dcCls(o.retPct) + "'>" + dcPct(o.retPct) + "</td><td>" + esc(dcT(o.from)) + "</td></tr>"; }).join("") + "</table></div>";
+  // [#308] each open row carries a "Copy on papertrade.xyz" button (through /go, which counts the click) and, on a phone, labels
+  var ptCp = L.open.some(function (o) { return ptCopyBtn(o); });
+  // [#308] the note BEFORE the first button (the #355 visitor test, 6 Sep: a note after the buttons is read after the click)
+  if (L.open.length && ptCp) h += "<div class='copynote' style='margin-top:10px'><b>Copy on papertrade.xyz</b> opens the venue in a new tab. It has no referral code and no link to one market, so nothing is pre-filled and we earn nothing from the click: pick BTC or ETH, set the side, enter the stop and target shown, and choose your own size. The bot’s entry is its own fill, not today’s price. Not advice.</div>";
+  if (L.open.length) h += "<div class='dc-rw'><table class='dc-rt'><tr><th>Open now</th>" + (many ? "<th>Bot</th>" : "") + "<th>Side</th><th>Entry</th><th>Stop</th><th>Target</th><th>Now</th><th>Since</th>" + (ptCp ? "<th></th>" : "") + "</tr>" + L.open.map(function (o) {
+    return "<tr><td><b>" + esc(o.asset) + "</b></td>" + (many ? "<td>" + esc(o.bot || "—") + "</td>" : "") + "<td>" + dcDir(o.dir) + "</td><td data-l='Entry'>$" + esc(ecPx(o.entry)) + "</td><td data-l='Stop'>$" + esc(ecPx(o.stop)) + "</td><td data-l='Target'>$" + esc(ecPx(o.target)) + "</td><td data-l='Now' class='" + dcCls(o.retPct) + "'>" + dcPct(o.retPct) + "</td><td data-l='Since'>" + esc(dcT(o.from)) + "</td>" + (ptCp ? "<td class='dc-cp'>" + ptCopyBtn(o) + "</td>" : "") + "</tr>"; }).join("") + "</table></div>";
   if (L.recent.length) h += "<div class='dc-rw'><table class='dc-rt'><tr><th>Closed</th>" + (many ? "<th>Bot</th>" : "") + "<th>Side</th><th>Entry</th><th>Exit</th><th>Why</th><th>Paid</th><th>Model said</th><th>When</th></tr>" + L.recent.map(function (t) {
-    return "<tr><td>" + esc(t.asset) + "</td>" + (many ? "<td>" + esc(t.bot || "—") + "</td>" : "") + "<td>" + dcDir(t.dir) + "</td><td>$" + esc(ecPx(t.entry)) + "</td><td>" + (t.exit ? "$" + esc(ecPx(t.exit)) : "—") + "</td><td>" + esc(how[t.how] || t.how || "—") + "</td><td class='" + dcCls(t.paid) + "'>" + (t.paid == null ? "pending" : usd(t.paid)) + "</td><td>" + usd(t.model) + "</td><td>" + esc(dcT(t.to)) + "</td></tr>"; }).join("") + "</table></div>";
+    return "<tr><td><b>" + esc(t.asset) + "</b></td>" + (many ? "<td>" + esc(t.bot || "—") + "</td>" : "") + "<td>" + dcDir(t.dir) + "</td><td data-l='Entry'>$" + esc(ecPx(t.entry)) + "</td><td data-l='Exit'>" + (t.exit ? "$" + esc(ecPx(t.exit)) : "—") + "</td><td data-l='Why'>" + esc(how[t.how] || t.how || "—") + "</td><td data-l='Paid' class='" + dcCls(t.paid) + "'>" + (t.paid == null ? "pending" : usd(t.paid)) + "</td><td data-l='Model said'>" + usd(t.model) + "</td><td data-l='When'>" + esc(dcT(t.to)) + "</td></tr>"; }).join("") + "</table></div>";
   el.innerHTML = h + "</div>";
   var cb = $("dc-real-ch"); if (cb) ["pointermove", "pointerdown"].forEach(function (ev) { cb.addEventListener(ev, dcHover); });
 }
